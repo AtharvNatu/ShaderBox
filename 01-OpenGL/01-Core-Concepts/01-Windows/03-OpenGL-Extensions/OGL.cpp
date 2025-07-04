@@ -95,7 +95,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     hwnd = CreateWindowEx(
         WS_EX_APPWINDOW,
         szAppName,
-        TEXT("OpenGL Blue Window"),
+        TEXT("OpenGL Extensions"),
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
         centerX,
         centerY,
@@ -275,6 +275,7 @@ int initialize(void)
 {
     // Function Declarations
     void resize(int, int);
+    void printGLInfo(void);
 
     // Variable Declarations
     PIXELFORMATDESCRIPTOR pfd;
@@ -322,6 +323,8 @@ int initialize(void)
     if (initStatus != GLEW_OK)
         return GLEW_INIT_ERROR;
 
+    printGLInfo();
+
     //! OpenGL Code
 
     // Depth Related Code
@@ -336,6 +339,29 @@ int initialize(void)
     resize(WIN_WIDTH, WIN_HEIGHT);
 
     return 0;
+}
+
+void printGLInfo(void)
+{
+    // Variable Declarations
+    GLint numExtensions = 0;
+
+    // Code
+    fprintf(gpFile, "\nOpenGL Information\n");
+    fprintf(gpFile, "------------------------------------------------------\n");
+    
+    fprintf(gpFile, "OpenGL Vendor : %s\n", glGetString(GL_VENDOR));
+    fprintf(gpFile, "OpenGL Renderer : %s\n", glGetString(GL_RENDERER));
+    fprintf(gpFile, "OpenGL Version : %s\n", glGetString(GL_VERSION));
+    fprintf(gpFile, "GLSL Version : %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
+    fprintf(gpFile, "------------------------------------------------------\n");
+
+    glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
+    fprintf(gpFile, "\nNumber of Supported Extensions : %d\n", numExtensions);
+    fprintf(gpFile, "------------------------------------------------------\n");
+    for (GLint i = 0; i < numExtensions; i++)
+        fprintf(gpFile, "%s\n", glGetStringi(GL_EXTENSIONS, i));
+    fprintf(gpFile, "------------------------------------------------------\n"); 
 }
 
 void resize(int width, int height)
