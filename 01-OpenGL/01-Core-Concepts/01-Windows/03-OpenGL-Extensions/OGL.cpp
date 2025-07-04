@@ -111,6 +111,37 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
 
     //! Initialize
     iRetVal = initialize();
+    switch(iRetVal)
+    {
+        case CPF_ERROR:
+            fprintf(gpFile, "ERROR : %s() => ChoosePixelFormat() Failed !!!\n", __func__);
+            uninitialize();
+        break;
+
+        case SPF_ERROR:
+            fprintf(gpFile, "ERROR : %s() => SetPixelFormat() Failed !!!\n", __func__);
+            uninitialize();
+        break;
+
+        case WGL_CC_ERROR:
+            fprintf(gpFile, "ERROR : %s() => Failed to create OpenGL context !!!\n", __func__);
+            uninitialize();
+        break;
+
+        case WGL_MC_ERROR:
+            fprintf(gpFile, "ERROR : %s() => Failed to make rendering context as current context !!!\n", __func__);
+            uninitialize();
+        break;
+
+        case GLEW_INIT_ERROR:
+            fprintf(gpFile, "ERROR : %s() => GLEW Initialization Failed !!!\n", __func__);
+            uninitialize();
+        break;
+
+        default:
+            fprintf(gpFile, "%s() => Initialization Completed Successfully\n", __func__);
+        break;
+    }
 
     // Show and Update Window
     ShowWindow(hwnd, iCmdShow);

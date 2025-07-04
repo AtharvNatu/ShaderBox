@@ -415,4 +415,5 @@ GL_SUN_slice_accum
 GL_WIN_swap_hint
 WGL_EXT_swap_control
 ------------------------------------------------------
+WinMain() => Initialization Completed Successfully
 uninitialize() => Program Terminated Successfully
