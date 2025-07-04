@@ -4,14 +4,24 @@
 #include <stdlib.h>
 #include "OGL.h"
 
+//! OpenGL Header Files
+#include <GL/glew.h>
+#include <GL/gl.h>
+
 #define WIN_WIDTH   800
 #define WIN_HEIGHT  600
+
+//! OpenGL Libraries
+#pragma comment(lib, "glew32.lib")
+#pragma comment(lib, "OpenGL32.lib")
 
 //* Global Function Declarations
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 //* Global Variable Declarations
 HWND ghwnd = NULL;
+HDC ghdc = NULL;
+HGLRC ghrc = NULL;
 
 BOOL gbFullScreen = FALSE;
 BOOL gbActiveWindow = FALSE;
@@ -20,6 +30,15 @@ FILE *gpFile = NULL;
 
 WINDOWPLACEMENT wpPrev;
 DWORD dwStyle;
+
+enum INIT_ERRORS
+{
+    CPF_ERROR = -1,
+    SPF_ERROR = -2,
+    WGL_CC_ERROR = -3,
+    WGL_MC_ERROR = -4,
+    GLEW_INIT_ERROR = -5
+};
 
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
@@ -76,7 +95,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     hwnd = CreateWindowEx(
         WS_EX_APPWINDOW,
         szAppName,
-        TEXT("Skeleton Window"),
+        TEXT("OpenGL Blue Window"),
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
         centerX,
         centerY,
@@ -254,7 +273,68 @@ void ToggleFullScreen(void)
 
 int initialize(void)
 {
+    // Function Declarations
+    void resize(int, int);
+
+    // Variable Declarations
+    PIXELFORMATDESCRIPTOR pfd;
+    int iPixelFormatIndex;
+    GLenum initStatus;
+
     // Code
+    ZeroMemory(&pfd, sizeof(PIXELFORMATDESCRIPTOR));
+
+    // Initialization of PIXELFORMATDESCRIPTOR Structure
+    pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+    pfd.nVersion = 1;
+    pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+    pfd.iPixelType = PFD_TYPE_RGBA;
+    pfd.cColorBits = 32;
+    pfd.cRedBits = 8;
+    pfd.cBlueBits = 8;
+    pfd.cGreenBits = 8;
+    pfd.cAlphaBits = 8;
+    pfd.cDepthBits = 32;
+
+    // Get DC
+    ghdc = GetDC(ghwnd);
+
+    // Choose Pixel Format
+    iPixelFormatIndex = ChoosePixelFormat(ghdc, &pfd);
+    if (iPixelFormatIndex == 0)
+        return CPF_ERROR;
+    
+    // Set chosen Pixel Format
+    if (SetPixelFormat(ghdc, iPixelFormatIndex, &pfd) == FALSE)
+        return SPF_ERROR;
+    
+    // Create OpenGL Rendering Context
+    ghrc = wglCreateContext(ghdc);
+    if (ghrc == NULL)
+        return WGL_CC_ERROR;
+    
+    // Make the rendering context as the current context
+    if (wglMakeCurrent(ghdc, ghrc) == FALSE)
+        return WGL_MC_ERROR;
+    
+    // GLEW Initialization
+    initStatus = glewInit();
+    if (initStatus != GLEW_OK)
+        return GLEW_INIT_ERROR;
+
+    //! OpenGL Code
+
+    // Depth Related Code
+    glClearDepth(1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+
+    // Clear the screen using blue color
+    glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+
+    // Warmup resize call
+    resize(WIN_WIDTH, WIN_HEIGHT);
+
     return 0;
 }
 
@@ -263,11 +343,16 @@ void resize(int width, int height)
     // Code
     if (height <= 0)
         height = 1;
+    
+    glViewport(0, 0, (GLsizei)width, (GLsizei)height);
 }
 
 void display(void)
 {
     // Code
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    SwapBuffers(ghdc);
 }
 
 void update(void)
@@ -283,6 +368,21 @@ void uninitialize(void)
     // Code
     if (gbFullScreen)
         ToggleFullScreen();
+    
+    if (wglGetCurrentContext() == ghrc)
+        wglMakeCurrent(NULL, NULL);
+
+    if (ghrc)
+    {
+        wglDeleteContext(ghrc);
+        ghrc = NULL;
+    }
+
+    if (ghdc)
+    {
+        ReleaseDC(ghwnd, ghdc);
+        ghdc = NULL;
+    }
     
     if (ghwnd)
     {
