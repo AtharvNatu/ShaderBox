@@ -59,9 +59,8 @@ enum ATTRIBUTES
 
 GLuint shaderProgramObject = 0;
 
-GLuint vao_position = 0;
+GLuint vao = 0;
 GLuint vbo_position = 0;
-GLuint vbo_color = 0;
 
 GLuint mvpMatrixUniform = 0;
 
@@ -550,14 +549,9 @@ int initialize(void)
         1.0f,  -1.0f,  0.0f
     };
 
-    const GLfloat square_color[] = 
-    {
-        0.0f,   0.0f,   1.0f, // Blue
-    };
-
     //! VAO and VBO Related Code
-    glGenVertexArrays(1, &vao_position);
-    glBindVertexArray(vao_position);
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
     {
         //* VBO Position
         glGenBuffers(1, &vbo_position);
@@ -642,7 +636,7 @@ void display(void)
 
         glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
 
-        glBindVertexArray(vao_position);
+        glBindVertexArray(vao);
         {
             glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
         }
@@ -667,16 +661,16 @@ void uninitialize(void)
     if (gbFullScreen)
         ToggleFullScreen();
 
-    if (vbo_color)
+    if (vbo_position)
     {
-        glDeleteBuffers(1, &vbo_color);
-        vbo_color = 0;
+        glDeleteBuffers(1, &vbo_position);
+        vbo_position = 0;
     }
 
-    if (vao_position)
+    if (vao)
     {
-        glDeleteVertexArrays(1, &vao_position);
-        vao_position = 0;
+        glDeleteVertexArrays(1, &vao);
+        vao = 0;
     }
 
     if (shaderProgramObject)

@@ -26,3 +26,10 @@ A repository having OpenGL, DirectX11/12, Vulkan, Metal samples with Prism rende
  - For Linux - GCC Toolchainl, X11 API
 
 
+### References ###
+ - AstroMediComp Real-Time Rendering (RTR) Course
+ - AstroMediComp Advanced Real-Time Rendering (ARTR) Course
+ - OpenGL Programming Guide (Red Book), 8th Edition - Dave Shreiner, Graham Sellers, John Kessenich, Bill Licea-Kane
+ - OpenGL Shading Language (Orange Book), 3rd Edition - Randi Rost, Bill Licea-Kane
+ - OpenGL Superbible (Blue Book), 7th Edition - Graham Sellers, Richard Wright, Nicholas Haemel
+ 

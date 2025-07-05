@@ -59,7 +59,7 @@ enum ATTRIBUTES
 
 GLuint shaderProgramObject = 0;
 
-GLuint vao_position = 0;
+GLuint vao = 0;
 GLuint vbo_position = 0;
 GLuint mvpMatrixUniform = 0;
 
@@ -541,8 +541,8 @@ int initialize(void)
     };
 
     //! VAO and VBO Related Code
-    glGenVertexArrays(1, &vao_position);
-    glBindVertexArray(vao_position);
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
     {
         glGenBuffers(1, &vbo_position);
         glBindBuffer(GL_ARRAY_BUFFER, vbo_position);
@@ -623,7 +623,7 @@ void display(void)
 
         glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
 
-        glBindVertexArray(vao_position);
+        glBindVertexArray(vao);
         {
             glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
         }
@@ -654,10 +654,10 @@ void uninitialize(void)
         vbo_position = 0;
     }
 
-    if (vao_position)
+    if (vao)
     {
-        glDeleteVertexArrays(1, &vao_position);
-        vao_position = 0;
+        glDeleteVertexArrays(1, &vao);
+        vao = 0;
     }
 
     if (shaderProgramObject)
