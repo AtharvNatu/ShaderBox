@@ -23,7 +23,7 @@ A repository having OpenGL, DirectX11/12, Vulkan, Metal samples with Prism rende
  - OpenGL Extension Wrangler (GLEW) 2.1
  - vmath (vmath.h) in OpenGL (Referred from OpenGL RedBook)
  - For Windows - MSVC Toolchain, Win32 SDK
- - For Linux - GCC Toolchainl, X11 API
+ - For Linux - GCC Toolchain, X11 API
 
 
 ### References ###
