@@ -550,7 +550,7 @@ int initialize(void)
 
     const GLfloat cube_position[] =
     {
-        // op
+        // Top
         1.0f, 1.0f, -1.0f,
         -1.0f, 1.0f, -1.0f,
         -1.0f, 1.0f, 1.0f,
