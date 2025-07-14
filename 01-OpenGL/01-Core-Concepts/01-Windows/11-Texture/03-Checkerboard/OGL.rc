@@ -1,0 +1,4 @@
+#include "OGL.h"
+
+APP_ICON        ICON    Arch.ico
+IDBITMAP_LOGO   BITMAP  OpenGL.bmp

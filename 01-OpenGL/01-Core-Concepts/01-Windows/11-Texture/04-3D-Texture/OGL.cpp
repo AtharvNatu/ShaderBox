@@ -46,8 +46,7 @@ enum INIT_ERRORS
     GS_COMPILE_ERROR = -9,
     FS_COMPILE_ERROR = -10,
     PROGRAM_LINK_ERROR = -11,
-    MEM_ALLOC_FAILED = -12,
-    LOAD_TEXTURE_ERROR = -13
+    MEM_ALLOC_FAILED = -12
 };
 
 enum ATTRIBUTES
@@ -60,18 +59,21 @@ enum ATTRIBUTES
 
 GLuint shaderProgramObject = 0;
 
-GLuint vao = 0;
-GLuint vbo_position = 0;
-GLuint vbo_texture = 0;
+GLuint vao_pyramid = 0;
+GLuint vbo_pyramid_position = 0;
+
+GLuint vao_cube = 0;
+GLuint vbo_cube_position = 0;
 
 GLuint mvpMatrixUniform = 0;
-GLuint textureSamplerUniform = 0;
-GLuint keyPressedUniform = 0;
 
 vmath::mat4 perspectiveProjectionMatrix;
 
-GLuint texture_logo = 0;
-int keyPressed = -1;
+GLfloat angleCube = 0.0f;
+GLfloat anglePyramid = 0.0f;
+
+//? Adjust according to your GPU
+const GLfloat animationSpeed = 1.0f;
 
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
@@ -128,7 +130,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     hwnd = CreateWindowEx(
         WS_EX_APPWINDOW,
         szAppName,
-        TEXT("OpenGL BMP Dynamic Texture"),
+        TEXT("OpenGL White Cube and Pyramid"),
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
         centerX,
         centerY,
@@ -184,10 +186,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
         break;
 
         case MEM_ALLOC_FAILED:
-            uninitialize();
-        break;
-
-        case LOAD_TEXTURE_ERROR:
             uninitialize();
         break;
 
@@ -271,24 +269,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
                     DestroyWindow(hwnd);
                 break;
 
-                case 49:
-                    keyPressed = 1;
-                break;
-
-                case 50:
-                    keyPressed = 2;
-                break;
-
-                case 51:
-                    keyPressed = 3;
-                break;
-
-                case 52:
-                    keyPressed = 4;
-                break;
-
                 default:
-                    keyPressed = 0;
                 break;
             }
         break;
@@ -377,7 +358,6 @@ int initialize(void)
     // Function Declarations
     void resize(int, int);
     void printGLInfo(void);
-    BOOL loadGLTexture(GLuint*, TCHAR[]);
 
     // Variable Declarations
     PIXELFORMATDESCRIPTOR pfd;
@@ -432,18 +412,11 @@ int initialize(void)
     const GLchar* vertexShaderSourceCode = 
         "#version 460 core" \
         "\n" \
-        
         "in vec4 a_position;" \
-        "in vec2 a_texcoord;" \
-
         "uniform mat4 u_mvpMatrix;" \
-
-        "out vec2 a_texcoord_out;" \
-
         "void main(void)" \
         "{" \
             "gl_Position = u_mvpMatrix * a_position;" \
-            "a_texcoord_out = a_texcoord;" \
         "}";
 
     GLuint vertexShaderObject = glCreateShader(GL_VERTEX_SHADER);
@@ -484,24 +457,10 @@ int initialize(void)
     const GLchar* fragmentShaderSourceCode = 
         "#version 460 core" \
         "\n" \
-
-        "in vec2 a_texcoord_out;" \
-
-        "uniform sampler2D u_textureSampler;" \
-        "uniform int u_keyPressed;" \
-
         "out vec4 FragColor;" \
-
         "void main(void)" \
         "{" \
-            "if (u_keyPressed == 1)" \
-            "{" \
-                "FragColor = texture(u_textureSampler, a_texcoord_out);" \
-            "}" \
-            "else" \
-            "{" \
-                "FragColor = vec4(1.0, 1.0, 1.0, 1.0);" \
-            "}" \
+            "FragColor = vec4(1.0, 1.0, 1.0, 1.0);" \
         "}";
 
     GLuint fragmentShaderObject = glCreateShader(GL_FRAGMENT_SHADER);
@@ -546,7 +505,6 @@ int initialize(void)
 
     //! Bind Attribute
     glBindAttribLocation(shaderProgramObject, ATTRIBUTE_POSITION, "a_position");
-    glBindAttribLocation(shaderProgramObject, ATTRIBUTE_TEXTURE0, "a_texcoord");
 
     glLinkProgram(shaderProgramObject);
 
@@ -583,46 +541,98 @@ int initialize(void)
 
     //! Get Uniform Location
     mvpMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_mvpMatrix");
-    textureSamplerUniform = glGetUniformLocation(shaderProgramObject, "u_textureSampler");
-    keyPressedUniform = glGetUniformLocation(shaderProgramObject, "u_keyPressed");
 
-    const GLfloat position[] = 
+    const GLfloat pyramid_position[] =
     {
-        2.0f,   1.0f,  0.0f,
-        -2.0f,  1.0f,  0.0f,
-        -2.0f,  -1.0f, 0.0f,
-        2.0f,   -1.0f, 0.0f
+        // Front
+        0.0f,   1.0f,   0.0f,
+        -1.0f, -1.0f,   1.0f,
+        1.0f,  -1.0f,   1.0f,
+
+        // Right
+        0.0f,   1.0f,   0.0f,
+        1.0f,  -1.0f,   1.0f,
+        1.0f,  -1.0f,  -1.0f,
+
+        // Back
+        0.0f,   1.0f,   0.0f,
+        1.0f,  -1.0f,   -1.0f,
+        -1.0f, -1.0f,  -1.0f,
+
+        // Left
+        0.0f,   1.0f,   0.0f,
+        -1.0f, -1.0f,  -1.0f,
+        -1.0f, -1.0f,   1.0f
     };
 
-    const GLfloat texcoord[] = 
+    const GLfloat cube_position[] =
     {
-        1.0f, 1.0f,
-        0.0f, 1.0f,
-        0.0f, 0.0f,
-        1.0f, 0.0f
+        // Top
+        1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+
+        // Bottom
+        1.0f, -1.0f, -1.0f,
+       -1.0f, -1.0f, -1.0f,
+       -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f,
+
+        // Front
+        1.0f, 1.0f, 1.0f,
+       -1.0f, 1.0f, 1.0f,
+       -1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f,
+
+        // Back
+        1.0f, 1.0f, -1.0f,
+       -1.0f, 1.0f, -1.0f,
+       -1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+
+        // Right
+        1.0f, 1.0f, -1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, -1.0f,
+
+        // Left
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f, 1.0f
     };
 
     //! VAO and VBO Related Code
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+
+    // VAO For Pyramid
+    glGenVertexArrays(1, &vao_pyramid);
+    glBindVertexArray(vao_pyramid);
     {
-        //* Position
-        glGenBuffers(1, &vbo_position);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_position);
+        //* Pyramid Position
+        glGenBuffers(1, &vbo_pyramid_position);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_pyramid_position);
         {
-            glBufferData(GL_ARRAY_BUFFER, sizeof(position), position, GL_STATIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(pyramid_position), pyramid_position, GL_STATIC_DRAW);
             glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, 0, NULL);
             glEnableVertexAttribArray(ATTRIBUTE_POSITION);
         }
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+    glBindVertexArray(0);
 
-        //* Texture
-        glGenBuffers(1, &vbo_texture);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_texture);
+    // VAO For Cube
+    glGenVertexArrays(1, &vao_cube);
+    glBindVertexArray(vao_cube);
+    {
+        //* Cube Position
+        glGenBuffers(1, &vbo_cube_position);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_cube_position);
         {
-            glBufferData(GL_ARRAY_BUFFER, 4 * 2 * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
-            glVertexAttribPointer(ATTRIBUTE_TEXTURE0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-            glEnableVertexAttribArray(ATTRIBUTE_TEXTURE0);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(cube_position), cube_position, GL_STATIC_DRAW);
+            glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+            glEnableVertexAttribArray(ATTRIBUTE_POSITION);
         }
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
@@ -637,13 +647,6 @@ int initialize(void)
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     perspectiveProjectionMatrix = vmath::mat4::identity();
-
-    //! Load Texture
-    if (loadGLTexture(&texture_logo, MAKEINTRESOURCE(IDBITMAP_LOGO)) == FALSE)
-        return LOAD_TEXTURE_ERROR;
-    
-    //! Enable Texture
-    glEnable(GL_TEXTURE_2D);
 
     // Warmup resize call
     resize(WIN_WIDTH, WIN_HEIGHT);
@@ -674,62 +677,6 @@ void printGLInfo(void)
     fprintf(gpFile, "------------------------------------------------------\n"); 
 }
 
-BOOL loadGLTexture(GLuint* texture, TCHAR imageResourceID[])
-{
-    // Variable Declarations
-    HBITMAP hBitmap = NULL;
-    BITMAP bmp;
-
-    //! Step Parameter Value For Packing/Unpacking (Set to 1 for better performance)
-    const int stepValue = 1;
-
-    // Code
-    hBitmap = (HBITMAP)LoadImage(
-        GetModuleHandle(NULL), 
-        imageResourceID,
-        IMAGE_BITMAP,
-        0,
-        0,
-        LR_CREATEDIBSECTION
-    );
-    if (hBitmap == NULL)
-    {
-        fprintf(gpFile, "ERROR : %s() => Failed to load bitmap !!!\n", __func__);
-        return FALSE;
-    }
-
-    GetObject(hBitmap, sizeof(bmp), &bmp);
-    
-    glPixelStorei(GL_UNPACK_ALIGNMENT, stepValue);
-    glGenTextures(1, texture);
-    
-    glBindTexture(GL_TEXTURE_2D, *texture);
-    {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-
-        // Create the texture
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_RGB,
-            bmp.bmWidth,
-            bmp.bmHeight,
-            0,
-            GL_BGR,
-            GL_UNSIGNED_BYTE,
-            bmp.bmBits
-        );
-        glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    // Unbind Texture
-    glBindTexture(GL_TEXTURE_2D, 0);
-    
-    DeleteObject(hBitmap);
-
-    return TRUE;
-}
-
 void resize(int width, int height)
 {
     // Code
@@ -743,97 +690,68 @@ void resize(int width, int height)
 
 void display(void)
 {
-    // Variable Declarations
-    GLfloat texCoord[8];
-
     // Code
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glUseProgram(shaderProgramObject);
     {
+        //! Pyramid
+        //! ---------------------------------------------------------------------------------------
         // Transformations
         vmath::mat4 translationMatrix = vmath::mat4::identity();
+        vmath::mat4 rotationMatrix = vmath::mat4::identity();
         vmath::mat4 modelViewMatrix = vmath::mat4::identity();
         vmath::mat4 modelViewProjectionMatrix = vmath::mat4::identity();
 
-        translationMatrix = vmath::translate(0.0f, 0.0f, -4.0f);
-        modelViewMatrix = translationMatrix;
+        translationMatrix = vmath::translate(-1.5f, 0.0f, -6.0f);
+        rotationMatrix = vmath::rotate(anglePyramid, 0.0f, 1.0f, 0.0f);
+        modelViewMatrix = translationMatrix * rotationMatrix;
         modelViewProjectionMatrix = perspectiveProjectionMatrix * modelViewMatrix;
 
         glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
 
-        glActiveTexture(GL_TEXTURE0);
-
-        glBindTexture(GL_TEXTURE_2D, texture_logo);
+        glBindVertexArray(vao_pyramid);
         {
-            glUniform1i(textureSamplerUniform, 0);
-            glBindVertexArray(vao);
-            {
-                switch(keyPressed)
-                {
-                    case 1:
-                        texCoord[0] = 0.5f;
-                        texCoord[1] = 0.5f;
-                        texCoord[2] = 0.0f;
-                        texCoord[3] = 0.5f;
-                        texCoord[4] = 0.0f;
-                        texCoord[5] = 0.0f;
-                        texCoord[6] = 0.5f;
-                        texCoord[7] = 0.0f;
-                        glUniform1i(keyPressedUniform, 1);
-                    break;
-
-                    case 2:
-                        texCoord[0] = 1.0f;
-                        texCoord[1] = 1.0f;
-                        texCoord[2] = 0.0f;
-                        texCoord[3] = 1.0f;
-                        texCoord[4] = 0.0f;
-                        texCoord[5] = 0.0f;
-                        texCoord[6] = 1.0f;
-                        texCoord[7] = 0.0f;
-                        glUniform1i(keyPressedUniform, 1);
-                    break;
-
-                    case 3:
-                        texCoord[0] = 2.0f;
-                        texCoord[1] = 2.0f;
-                        texCoord[2] = 0.0f;
-                        texCoord[3] = 2.0f;
-                        texCoord[4] = 0.0f;
-                        texCoord[5] = 0.0f;
-                        texCoord[6] = 2.0f;
-                        texCoord[7] = 0.0f;
-                        glUniform1i(keyPressedUniform, 1);
-                    break;
-
-                    case 4:
-                        texCoord[0] = 0.5f;
-                        texCoord[1] = 0.5f;
-                        texCoord[2] = 0.5f;
-                        texCoord[3] = 0.5f;
-                        texCoord[4] = 0.5f;
-                        texCoord[5] = 0.5f;
-                        texCoord[6] = 0.5f;
-                        texCoord[7] = 0.5f;
-                        glUniform1i(keyPressedUniform, 1);
-                    break;
-
-                    default:
-                        glUniform1i(keyPressedUniform, 0);
-                    break;
-                }
-
-                glBindBuffer(GL_ARRAY_BUFFER, vbo_texture);
-                glBufferData(GL_ARRAY_BUFFER, sizeof(texCoord), texCoord, GL_DYNAMIC_DRAW);
-                glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-                glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-            }
-            glBindVertexArray(0);
+            glDrawArrays(GL_TRIANGLES, 0, 12);
         }
-        glBindTexture(GL_TEXTURE_2D, 0);
-        
+        glBindVertexArray(0);
+        //! ---------------------------------------------------------------------------------------
+
+        //! Cube
+        //! ---------------------------------------------------------------------------------------
+        // Transformations
+        translationMatrix = vmath::mat4::identity();
+        rotationMatrix = vmath::mat4::identity();
+        vmath::mat4 rotationMatrix_x = vmath::mat4::identity();
+        vmath::mat4 rotationMatrix_y = vmath::mat4::identity();
+        vmath::mat4 rotationMatrix_z = vmath::mat4::identity();
+        vmath::mat4 scaleMatrix = vmath::mat4::identity();
+        modelViewMatrix = vmath::mat4::identity();
+        modelViewProjectionMatrix = vmath::mat4::identity();
+
+        translationMatrix = vmath::translate(1.5f, 0.0f, -6.0f);
+        scaleMatrix = vmath::scale(0.75f, 0.75f, 0.75f);
+        rotationMatrix_x = vmath::rotate(angleCube, 1.0f, 0.0f, 0.0f);
+        rotationMatrix_y = vmath::rotate(angleCube, 0.0f, 1.0f, 0.0f);
+        rotationMatrix_z = vmath::rotate(angleCube, 0.0f, 0.0f, 1.0f);
+        rotationMatrix = rotationMatrix_x * rotationMatrix_y * rotationMatrix_z;
+        modelViewMatrix = translationMatrix * scaleMatrix * rotationMatrix;
+        modelViewProjectionMatrix = perspectiveProjectionMatrix * modelViewMatrix;
+
+        glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
+
+        glBindVertexArray(vao_cube);
+        {
+            glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+            glDrawArrays(GL_TRIANGLE_FAN, 4, 4);
+            glDrawArrays(GL_TRIANGLE_FAN, 8, 4);
+            glDrawArrays(GL_TRIANGLE_FAN, 12, 4);
+            glDrawArrays(GL_TRIANGLE_FAN, 16, 4);
+            glDrawArrays(GL_TRIANGLE_FAN, 20, 4);
+            glDrawArrays(GL_TRIANGLE_FAN, 24, 4);
+        }
+        glBindVertexArray(0);
+        //! ---------------------------------------------------------------------------------------
     }
     glUseProgram(0);
 
@@ -843,6 +761,13 @@ void display(void)
 void update(void)
 {
     // Code
+    anglePyramid += animationSpeed;
+    if (anglePyramid >= 360.0f)
+        anglePyramid = 0.0f;
+
+    angleCube += animationSpeed;
+    if (angleCube >= 360.0f)
+        angleCube = 0.0f;
 }
 
 void uninitialize(void)
@@ -854,28 +779,28 @@ void uninitialize(void)
     if (gbFullScreen)
         ToggleFullScreen();
 
-    if (texture_logo)
+    if (vbo_cube_position)
     {
-        glDeleteTextures(1, &texture_logo);
-        texture_logo = 0;
+        glDeleteBuffers(1, &vbo_cube_position);
+        vbo_cube_position = 0;
     }
 
-    if (vbo_texture)
+    if (vao_cube)
     {
-        glDeleteBuffers(1, &vbo_texture);
-        vbo_texture = 0;
-    }
-    
-    if (vbo_position)
-    {
-        glDeleteBuffers(1, &vbo_position);
-        vbo_position = 0;
+        glDeleteVertexArrays(1, &vao_cube);
+        vao_cube = 0;
     }
 
-    if (vao)
+    if (vbo_pyramid_position)
     {
-        glDeleteVertexArrays(1, &vao);
-        vao = 0;
+        glDeleteBuffers(1, &vbo_pyramid_position);
+        vbo_pyramid_position = 0;
+    }
+
+    if (vao_pyramid)
+    {
+        glDeleteVertexArrays(1, &vao_pyramid);
+        vao_pyramid = 0;
     }
 
     if (shaderProgramObject)

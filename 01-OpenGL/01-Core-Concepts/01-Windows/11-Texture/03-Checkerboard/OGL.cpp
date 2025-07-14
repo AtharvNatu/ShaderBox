@@ -13,6 +13,9 @@
 #define WIN_WIDTH   800
 #define WIN_HEIGHT  600
 
+#define CHECKERBOARD_WIDTH  64
+#define CHECKERBOARD_HEIGHT 64
+
 //! OpenGL Libraries
 #pragma comment(lib, "glew32.lib")
 #pragma comment(lib, "OpenGL32.lib")
@@ -66,12 +69,11 @@ GLuint vbo_texture = 0;
 
 GLuint mvpMatrixUniform = 0;
 GLuint textureSamplerUniform = 0;
-GLuint keyPressedUniform = 0;
 
 vmath::mat4 perspectiveProjectionMatrix;
 
-GLuint texture_logo = 0;
-int keyPressed = -1;
+GLubyte checkerboard_data[CHECKERBOARD_WIDTH][CHECKERBOARD_HEIGHT][4];
+GLuint texture_checkerboard = 0;
 
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
@@ -128,7 +130,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     hwnd = CreateWindowEx(
         WS_EX_APPWINDOW,
         szAppName,
-        TEXT("OpenGL BMP Dynamic Texture"),
+        TEXT("OpenGL Checkerboard using Procedural Texture"),
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
         centerX,
         centerY,
@@ -271,24 +273,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
                     DestroyWindow(hwnd);
                 break;
 
-                case 49:
-                    keyPressed = 1;
-                break;
-
-                case 50:
-                    keyPressed = 2;
-                break;
-
-                case 51:
-                    keyPressed = 3;
-                break;
-
-                case 52:
-                    keyPressed = 4;
-                break;
-
                 default:
-                    keyPressed = 0;
                 break;
             }
         break;
@@ -377,7 +362,7 @@ int initialize(void)
     // Function Declarations
     void resize(int, int);
     void printGLInfo(void);
-    BOOL loadGLTexture(GLuint*, TCHAR[]);
+    void loadCheckerboardTexture(void);
 
     // Variable Declarations
     PIXELFORMATDESCRIPTOR pfd;
@@ -488,20 +473,12 @@ int initialize(void)
         "in vec2 a_texcoord_out;" \
 
         "uniform sampler2D u_textureSampler;" \
-        "uniform int u_keyPressed;" \
 
         "out vec4 FragColor;" \
 
         "void main(void)" \
         "{" \
-            "if (u_keyPressed == 1)" \
-            "{" \
-                "FragColor = texture(u_textureSampler, a_texcoord_out);" \
-            "}" \
-            "else" \
-            "{" \
-                "FragColor = vec4(1.0, 1.0, 1.0, 1.0);" \
-            "}" \
+            "FragColor = texture(u_textureSampler, a_texcoord_out);" \
         "}";
 
     GLuint fragmentShaderObject = glCreateShader(GL_FRAGMENT_SHADER);
@@ -584,15 +561,6 @@ int initialize(void)
     //! Get Uniform Location
     mvpMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_mvpMatrix");
     textureSamplerUniform = glGetUniformLocation(shaderProgramObject, "u_textureSampler");
-    keyPressedUniform = glGetUniformLocation(shaderProgramObject, "u_keyPressed");
-
-    const GLfloat position[] = 
-    {
-        2.0f,   1.0f,  0.0f,
-        -2.0f,  1.0f,  0.0f,
-        -2.0f,  -1.0f, 0.0f,
-        2.0f,   -1.0f, 0.0f
-    };
 
     const GLfloat texcoord[] = 
     {
@@ -610,7 +578,7 @@ int initialize(void)
         glGenBuffers(1, &vbo_position);
         glBindBuffer(GL_ARRAY_BUFFER, vbo_position);
         {
-            glBufferData(GL_ARRAY_BUFFER, sizeof(position), position, GL_STATIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, 4 * 3 * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
             glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, 0, NULL);
             glEnableVertexAttribArray(ATTRIBUTE_POSITION);
         }
@@ -620,7 +588,7 @@ int initialize(void)
         glGenBuffers(1, &vbo_texture);
         glBindBuffer(GL_ARRAY_BUFFER, vbo_texture);
         {
-            glBufferData(GL_ARRAY_BUFFER, 4 * 2 * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(texcoord), texcoord, GL_STATIC_DRAW);
             glVertexAttribPointer(ATTRIBUTE_TEXTURE0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
             glEnableVertexAttribArray(ATTRIBUTE_TEXTURE0);
         }
@@ -633,14 +601,13 @@ int initialize(void)
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
 
-    // Clear the screen using black color
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    // Clear the screen using gray color
+    glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 
     perspectiveProjectionMatrix = vmath::mat4::identity();
 
     //! Load Texture
-    if (loadGLTexture(&texture_logo, MAKEINTRESOURCE(IDBITMAP_LOGO)) == FALSE)
-        return LOAD_TEXTURE_ERROR;
+    loadCheckerboardTexture();
     
     //! Enable Texture
     glEnable(GL_TEXTURE_2D);
@@ -674,60 +641,48 @@ void printGLInfo(void)
     fprintf(gpFile, "------------------------------------------------------\n"); 
 }
 
-BOOL loadGLTexture(GLuint* texture, TCHAR imageResourceID[])
+void loadCheckerboardTexture(void)
 {
     // Variable Declarations
-    HBITMAP hBitmap = NULL;
-    BITMAP bmp;
-
-    //! Step Parameter Value For Packing/Unpacking (Set to 1 for better performance)
-    const int stepValue = 1;
+    int c;
 
     // Code
-    hBitmap = (HBITMAP)LoadImage(
-        GetModuleHandle(NULL), 
-        imageResourceID,
-        IMAGE_BITMAP,
-        0,
-        0,
-        LR_CREATEDIBSECTION
-    );
-    if (hBitmap == NULL)
+    for (int i = 0; i < CHECKERBOARD_WIDTH; i++)
     {
-        fprintf(gpFile, "ERROR : %s() => Failed to load bitmap !!!\n", __func__);
-        return FALSE;
+        for (int j = 0; j < CHECKERBOARD_HEIGHT; j++)
+        {
+            c = (((i & 0x8) == 0) ^ ((j & 0x8) == 0)) * 255;
+
+            checkerboard_data[i][j][0] = (GLubyte)c;    // R
+            checkerboard_data[i][j][1] = (GLubyte)c;    // G
+            checkerboard_data[i][j][2] = (GLubyte)c;    // B
+            checkerboard_data[i][j][3] = (GLubyte)255;  // A
+        }
     }
 
-    GetObject(hBitmap, sizeof(bmp), &bmp);
-    
-    glPixelStorei(GL_UNPACK_ALIGNMENT, stepValue);
-    glGenTextures(1, texture);
-    
-    glBindTexture(GL_TEXTURE_2D, *texture);
-    {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-        // Create the texture
+    glGenTextures(1, &texture_checkerboard);
+    glBindTexture(GL_TEXTURE_2D, texture_checkerboard);
+    {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
         glTexImage2D(
             GL_TEXTURE_2D,
             0,
-            GL_RGB,
-            bmp.bmWidth,
-            bmp.bmHeight,
+            GL_RGBA,
+            CHECKERBOARD_WIDTH,
+            CHECKERBOARD_HEIGHT,
             0,
-            GL_BGR,
+            GL_RGBA,
             GL_UNSIGNED_BYTE,
-            bmp.bmBits
+            checkerboard_data
         );
-        glGenerateMipmap(GL_TEXTURE_2D);
     }
-    // Unbind Texture
     glBindTexture(GL_TEXTURE_2D, 0);
-    
-    DeleteObject(hBitmap);
-
-    return TRUE;
 }
 
 void resize(int width, int height)
@@ -743,9 +698,6 @@ void resize(int width, int height)
 
 void display(void)
 {
-    // Variable Declarations
-    GLfloat texCoord[8];
-
     // Code
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -764,68 +716,49 @@ void display(void)
 
         glActiveTexture(GL_TEXTURE0);
 
-        glBindTexture(GL_TEXTURE_2D, texture_logo);
+        glBindTexture(GL_TEXTURE_2D, texture_checkerboard);
         {
             glUniform1i(textureSamplerUniform, 0);
             glBindVertexArray(vao);
             {
-                switch(keyPressed)
-                {
-                    case 1:
-                        texCoord[0] = 0.5f;
-                        texCoord[1] = 0.5f;
-                        texCoord[2] = 0.0f;
-                        texCoord[3] = 0.5f;
-                        texCoord[4] = 0.0f;
-                        texCoord[5] = 0.0f;
-                        texCoord[6] = 0.5f;
-                        texCoord[7] = 0.0f;
-                        glUniform1i(keyPressedUniform, 1);
-                    break;
+                GLfloat position[12];
 
-                    case 2:
-                        texCoord[0] = 1.0f;
-                        texCoord[1] = 1.0f;
-                        texCoord[2] = 0.0f;
-                        texCoord[3] = 1.0f;
-                        texCoord[4] = 0.0f;
-                        texCoord[5] = 0.0f;
-                        texCoord[6] = 1.0f;
-                        texCoord[7] = 0.0f;
-                        glUniform1i(keyPressedUniform, 1);
-                    break;
+                // 1st Quad
+                position[0] = 0.0f;
+                position[1] = 1.0f;
+                position[2] = 0.0f;
+                position[3] = -2.0f;
+                position[4] = 1.0f;
+                position[5] = 0.0f;
+                position[6] = -2.0f;
+                position[7] = -1.0f;
+                position[8] = 0.0f;
+                position[9] = 0.0f;
+                position[10] = -1.0f;
+                position[11] = 0.0f;
 
-                    case 3:
-                        texCoord[0] = 2.0f;
-                        texCoord[1] = 2.0f;
-                        texCoord[2] = 0.0f;
-                        texCoord[3] = 2.0f;
-                        texCoord[4] = 0.0f;
-                        texCoord[5] = 0.0f;
-                        texCoord[6] = 2.0f;
-                        texCoord[7] = 0.0f;
-                        glUniform1i(keyPressedUniform, 1);
-                    break;
+                glBindBuffer(GL_ARRAY_BUFFER, vbo_position);
+                glBufferData(GL_ARRAY_BUFFER, sizeof(position), position, GL_DYNAMIC_DRAW);
+                glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-                    case 4:
-                        texCoord[0] = 0.5f;
-                        texCoord[1] = 0.5f;
-                        texCoord[2] = 0.5f;
-                        texCoord[3] = 0.5f;
-                        texCoord[4] = 0.5f;
-                        texCoord[5] = 0.5f;
-                        texCoord[6] = 0.5f;
-                        texCoord[7] = 0.5f;
-                        glUniform1i(keyPressedUniform, 1);
-                    break;
+                glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-                    default:
-                        glUniform1i(keyPressedUniform, 0);
-                    break;
-                }
+                // 2nd Quad
+                position[0] = 2.41421f;
+                position[1] = 1.0f;
+                position[2] = -1.41421f;
+                position[3] = 1.0f;
+                position[4] = 1.0f;
+                position[5] = 0.0f;
+                position[6] = 1.0f;
+                position[7] = -1.0f;
+                position[8] = 0.0f;
+                position[9] = 2.41421f;
+                position[10] = -1.0f;
+                position[11] = -1.41421f;
 
-                glBindBuffer(GL_ARRAY_BUFFER, vbo_texture);
-                glBufferData(GL_ARRAY_BUFFER, sizeof(texCoord), texCoord, GL_DYNAMIC_DRAW);
+                glBindBuffer(GL_ARRAY_BUFFER, vbo_position);
+                glBufferData(GL_ARRAY_BUFFER, sizeof(position), position, GL_DYNAMIC_DRAW);
                 glBindBuffer(GL_ARRAY_BUFFER, 0);
 
                 glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
@@ -854,10 +787,10 @@ void uninitialize(void)
     if (gbFullScreen)
         ToggleFullScreen();
 
-    if (texture_logo)
+    if (texture_checkerboard)
     {
-        glDeleteTextures(1, &texture_logo);
-        texture_logo = 0;
+        glDeleteTextures(1, &texture_checkerboard);
+        texture_checkerboard = 0;
     }
 
     if (vbo_texture)
