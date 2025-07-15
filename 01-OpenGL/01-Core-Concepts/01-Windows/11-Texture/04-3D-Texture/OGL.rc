@@ -1,4 +1,5 @@
 #include "OGL.h"
 
-APP_ICON ICON Arch.ico
-
+APP_ICON        ICON    Arch.ico
+BRICK_TEXTURE   BITMAP  Brick.bmp
+CUBE_TEXTURE    BITMAP  Cube.bmp
