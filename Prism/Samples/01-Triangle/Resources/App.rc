@@ -1,0 +1,4 @@
+#include "Win32-Resource.hpp"
+
+APP_ICON ICON Prism.ico
+
