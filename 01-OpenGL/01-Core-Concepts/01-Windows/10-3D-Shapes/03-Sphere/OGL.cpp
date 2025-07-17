@@ -62,6 +62,7 @@ GLuint shaderProgramObject = 0;
 
 GLuint vao_sphere = 0;
 GLuint vbo_sphere_position = 0;
+GLuint ebo_sphere_indices = 0;
 
 GLuint mvpMatrixUniform = 0;
 
@@ -631,6 +632,7 @@ void display(void)
         glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
 
         glBindVertexArray(vao_sphere);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_sphere_indices);
         {
             glDrawArrays(GL_TRIANGLE_STRIP, 0, sphere->get_number_of_vertices());
         }
@@ -659,6 +661,12 @@ void uninitialize(void)
     {
         delete sphere;
         sphere = nullptr;
+    }
+
+    if (ebo_sphere_indices)
+    {
+        glDeleteBuffers(1, &ebo_sphere_indices);
+        ebo_sphere_indices = 0;
     }
 
     if (vbo_sphere_position)

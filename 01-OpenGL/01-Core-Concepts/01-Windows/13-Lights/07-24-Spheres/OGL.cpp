@@ -94,13 +94,27 @@ BOOL bLight = FALSE;
 GLfloat lightAmbient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 GLfloat lightDiffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
 GLfloat lightSpecular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-GLfloat lightPosition[] = { 100.0f, 100.0f, 100.0f, 1.0f };
+GLfloat lightPosition[] = { 0.0f, 0.0f, 0.0f, 1.0f };
 
-GLfloat materialAmbient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-GLfloat materialDiffuse[] = { 0.0f, 0.7f, 0.7f, 1.0f };
-GLfloat materialSpecular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-GLfloat materialShininess = 50.0f;
+struct Material
+{
+    GLfloat materialAmbient[4];
+    GLfloat materialDiffuse[4];
+    GLfloat materialSpecular[4];
+    GLfloat materialShininess;
+};
 
+Material materials[6][4];
+
+GLint giWindowWidth = 0, giWindowHeight = 0;
+
+GLint keyPressed = 0;
+
+GLfloat angleForXRotation = 0.0f;
+GLfloat angleForYRotation = 0.0f;
+GLfloat angleForZRotation = 0.0f;
+
+GLfloat rotationRadius = 40.0f;
 // -----------------------------------------------------------------------
 
 //! Create Sphere Object
@@ -165,7 +179,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     hwnd = CreateWindowEx(
         WS_EX_APPWINDOW,
         szAppName,
-        TEXT("OpenGL Normal Per-Fragment Light On Sphere"),
+        TEXT("OpenGL : 24 Spheres"),
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
         centerX,
         centerY,
@@ -398,6 +412,7 @@ int initialize(void)
     // Function Declarations
     void resize(int, int);
     void printGLInfo(void);
+    void initializeMaterials(void);
 
     // Variable Declarations
     PIXELFORMATDESCRIPTOR pfd;
@@ -714,8 +729,10 @@ int initialize(void)
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
 
-    // Clear the screen using black color
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    // Clear the screen using gray color
+    glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
+
+    initializeMaterials();
 
     perspectiveProjectionMatrix = vmath::mat4::identity();
 
@@ -723,6 +740,542 @@ int initialize(void)
     resize(WIN_WIDTH, WIN_HEIGHT);
 
     return 0;
+}
+
+void initializeMaterials(void)
+{
+    // Gems
+    // ***** 1st sphere on 1st column, Emerald *****
+    // ambient material
+    materials[5][0].materialAmbient[0] = 0.0215; // r
+    materials[5][0].materialAmbient[1] = 0.1745; // g
+    materials[5][0].materialAmbient[2] = 0.0215; // b
+    materials[5][0].materialAmbient[3] = 1.0;   // a
+
+    // diffuse material
+    materials[5][0].materialDiffuse[0] = 0.07568; // r
+    materials[5][0].materialDiffuse[1] = 0.61424; // g
+    materials[5][0].materialDiffuse[2] = 0.07568; // b
+    materials[5][0].materialDiffuse[3] = 1.0;    // a
+
+    // specular material
+    materials[5][0].materialSpecular[0] = 0.633;    // r
+    materials[5][0].materialSpecular[1] = 0.727811; // g
+    materials[5][0].materialSpecular[2] = 0.633;    // b
+    materials[5][0].materialSpecular[3] = 1.0;     // a
+
+    // shininess
+    materials[5][0].materialShininess = 0.6 * 128;
+
+    // ***** 2nd sphere on 1st column, jade *****
+    // ambient material
+    materials[4][0].materialAmbient[0] = 0.135;  // r
+    materials[4][0].materialAmbient[1] = 0.2225; // g
+    materials[4][0].materialAmbient[2] = 0.1575; // b
+    materials[4][0].materialAmbient[3] = 1.0;   // a
+
+    // diffuse material
+    materials[4][0].materialDiffuse[0] = 0.54; // r
+    materials[4][0].materialDiffuse[1] = 0.89; // g
+    materials[4][0].materialDiffuse[2] = 0.63; // b
+    materials[4][0].materialDiffuse[3] = 1.0; // a
+
+    // specular material
+    materials[4][0].materialSpecular[0] = 0.316228; // r
+    materials[4][0].materialSpecular[1] = 0.316228; // g
+    materials[4][0].materialSpecular[2] = 0.316228; // b
+    materials[4][0].materialSpecular[3] = 1.0;     // a
+
+    // shininess
+    materials[4][0].materialShininess = 0.1 * 128.0;
+
+    // ***** 3rd sphere on 1st column, obsidian *****
+    // ambient material
+    materials[3][0].materialAmbient[0] = 0.05375; // r
+    materials[3][0].materialAmbient[1] = 0.05;    // g
+    materials[3][0].materialAmbient[2] = 0.06625; // b
+    materials[3][0].materialAmbient[3] = 1.0;    // a
+
+    // diffuse material
+    materials[3][0].materialDiffuse[0] = 0.18275; // r
+    materials[3][0].materialDiffuse[1] = 0.17;    // g
+    materials[3][0].materialDiffuse[2] = 0.22525; // b
+    materials[3][0].materialDiffuse[3] = 1.0;    // a
+
+    // specular material
+    materials[3][0].materialSpecular[0] = 0.332741; // r
+    materials[3][0].materialSpecular[1] = 0.328634; // g
+    materials[3][0].materialSpecular[2] = 0.346435; // b
+    materials[3][0].materialSpecular[3] = 1.0;     // a
+
+    // shininess
+    materials[3][0].materialShininess = 0.3 * 128.0;
+
+    // ***** 4th sphere on 1st column, pearl *****
+    // ambient material
+    materials[2][0].materialAmbient[0] = 0.25;    // r
+    materials[2][0].materialAmbient[1] = 0.20725; // g
+    materials[2][0].materialAmbient[2] = 0.20725; // b
+    materials[2][0].materialAmbient[3] = 1.0;    // a
+
+    // diffuse material
+    materials[2][0].materialDiffuse[0] = 1.0;   // r
+    materials[2][0].materialDiffuse[1] = 0.829; // g
+    materials[2][0].materialDiffuse[2] = 0.829; // b
+    materials[2][0].materialDiffuse[3] = 1.0;  // a
+
+    // specular material
+    materials[2][0].materialSpecular[0] = 0.296648; // r
+    materials[2][0].materialSpecular[1] = 0.296648; // g
+    materials[2][0].materialSpecular[2] = 0.296648; // b
+    materials[2][0].materialSpecular[3] = 1.0;     // a
+
+    // shininess
+    materials[2][0].materialShininess = 0.088 * 128.0;
+
+    // ***** 5th sphere on 1st column, ruby *****
+    // ambient material
+    materials[1][0].materialAmbient[0] = 0.1745;  // r
+    materials[1][0].materialAmbient[1] = 0.01175; // g
+    materials[1][0].materialAmbient[2] = 0.01175; // b
+    materials[1][0].materialAmbient[3] = 1.0;    // a
+
+    // diffuse material
+    materials[1][0].materialDiffuse[0] = 0.61424; // r
+    materials[1][0].materialDiffuse[1] = 0.04136; // g
+    materials[1][0].materialDiffuse[2] = 0.04136; // b
+    materials[1][0].materialDiffuse[3] = 1.0;    // a
+
+    // specular material
+    materials[1][0].materialSpecular[0] = 0.727811; // r
+    materials[1][0].materialSpecular[1] = 0.626959; // g
+    materials[1][0].materialSpecular[2] = 0.626959; // b
+    materials[1][0].materialSpecular[3] = 1.0;     // a
+
+    // shininess
+    materials[1][0].materialShininess = 0.6 * 128.0;
+
+    // ***** 6th sphere on 1st column, turquoise *****
+    // ambient material
+    materials[0][0].materialAmbient[0] = 0.1;     // r
+    materials[0][0].materialAmbient[1] = 0.18725; // g
+    materials[0][0].materialAmbient[2] = 0.1745;  // b
+    materials[0][0].materialAmbient[3] = 1.0;    // a
+
+    // diffuse material
+    materials[0][0].materialDiffuse[0] = 0.396;   // r
+    materials[0][0].materialDiffuse[1] = 0.74151; // g
+    materials[0][0].materialDiffuse[2] = 0.69102; // b
+    materials[0][0].materialDiffuse[3] = 1.0;    // a
+
+    // specular material
+    materials[0][0].materialSpecular[0] = 0.297254; // r
+    materials[0][0].materialSpecular[1] = 0.30829;  // g
+    materials[0][0].materialSpecular[2] = 0.306678; // b
+    materials[0][0].materialSpecular[3] = 1.0;     // a
+
+    // shininess
+    materials[0][0].materialShininess = 0.1 * 128.0;
+
+    // ***** 1st sphere on 2nd column, brass *****
+    // ambient material
+    materials[5][1].materialAmbient[0] = 0.329412; // r
+    materials[5][1].materialAmbient[1] = 0.223529; // g
+    materials[5][1].materialAmbient[2] = 0.027451; // b
+    materials[5][1].materialAmbient[3] = 1.0;     // a
+
+    // diffuse material
+    materials[5][1].materialDiffuse[0] = 0.780392; // r
+    materials[5][1].materialDiffuse[1] = 0.568627; // g
+    materials[5][1].materialDiffuse[2] = 0.113725; // b
+    materials[5][1].materialDiffuse[3] = 1.0;     // a
+
+    // specular material
+    materials[5][1].materialSpecular[0] = 0.992157; // r
+    materials[5][1].materialSpecular[1] = 0.941176; // g
+    materials[5][1].materialSpecular[2] = 0.807843; // b
+    materials[5][1].materialSpecular[3] = 1.0;     // a
+
+    // shininess
+    materials[5][1].materialShininess = 0.21794872 * 128.0;
+
+    // ***** 2nd sphere on 2nd column, bronze *****
+    // ambient material
+    materials[4][1].materialAmbient[0] = 0.2125; // r
+    materials[4][1].materialAmbient[1] = 0.1275; // g
+    materials[4][1].materialAmbient[2] = 0.054;  // b
+    materials[4][1].materialAmbient[3] = 1.0;   // a
+
+    // diffuse material
+    materials[4][1].materialDiffuse[0] = 0.714;   // r
+    materials[4][1].materialDiffuse[1] = 0.4284;  // g
+    materials[4][1].materialDiffuse[2] = 0.18144; // b
+    materials[4][1].materialDiffuse[3] = 1.0;    // a
+
+    // specular material
+    materials[4][1].materialSpecular[0] = 0.393548; // r
+    materials[4][1].materialSpecular[1] = 0.271906; // g
+    materials[4][1].materialSpecular[2] = 0.166721; // b
+    materials[4][1].materialSpecular[3] = 1.0;     // a
+
+    // shininess
+    materials[4][1].materialShininess = 0.2 * 128.0;
+
+    // ***** 3rd sphere on 2nd column, chrome *****
+    // ambient material
+    materials[3][1].materialAmbient[0] = 0.25; // r
+    materials[3][1].materialAmbient[1] = 0.25; // g
+    materials[3][1].materialAmbient[2] = 0.25; // b
+    materials[3][1].materialAmbient[3] = 1.0; // a
+
+    // diffuse material
+    materials[3][1].materialDiffuse[0] = 0.4;  // r
+    materials[3][1].materialDiffuse[1] = 0.4;  // g
+    materials[3][1].materialDiffuse[2] = 0.4;  // b
+    materials[3][1].materialDiffuse[3] = 1.0; // a
+
+    // specular material
+    materials[3][1].materialSpecular[0] = 0.774597; // r
+    materials[3][1].materialSpecular[1] = 0.774597; // g
+    materials[3][1].materialSpecular[2] = 0.774597; // b
+    materials[3][1].materialSpecular[3] = 1.0;     // a
+
+    // shininess
+    materials[3][1].materialShininess = 0.6 * 128.0;
+
+    // ***** 4th sphere on 2nd column, copper *****
+    // ambient material
+    materials[2][1].materialAmbient[0] = 0.19125; // r
+    materials[2][1].materialAmbient[1] = 0.0735;  // g
+    materials[2][1].materialAmbient[2] = 0.0225;  // b
+    materials[2][1].materialAmbient[3] = 1.0;    // a
+
+    // diffuse material
+    materials[2][1].materialDiffuse[0] = 0.7038;  // r
+    materials[2][1].materialDiffuse[1] = 0.27048; // g
+    materials[2][1].materialDiffuse[2] = 0.0828;  // b
+    materials[2][1].materialDiffuse[3] = 1.0;    // a
+
+    // specular material
+    materials[2][1].materialSpecular[0] = 0.256777; // r
+    materials[2][1].materialSpecular[1] = 0.137622; // g
+    materials[2][1].materialSpecular[2] = 0.086014; // b
+    materials[2][1].materialSpecular[3] = 1.0;     // a
+
+    // shininess
+    materials[2][1].materialShininess = 0.1 * 128.0;
+
+    // ***** 5th sphere on 2nd column, gold *****
+    // ambient material
+    materials[1][1].materialAmbient[0] = 0.24725; // r
+    materials[1][1].materialAmbient[1] = 0.1995;  // g
+    materials[1][1].materialAmbient[2] = 0.0745;  // b
+    materials[1][1].materialAmbient[3] = 1.0;    // a
+
+    // diffuse material
+    materials[1][1].materialDiffuse[0] = 0.75164; // r
+    materials[1][1].materialDiffuse[1] = 0.60648; // g
+    materials[1][1].materialDiffuse[2] = 0.22648; // b
+    materials[1][1].materialDiffuse[3] = 1.0;    // a
+
+    // specular material
+    materials[1][1].materialSpecular[0] = 0.628281; // r
+    materials[1][1].materialSpecular[1] = 0.555802; // g
+    materials[1][1].materialSpecular[2] = 0.366065; // b
+    materials[1][1].materialSpecular[3] = 1.0;     // a
+
+    // shininess
+    materials[1][1].materialShininess = 0.4 * 128.0;
+
+
+    // ***** 6th sphere on 2nd column, silver *****
+    // ambient material
+    materials[0][1].materialAmbient[0] = 0.19225; // r
+    materials[0][1].materialAmbient[1] = 0.19225; // g
+    materials[0][1].materialAmbient[2] = 0.19225; // b
+    materials[0][1].materialAmbient[3] = 1.0;    // a
+
+    // diffuse material
+    materials[0][1].materialDiffuse[0] = 0.50754; // r
+    materials[0][1].materialDiffuse[1] = 0.50754; // g
+    materials[0][1].materialDiffuse[2] = 0.50754; // b
+    materials[0][1].materialDiffuse[3] = 1.0;    // a
+
+    // specular material
+    materials[0][1].materialSpecular[0] = 0.508273; // r
+    materials[0][1].materialSpecular[1] = 0.508273; // g
+    materials[0][1].materialSpecular[2] = 0.508273; // b
+    materials[0][1].materialSpecular[3] = 1.0;     // a
+
+    // shininess
+    materials[0][1].materialShininess = 0.4 * 128.0;
+
+    // ***** 1st sphere on 3rd column, black *****
+    // ambient material
+    materials[5][2].materialAmbient[0] = 0.0;  // r
+    materials[5][2].materialAmbient[1] = 0.0;  // g
+    materials[5][2].materialAmbient[2] = 0.0;  // b
+    materials[5][2].materialAmbient[3] = 1.0; // a
+
+    // diffuse material
+    materials[5][2].materialDiffuse[0] = 0.01; // r
+    materials[5][2].materialDiffuse[1] = 0.01; // g
+    materials[5][2].materialDiffuse[2] = 0.01; // b
+    materials[5][2].materialDiffuse[3] = 1.0; // a
+
+    // specular material
+    materials[5][2].materialSpecular[0] = 0.50; // r
+    materials[5][2].materialSpecular[1] = 0.50; // g
+    materials[5][2].materialSpecular[2] = 0.50; // b
+    materials[5][2].materialSpecular[3] = 1.0; // a
+
+    // shininess
+    materials[5][2].materialShininess = 0.25 * 128.0;
+
+
+    // ***** 2nd sphere on 3rd column, cyan *****
+    // ambient material
+    materials[4][2].materialAmbient[0] = 0.0;  // r
+    materials[4][2].materialAmbient[1] = 0.1;  // g
+    materials[4][2].materialAmbient[2] = 0.06; // b
+    materials[4][2].materialAmbient[3] = 1.0; // a
+
+    // diffuse material
+    materials[4][2].materialDiffuse[0] = 0.0;        // r
+    materials[4][2].materialDiffuse[1] = 0.50980392; // g
+    materials[4][2].materialDiffuse[2] = 0.50980392; // b
+    materials[4][2].materialDiffuse[3] = 1.0;       // a
+
+    // specular material
+    materials[4][2].materialSpecular[0] = 0.50196078; // r
+    materials[4][2].materialSpecular[1] = 0.50196078; // g
+    materials[4][2].materialSpecular[2] = 0.50196078; // b
+    materials[4][2].materialSpecular[3] = 1.0;       // a
+
+    // shininess
+    materials[4][2].materialShininess = 0.25 * 128.0;
+
+    // ***** 3rd sphere on 2nd column, green *****
+    // ambient material
+    materials[3][2].materialAmbient[0] = 0.0;  // r
+    materials[3][2].materialAmbient[1] = 0.0;  // g
+    materials[3][2].materialAmbient[2] = 0.0;  // b
+    materials[3][2].materialAmbient[3] = 1.0; // a
+
+    // diffuse material
+    materials[3][2].materialDiffuse[0] = 0.1;  // r
+    materials[3][2].materialDiffuse[1] = 0.35; // g
+    materials[3][2].materialDiffuse[2] = 0.1;  // b
+    materials[3][2].materialDiffuse[3] = 1.0; // a
+
+    // specular material
+    materials[3][2].materialSpecular[0] = 0.45; // r
+    materials[3][2].materialSpecular[1] = 0.55; // g
+    materials[3][2].materialSpecular[2] = 0.45; // b
+    materials[3][2].materialSpecular[3] = 1.0; // a
+
+    // shininess
+    materials[3][2].materialShininess = 0.25 * 128.0;
+
+    // ***** 4th sphere on 3rd column, red *****
+    // ambient material
+    materials[2][2].materialAmbient[0] = 0.0;  // r
+    materials[2][2].materialAmbient[1] = 0.0;  // g
+    materials[2][2].materialAmbient[2] = 0.0;  // b
+    materials[2][2].materialAmbient[3] = 1.0; // a
+
+    // diffuse material
+    materials[2][2].materialDiffuse[0] = 0.5;  // r
+    materials[2][2].materialDiffuse[1] = 0.0;  // g
+    materials[2][2].materialDiffuse[2] = 0.0;  // b
+    materials[2][2].materialDiffuse[3] = 1.0; // a
+
+    // specular material
+    materials[2][2].materialSpecular[0] = 0.7;  // r
+    materials[2][2].materialSpecular[1] = 0.6;  // g
+    materials[2][2].materialSpecular[2] = 0.6;  // b
+    materials[2][2].materialSpecular[3] = 1.0; // a
+
+    // shininess
+    materials[2][2].materialShininess = 0.25 * 128.0;
+
+    // ***** 5th sphere on 3rd column, white *****
+    // ambient material
+    materials[1][2].materialAmbient[0] = 0.0;  // r
+    materials[1][2].materialAmbient[1] = 0.0;  // g
+    materials[1][2].materialAmbient[2] = 0.0;  // b
+    materials[1][2].materialAmbient[3] = 1.0; // a
+
+    // diffuse material
+    materials[1][2].materialDiffuse[0] = 0.55; // r
+    materials[1][2].materialDiffuse[1] = 0.55; // g
+    materials[1][2].materialDiffuse[2] = 0.55; // b
+    materials[1][2].materialDiffuse[3] = 1.0; // a
+
+    // specular material
+    materials[1][2].materialSpecular[0] = 0.70; // r
+    materials[1][2].materialSpecular[1] = 0.70; // g
+    materials[1][2].materialSpecular[2] = 0.70; // b
+    materials[1][2].materialSpecular[3] = 1.0; // a
+
+    // shininess
+    materials[1][2].materialShininess = 0.25 * 128.0;
+
+    // ***** 6th sphere on 3rd column, yellow plastic *****
+    // ambient material
+    materials[0][2].materialAmbient[0] = 0.0;  // r
+    materials[0][2].materialAmbient[1] = 0.0;  // g
+    materials[0][2].materialAmbient[2] = 0.0;  // b
+    materials[0][2].materialAmbient[3] = 1.0; // a
+
+    // diffuse material
+    materials[0][2].materialDiffuse[0] = 0.5;  // r
+    materials[0][2].materialDiffuse[1] = 0.5;  // g
+    materials[0][2].materialDiffuse[2] = 0.0;  // b
+    materials[0][2].materialDiffuse[3] = 1.0; // a
+
+    // specular material
+    materials[0][2].materialSpecular[0] = 0.60; // r
+    materials[0][2].materialSpecular[1] = 0.60; // g
+    materials[0][2].materialSpecular[2] = 0.50; // b
+    materials[0][2].materialSpecular[3] = 1.0; // a
+
+    // shininess
+    materials[0][2].materialShininess = 0.25 * 128.0;
+
+    // ***** 1st sphere on 4th column, black *****
+    // ambient material
+    materials[5][3].materialAmbient[0] = 0.02; // r
+    materials[5][3].materialAmbient[1] = 0.02; // g
+    materials[5][3].materialAmbient[2] = 0.02; // b
+    materials[5][3].materialAmbient[3] = 1.0; // a
+
+    // diffuse material
+    materials[5][3].materialDiffuse[0] = 0.01; // r
+    materials[5][3].materialDiffuse[1] = 0.01; // g
+    materials[5][3].materialDiffuse[2] = 0.01; // b
+    materials[5][3].materialDiffuse[3] = 1.0; // a
+
+    // specular material
+    materials[5][3].materialSpecular[0] = 0.4;  // r
+    materials[5][3].materialSpecular[1] = 0.4;  // g
+    materials[5][3].materialSpecular[2] = 0.4;  // b
+    materials[5][3].materialSpecular[3] = 1.0; // a
+
+    // shininess
+    materials[5][3].materialShininess = 0.078125 * 128.0;
+
+    // ***** 2nd sphere on 4th column, cyan *****
+    // ambient material
+    materials[4][3].materialAmbient[0] = 0.0;  // r
+    materials[4][3].materialAmbient[1] = 0.05; // g
+    materials[4][3].materialAmbient[2] = 0.05; // b
+    materials[4][3].materialAmbient[3] = 1.0; // a
+
+    // diffuse material
+    materials[4][3].materialDiffuse[0] = 0.4;  // r
+    materials[4][3].materialDiffuse[1] = 0.5;  // g
+    materials[4][3].materialDiffuse[2] = 0.5;  // b
+    materials[4][3].materialDiffuse[3] = 1.0; // a
+
+    // specular material
+    materials[4][3].materialSpecular[0] = 0.04; // r
+    materials[4][3].materialSpecular[1] = 0.7;  // g
+    materials[4][3].materialSpecular[2] = 0.7;  // b
+    materials[4][3].materialSpecular[3] = 1.0; // a
+
+    // shininess
+    materials[4][3].materialShininess = 0.078125 * 128.0;
+
+
+    // ***** 3rd sphere on 4th column, green *****
+    // ambient material
+    materials[3][3].materialAmbient[0] = 0.0;  // r
+    materials[3][3].materialAmbient[1] = 0.05; // g
+    materials[3][3].materialAmbient[2] = 0.0;  // b
+    materials[3][3].materialAmbient[3] = 1.0; // a
+
+    // diffuse material
+    materials[3][3].materialDiffuse[0] = 0.4;  // r
+    materials[3][3].materialDiffuse[1] = 0.5;  // g
+    materials[3][3].materialDiffuse[2] = 0.4;  // b
+    materials[3][3].materialDiffuse[3] = 1.0; // a
+
+    // specular material
+    materials[3][3].materialSpecular[0] = 0.04; // r
+    materials[3][3].materialSpecular[1] = 0.7;  // g
+    materials[3][3].materialSpecular[2] = 0.04; // b
+    materials[3][3].materialSpecular[3] = 1.0; // a
+
+    // shininess
+    materials[3][3].materialShininess = 0.078125 * 128.0;
+
+    // ***** 4th sphere on 4th column, red *****
+    // ambient material
+    materials[2][3].materialAmbient[0] = 0.05; // r
+    materials[2][3].materialAmbient[1] = 0.0;  // g
+    materials[2][3].materialAmbient[2] = 0.0;  // b
+    materials[2][3].materialAmbient[3] = 1.0; // a
+
+    // diffuse material
+    materials[2][3].materialDiffuse[0] = 0.5;  // r
+    materials[2][3].materialDiffuse[1] = 0.4;  // g
+    materials[2][3].materialDiffuse[2] = 0.4;  // b
+    materials[2][3].materialDiffuse[3] = 1.0; // a
+
+    // specular material
+    materials[2][3].materialSpecular[0] = 0.7;  // r
+    materials[2][3].materialSpecular[1] = 0.04; // g
+    materials[2][3].materialSpecular[2] = 0.04; // b
+    materials[2][3].materialSpecular[3] = 1.0; // a
+
+    // shininess
+    materials[2][3].materialShininess = 0.078125 * 128.0;
+
+
+    // ***** 5th sphere on 4th column, white *****
+    // ambient material
+    materials[1][3].materialAmbient[0] = 0.05; // r
+    materials[1][3].materialAmbient[1] = 0.05; // g
+    materials[1][3].materialAmbient[2] = 0.05; // b
+    materials[1][3].materialAmbient[3] = 1.0; // a
+
+    // diffuse material
+    materials[1][3].materialDiffuse[0] = 0.5;  // r
+    materials[1][3].materialDiffuse[1] = 0.5;  // g
+    materials[1][3].materialDiffuse[2] = 0.5;  // b
+    materials[1][3].materialDiffuse[3] = 1.0; // a
+
+    // specular material
+    materials[1][3].materialSpecular[0] = 0.7;  // r
+    materials[1][3].materialSpecular[1] = 0.7;  // g
+    materials[1][3].materialSpecular[2] = 0.7;  // b
+    materials[1][3].materialSpecular[3] = 1.0; // a
+
+    // shininess
+    materials[1][3].materialShininess = 0.078125 * 128.0;
+
+    // ***** 6th sphere on 4th column, yellow rubber *****
+    // ambient material
+    materials[0][3].materialAmbient[0] = 0.05; // r
+    materials[0][3].materialAmbient[1] = 0.05; // g
+    materials[0][3].materialAmbient[2] = 0.0;  // b
+    materials[0][3].materialAmbient[3] = 1.0; // a
+
+    // diffuse material
+    materials[0][3].materialDiffuse[0] = 0.5;  // r
+    materials[0][3].materialDiffuse[1] = 0.5;  // g
+    materials[0][3].materialDiffuse[2] = 0.4;  // b
+    materials[0][3].materialDiffuse[3] = 1.0; // a
+
+    // specular material
+    materials[0][3].materialSpecular[0] = 0.7;  // r
+    materials[0][3].materialSpecular[1] = 0.7;  // g
+    materials[0][3].materialSpecular[2] = 0.04; // b
+    materials[0][3].materialSpecular[3] = 1.0; // a
+
+    // shininess
+    materials[0][3].materialShininess = 0.078125 * 128.0;
 }
 
 void printGLInfo(void)
@@ -753,6 +1306,9 @@ void resize(int width, int height)
     // Code
     if (height <= 0)
         height = 1;
+
+    giWindowHeight = height;
+    giWindowWidth = width;
     
     glViewport(0, 0, (GLsizei)width, (GLsizei)height);
 
@@ -761,6 +1317,10 @@ void resize(int width, int height)
 
 void display(void)
 {
+    // Variable Declarations
+    GLfloat viewportWidth = 0.0f;
+    GLfloat viewportHeight = 0.0f;
+
     // Code
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -771,9 +1331,29 @@ void display(void)
         vmath::mat4 modelMatrix = vmath::mat4::identity();
         vmath::mat4 viewMatrix = vmath::mat4::identity();
 
-        translationMatrix = vmath::translate(0.0f, 0.0f, -6.0f);
+        translationMatrix = vmath::translate(0.0f, 0.0f, -2.0f);
 
         modelMatrix = translationMatrix;
+
+        if (keyPressed == 1)
+        {
+            lightPosition[1] = rotationRadius * sin(vmath::radians(angleForXRotation));
+            lightPosition[2] = rotationRadius * cos(vmath::radians(angleForXRotation));
+        }
+        else if (keyPressed == 2)
+        {
+            lightPosition[0] = rotationRadius * cos(vmath::radians(angleForYRotation));
+            lightPosition[2] = rotationRadius * sin(vmath::radians(angleForYRotation));
+        }
+        else if (keyPressed == 3)
+        {
+            lightPosition[0] = rotationRadius * cos(vmath::radians(angleForZRotation));
+            lightPosition[1] = rotationRadius * sin(vmath::radians(angleForZRotation));
+        }
+        else
+        {
+            lightPosition[0] = 0.0f;
+        }
 
         glUniformMatrix4fv(modelMatrixUniform, 1, GL_FALSE, modelMatrix);
         glUniformMatrix4fv(viewMatrixUniform, 1, GL_FALSE, viewMatrix);
@@ -787,11 +1367,6 @@ void display(void)
             glUniform3fv(ldUniform, 1, lightDiffuse);
             glUniform3fv(lsUniform, 1, lightSpecular);
             glUniform4fv(lightPositionUniform, 1, lightPosition);
-
-            glUniform3fv(kaUniform, 1, materialAmbient);
-            glUniform3fv(kdUniform, 1, materialDiffuse);
-            glUniform3fv(ksUniform, 1, materialSpecular);
-            glUniform1f(materialShininessUniform, materialShininess);
         }
         else
             glUniform1i(lightEnabledUniform, 0);
