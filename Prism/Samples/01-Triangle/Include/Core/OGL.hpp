@@ -1,6 +1,10 @@
 #ifndef OGL_HPP
 #define OGL_HPP
 
+//! OpenGL Header Files
+#include <GL/glew.h>
+#include <GL/gl.h>
+
 enum INIT_ERRORS
 {
     CPF_ERROR = -1,

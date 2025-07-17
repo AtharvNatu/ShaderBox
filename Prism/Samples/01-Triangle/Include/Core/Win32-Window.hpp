@@ -8,8 +8,6 @@
 #include "Win32-Resource.hpp"
 #include "Logger.hpp"
 
-
-
 class Win32Window
 {
     private:

@@ -25,9 +25,6 @@ enum class SDK
     Cocoa = 3
 };
 
-Platform currentPlatform;
-API currentAPI;
-
 #if defined(WIN32) || defined(_WIN32) || defined(WIN64) || defined(_WIN64)
     #define PLATFORM_WINDOWS    1
 #elif defined(__linux)

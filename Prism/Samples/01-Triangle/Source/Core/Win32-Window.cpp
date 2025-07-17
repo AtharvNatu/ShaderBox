@@ -11,7 +11,7 @@ DWORD dwStyle;
 Win32Window::Win32Window(const char* windowTitle, int windowWidth, int windowHeight)
 {
     // Code
-    hInstance = GetModuleHandle(NULL);
+    this->hInstance = GetModuleHandle(NULL);
 
     std::string sTitle(windowTitle);
     std::wstring wTitle(sTitle.begin(), sTitle.end());
@@ -24,7 +24,6 @@ BOOL Win32Window::initialize(int windowWidth, int windowHeight)
 {
     // Variable Declarations
     WNDCLASSEX wndclass;
-    HWND hwnd;
     TCHAR szAppName[] = TEXT("Prism");
 
     // Code
@@ -54,7 +53,7 @@ BOOL Win32Window::initialize(int windowWidth, int windowHeight)
     int centerY = (screenY / 2) - (windowHeight / 2);
 
     // Create Window
-    hwnd = CreateWindowExW(
+    this->hwnd = CreateWindowExW(
         WS_EX_APPWINDOW,
         szAppName,
         lpwstrTitle,
@@ -70,12 +69,12 @@ BOOL Win32Window::initialize(int windowWidth, int windowHeight)
     );
 
     // Show and Update Window
-    ShowWindow(hwnd, 0);
-    UpdateWindow(hwnd);
+    ShowWindow(this->hwnd, SW_SHOW);
+    UpdateWindow(this->hwnd);
 
     // Bring the window to foreground and set focus
-    SetForegroundWindow(hwnd);
-    SetFocus(hwnd);
+    SetForegroundWindow(this->hwnd);
+    SetFocus(this->hwnd);
 
     return TRUE;
 }
@@ -85,34 +84,29 @@ int Win32Window::render()
     // Variable Declarations
     MSG msg;
 
-    // while (bDone == FALSE)
-    // {
-    //     if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-    //     {
-    //         if (msg.message == WM_QUIT)
-    //             bDone = TRUE;
-    //         else
-    //         {
-    //             TranslateMessage(&msg);
-    //             DispatchMessage(&msg);
-    //         }
-    //     }
-    //     // else
-    //     // {
-    //     //     if (bActiveWindow)
-    //     //     {
-    //     //         //! Render the scene
-    //     //         display();
+    while (bDone == FALSE)
+    {
+        if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+                bDone = TRUE;
+            else
+            {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
+        }
+        // else
+        // {
+        //     if (bActiveWindow)
+        //     {
+        //         //! Render the scene
+        //         display();
 
-    //     //         //! Update the scene
-    //     //         update();
-    //     //     }
-    //     // }
-    // }
-
-    while (GetMessage(&msg, nullptr, 0, 0)) {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        //         //! Update the scene
+        //         update();
+        //     }
+        // }
     }
 
     return (int)msg.wParam;

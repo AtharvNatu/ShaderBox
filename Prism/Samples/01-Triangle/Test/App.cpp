@@ -1,8 +1,32 @@
-#include "Win32-Window.hpp"
+#include "Prism.hpp"
+
+class App : public Prism
+{
+    public:
+        void display()
+        {
+
+        }
+
+        void update()
+        {
+
+        }
+
+        void initialize()
+        {
+
+        }
+
+        void uninitialize()
+        {
+            
+        }
+};
 
 int main(int argc, char** argv)
 {
-    Win32Window window("Prism Window", 800, 600);
-    
-    return window.render();
+    Prism prism(API::OpenGL, "Prism OpenGL Sample", 800, 600);
+
+    return prism.exec();
 }
