@@ -492,7 +492,7 @@ int initialize(void)
             else
             {
                 GLsizei logSize;
-                glGetShaderInfoLog(vertexShaderObject, GL_INFO_LOG_LENGTH, &logSize, szLog);
+                glGetShaderInfoLog(fragmentShaderObject, GL_INFO_LOG_LENGTH, &logSize, szLog);
                 fprintf(gpFile, "ERROR : Fragment Shader Compilation Log : %s\n", szLog);
                 free(szLog);
                 szLog = NULL;
@@ -534,7 +534,7 @@ int initialize(void)
             else
             {
                 GLsizei logSize;
-                glGetShaderInfoLog(vertexShaderObject, GL_INFO_LOG_LENGTH, &logSize, szLog);
+                glGetProgramInfoLog(shaderProgramObject, GL_INFO_LOG_LENGTH, &logSize, szLog);
                 fprintf(gpFile, "ERROR : Shader Program Link Log : %s\n", szLog);
                 free(szLog);
                 szLog = NULL;

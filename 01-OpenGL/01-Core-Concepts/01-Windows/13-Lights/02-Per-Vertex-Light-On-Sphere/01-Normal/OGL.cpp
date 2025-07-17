@@ -5,6 +5,7 @@
 
 #include "OGL.h"
 #include "vmath.h"
+#include "Sphere.hpp"
 
 //! OpenGL Header Files
 #include <GL/glew.h>
@@ -12,9 +13,6 @@
 
 #define WIN_WIDTH   800
 #define WIN_HEIGHT  600
-
-#define CHECKERBOARD_WIDTH  64
-#define CHECKERBOARD_HEIGHT 64
 
 //! OpenGL Libraries
 #pragma comment(lib, "glew32.lib")
@@ -49,8 +47,7 @@ enum INIT_ERRORS
     GS_COMPILE_ERROR = -9,
     FS_COMPILE_ERROR = -10,
     PROGRAM_LINK_ERROR = -11,
-    MEM_ALLOC_FAILED = -12,
-    LOAD_TEXTURE_ERROR = -13
+    MEM_ALLOC_FAILED = -12
 };
 
 enum ATTRIBUTES
@@ -61,19 +58,57 @@ enum ATTRIBUTES
     ATTRIBUTE_TEXTURE0
 };
 
+//* Shaders, VAO & VBO
+//* -----------------------------------------------------------------------
 GLuint shaderProgramObject = 0;
 
-GLuint vao = 0;
-GLuint vbo_position = 0;
-GLuint vbo_texture = 0;
+GLuint vao_sphere = 0;
+GLuint vbo_sphere_position = 0;
+GLuint vbo_sphere_normal = 0;
+GLuint ebo_sphere_indices = 0;
+//* -----------------------------------------------------------------------
 
-GLuint mvpMatrixUniform = 0;
-GLuint textureSamplerUniform = 0;
+// Uniforms
+// -----------------------------------------------------------------------
+GLuint modelMatrixUniform = 0;
+GLuint viewMatrixUniform = 0;
+GLuint projectionMatrixUniform = 0;
+// -----------------------------------------------------------------------
+
+// Light Related
+// -----------------------------------------------------------------------
+GLuint laUniform;   //? Light Ambient
+GLuint ldUniform;   //? Light Diffuse
+GLuint lsUniform;   //? Light Specular
+GLuint lightPositionUniform;
+
+GLuint kaUniform;   //? Material Ambient
+GLuint kdUniform;   //? Material Diffuse
+GLuint ksUniform;   //? Material Specular
+GLuint materialShininessUniform;
+
+GLuint lightEnabledUniform;
+
+BOOL bLight = FALSE;
+
+GLfloat lightAmbient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+GLfloat lightDiffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+GLfloat lightSpecular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+GLfloat lightPosition[] = { 100.0f, 100.0f, 100.0f, 1.0f };
+
+GLfloat materialAmbient[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+GLfloat materialDiffuse[] = { 0.0f, 0.7f, 0.7f, 1.0f };
+GLfloat materialSpecular[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+GLfloat materialShininess = 50.0f;
+
+// -----------------------------------------------------------------------
+
+//! Create Sphere Object
+Sphere* sphere = nullptr;
 
 vmath::mat4 perspectiveProjectionMatrix;
 
-GLubyte checkerboard_data[CHECKERBOARD_WIDTH][CHECKERBOARD_HEIGHT][4];
-GLuint texture_checkerboard = 0;
+GLuint gNumIndices = 0;
 
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
@@ -130,7 +165,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     hwnd = CreateWindowEx(
         WS_EX_APPWINDOW,
         szAppName,
-        TEXT("OpenGL Checkerboard using Procedural Texture"),
+        TEXT("OpenGL Normal Per-Vertex Light On Sphere"),
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
         centerX,
         centerY,
@@ -186,10 +221,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
         break;
 
         case MEM_ALLOC_FAILED:
-            uninitialize();
-        break;
-
-        case LOAD_TEXTURE_ERROR:
             uninitialize();
         break;
 
@@ -286,6 +317,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
                     ToggleFullScreen();
                 break;
 
+                case 'L':
+                case 'l':
+                    bLight = !bLight;
+                break;
+
                 default:
                 break;
             }
@@ -362,7 +398,6 @@ int initialize(void)
     // Function Declarations
     void resize(int, int);
     void printGLInfo(void);
-    void loadCheckerboardTexture(void);
 
     // Variable Declarations
     PIXELFORMATDESCRIPTOR pfd;
@@ -419,16 +454,47 @@ int initialize(void)
         "\n" \
         
         "in vec4 a_position;" \
-        "in vec2 a_texcoord;" \
+        "in vec3 a_normal;" \
 
-        "uniform mat4 u_mvpMatrix;" \
+        "uniform mat4 u_modelMatrix;" \
+        "uniform mat4 u_viewMatrix;" \
+        "uniform mat4 u_projectionMatrix;" \
 
-        "out vec2 a_texcoord_out;" \
+        "uniform vec3 u_la;" \
+        "uniform vec3 u_ld;" \
+        "uniform vec3 u_ls;" \
+        "uniform vec4 u_lightPosition;" \
+
+        "uniform vec3 u_ka;" \
+        "uniform vec3 u_kd;" \
+        "uniform vec3 u_ks;" \
+        "uniform float u_materialShininess;" \
+        
+        "uniform int u_lightEnabled;" \
+
+        "out vec3 phong_ads_light;" \
 
         "void main(void)" \
         "{" \
-            "gl_Position = u_mvpMatrix * a_position;" \
-            "a_texcoord_out = a_texcoord;" \
+            "if (u_lightEnabled == 1)" \
+            "{" \
+                "vec3 ambient = u_la * u_ka;" \
+                "vec4 eyeCoordinates = u_viewMatrix * u_modelMatrix * a_position;" \
+                "mat3 normalMatrix = mat3(u_viewMatrix * u_modelMatrix);" \
+                "vec3 transformedNormals = normalize(normalMatrix * a_normal);" \
+                "vec3 lightDirection = normalize(vec3(u_lightPosition) - eyeCoordinates.xyz);" \
+                "vec3 diffuse = u_ld * u_kd * max(dot(lightDirection, transformedNormals), 0.0);" \
+                "vec3 reflectionVector = reflect(-lightDirection, transformedNormals);"  \
+                "vec3 viewerVector = normalize(-eyeCoordinates.xyz);" \
+                "vec3 specular = u_ls * u_ks * pow(max(dot(reflectionVector, viewerVector), 0.0), u_materialShininess);" \
+                "phong_ads_light = ambient + diffuse + specular;" \
+            "}" \
+            "else" \
+            "{" \
+                "phong_ads_light = vec3(1.0, 1.0, 1.0);" \
+            "}" \
+
+            "gl_Position = u_projectionMatrix * u_viewMatrix * u_modelMatrix * a_position;" \
         "}";
 
     GLuint vertexShaderObject = glCreateShader(GL_VERTEX_SHADER);
@@ -470,15 +536,13 @@ int initialize(void)
         "#version 460 core" \
         "\n" \
 
-        "in vec2 a_texcoord_out;" \
-
-        "uniform sampler2D u_textureSampler;" \
+        "in vec3 phong_ads_light;" \
 
         "out vec4 FragColor;" \
 
         "void main(void)" \
         "{" \
-            "FragColor = texture(u_textureSampler, a_texcoord_out);" \
+            "FragColor = vec4(phong_ads_light, 1.0);" \
         "}";
 
     GLuint fragmentShaderObject = glCreateShader(GL_FRAGMENT_SHADER);
@@ -523,7 +587,7 @@ int initialize(void)
 
     //! Bind Attribute
     glBindAttribLocation(shaderProgramObject, ATTRIBUTE_POSITION, "a_position");
-    glBindAttribLocation(shaderProgramObject, ATTRIBUTE_TEXTURE0, "a_texcoord");
+    glBindAttribLocation(shaderProgramObject, ATTRIBUTE_NORMAL, "a_normal");
 
     glLinkProgram(shaderProgramObject);
 
@@ -559,38 +623,71 @@ int initialize(void)
     //! OpenGL Code
 
     //! Get Uniform Location
-    mvpMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_mvpMatrix");
-    textureSamplerUniform = glGetUniformLocation(shaderProgramObject, "u_textureSampler");
+    modelMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_modelMatrix");
+    viewMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_viewMatrix");
+    projectionMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_projectionMatrix");
 
-    const GLfloat texcoord[] = 
-    {
-        1.0f, 1.0f,
-        0.0f, 1.0f,
-        0.0f, 0.0f,
-        1.0f, 0.0f
-    };
+    laUniform = glGetUniformLocation(shaderProgramObject, "u_la");
+    ldUniform = glGetUniformLocation(shaderProgramObject, "u_ld");
+    lsUniform = glGetUniformLocation(shaderProgramObject, "u_ls");
+    lightPositionUniform = glGetUniformLocation(shaderProgramObject, "u_lightPosition");
+
+    kaUniform = glGetUniformLocation(shaderProgramObject, "u_ka");
+    kdUniform = glGetUniformLocation(shaderProgramObject, "u_kd");
+    ksUniform = glGetUniformLocation(shaderProgramObject, "u_ks");
+    materialShininessUniform = glGetUniformLocation(shaderProgramObject, "u_materialShininess");
+    
+    lightEnabledUniform = glGetUniformLocation(shaderProgramObject, "u_lightEnabled");
+
+    sphere = new Sphere(1.5f, 50, 16);
+    gNumIndices = sphere->get_number_of_indices();
 
     //! VAO and VBO Related Code
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+
+    // VAO For Sphere
+    glGenVertexArrays(1, &vao_sphere);
+    glBindVertexArray(vao_sphere);
     {
-        //* Position
-        glGenBuffers(1, &vbo_position);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_position);
+        //* Sphere Position
+        glGenBuffers(1, &vbo_sphere_position);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_sphere_position);
         {
-            glBufferData(GL_ARRAY_BUFFER, 4 * 3 * sizeof(GLfloat), NULL, GL_DYNAMIC_DRAW);
+            glBufferData(
+                GL_ARRAY_BUFFER, 
+                sphere->get_number_of_vertices() * sizeof(float), 
+                sphere->get_vertices().data(), 
+                GL_STATIC_DRAW
+            );
             glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, 0, NULL);
             glEnableVertexAttribArray(ATTRIBUTE_POSITION);
         }
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        //* Texture
-        glGenBuffers(1, &vbo_texture);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_texture);
+        //* Sphere Normal
+        glGenBuffers(1, &vbo_sphere_normal);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_sphere_normal);
         {
-            glBufferData(GL_ARRAY_BUFFER, sizeof(texcoord), texcoord, GL_STATIC_DRAW);
-            glVertexAttribPointer(ATTRIBUTE_TEXTURE0, 2, GL_FLOAT, GL_FALSE, 0, NULL);
-            glEnableVertexAttribArray(ATTRIBUTE_TEXTURE0);
+            glBufferData(
+                GL_ARRAY_BUFFER, 
+                sphere->get_number_of_normals() * sizeof(float), 
+                sphere->get_normals().data(), 
+                GL_STATIC_DRAW
+            );
+            glVertexAttribPointer(ATTRIBUTE_NORMAL, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+            glEnableVertexAttribArray(ATTRIBUTE_NORMAL);
+        }
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        //* Sphere EBO
+        glGenBuffers(1, &ebo_sphere_indices);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_sphere_indices);
+        {
+            glBufferData(
+                GL_ELEMENT_ARRAY_BUFFER, 
+                gNumIndices * sizeof(GLuint), 
+                sphere->get_indices().data(), 
+                GL_STATIC_DRAW
+            );
         }
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
@@ -601,16 +698,10 @@ int initialize(void)
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
 
-    // Clear the screen using gray color
-    glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+    // Clear the screen using black color
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     perspectiveProjectionMatrix = vmath::mat4::identity();
-
-    //! Load Texture
-    loadCheckerboardTexture();
-    
-    //! Enable Texture
-    glEnable(GL_TEXTURE_2D);
 
     // Warmup resize call
     resize(WIN_WIDTH, WIN_HEIGHT);
@@ -641,50 +732,6 @@ void printGLInfo(void)
     fprintf(gpFile, "------------------------------------------------------\n"); 
 }
 
-void loadCheckerboardTexture(void)
-{
-    // Variable Declarations
-    int c;
-
-    // Code
-    for (int i = 0; i < CHECKERBOARD_WIDTH; i++)
-    {
-        for (int j = 0; j < CHECKERBOARD_HEIGHT; j++)
-        {
-            c = (((i & 0x8) == 0) ^ ((j & 0x8) == 0)) * 255;
-
-            checkerboard_data[i][j][0] = (GLubyte)c;    // R
-            checkerboard_data[i][j][1] = (GLubyte)c;    // G
-            checkerboard_data[i][j][2] = (GLubyte)c;    // B
-            checkerboard_data[i][j][3] = (GLubyte)255;  // A
-        }
-    }
-
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-    glGenTextures(1, &texture_checkerboard);
-    glBindTexture(GL_TEXTURE_2D, texture_checkerboard);
-    {
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_RGBA,
-            CHECKERBOARD_WIDTH,
-            CHECKERBOARD_HEIGHT,
-            0,
-            GL_RGBA,
-            GL_UNSIGNED_BYTE,
-            checkerboard_data
-        );
-    }
-    glBindTexture(GL_TEXTURE_2D, 0);
-}
-
 void resize(int width, int height)
 {
     // Code
@@ -705,68 +752,44 @@ void display(void)
     {
         // Transformations
         vmath::mat4 translationMatrix = vmath::mat4::identity();
-        vmath::mat4 modelViewMatrix = vmath::mat4::identity();
-        vmath::mat4 modelViewProjectionMatrix = vmath::mat4::identity();
+        vmath::mat4 modelMatrix = vmath::mat4::identity();
+        vmath::mat4 viewMatrix = vmath::mat4::identity();
 
-        translationMatrix = vmath::translate(0.0f, 0.0f, -4.0f);
-        modelViewMatrix = translationMatrix;
-        modelViewProjectionMatrix = perspectiveProjectionMatrix * modelViewMatrix;
+        translationMatrix = vmath::translate(0.0f, 0.0f, -6.0f);
 
-        glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
+        modelMatrix = translationMatrix;
 
-        glActiveTexture(GL_TEXTURE0);
+        glUniformMatrix4fv(modelMatrixUniform, 1, GL_FALSE, modelMatrix);
+        glUniformMatrix4fv(viewMatrixUniform, 1, GL_FALSE, viewMatrix);
+        glUniformMatrix4fv(projectionMatrixUniform, 1, GL_FALSE, perspectiveProjectionMatrix);
 
-        glBindTexture(GL_TEXTURE_2D, texture_checkerboard);
+        if (bLight)
         {
-            glUniform1i(textureSamplerUniform, 0);
-            glBindVertexArray(vao);
-            {
-                GLfloat position[12];
+            glUniform1i(lightEnabledUniform, 1);
 
-                // 1st Quad
-                position[0] = 0.0f;
-                position[1] = 1.0f;
-                position[2] = 0.0f;
-                position[3] = -2.0f;
-                position[4] = 1.0f;
-                position[5] = 0.0f;
-                position[6] = -2.0f;
-                position[7] = -1.0f;
-                position[8] = 0.0f;
-                position[9] = 0.0f;
-                position[10] = -1.0f;
-                position[11] = 0.0f;
+            glUniform3fv(laUniform, 1, lightAmbient);
+            glUniform3fv(ldUniform, 1, lightDiffuse);
+            glUniform3fv(lsUniform, 1, lightSpecular);
+            glUniform4fv(lightPositionUniform, 1, lightPosition);
 
-                glBindBuffer(GL_ARRAY_BUFFER, vbo_position);
-                glBufferData(GL_ARRAY_BUFFER, sizeof(position), position, GL_DYNAMIC_DRAW);
-                glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-                glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-                // 2nd Quad
-                position[0] = 2.41421f;
-                position[1] = 1.0f;
-                position[2] = -1.41421f;
-                position[3] = 1.0f;
-                position[4] = 1.0f;
-                position[5] = 0.0f;
-                position[6] = 1.0f;
-                position[7] = -1.0f;
-                position[8] = 0.0f;
-                position[9] = 2.41421f;
-                position[10] = -1.0f;
-                position[11] = -1.41421f;
-
-                glBindBuffer(GL_ARRAY_BUFFER, vbo_position);
-                glBufferData(GL_ARRAY_BUFFER, sizeof(position), position, GL_DYNAMIC_DRAW);
-                glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-                glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-            }
-            glBindVertexArray(0);
+            glUniform3fv(kaUniform, 1, materialAmbient);
+            glUniform3fv(kdUniform, 1, materialDiffuse);
+            glUniform3fv(ksUniform, 1, materialSpecular);
+            glUniform1f(materialShininessUniform, materialShininess);
         }
-        glBindTexture(GL_TEXTURE_2D, 0);
-        
+        else
+            glUniform1i(lightEnabledUniform, 0);
+
+        glBindVertexArray(vao_sphere);
+        {
+            glDrawElements(
+                GL_TRIANGLES, 
+                gNumIndices, 
+                GL_UNSIGNED_INT,
+                0
+            );
+        }
+        glBindVertexArray(0);
     }
     glUseProgram(0);
 
@@ -787,28 +810,34 @@ void uninitialize(void)
     if (gbFullScreen)
         ToggleFullScreen();
 
-    if (texture_checkerboard)
+    if (sphere)
     {
-        glDeleteTextures(1, &texture_checkerboard);
-        texture_checkerboard = 0;
+        delete sphere;
+        sphere = nullptr;
     }
 
-    if (vbo_texture)
+    if (ebo_sphere_indices)
     {
-        glDeleteBuffers(1, &vbo_texture);
-        vbo_texture = 0;
-    }
-    
-    if (vbo_position)
-    {
-        glDeleteBuffers(1, &vbo_position);
-        vbo_position = 0;
+        glDeleteBuffers(1, &ebo_sphere_indices);
+        ebo_sphere_indices = 0;
     }
 
-    if (vao)
+    if (vbo_sphere_normal)
     {
-        glDeleteVertexArrays(1, &vao);
-        vao = 0;
+        glDeleteBuffers(1, &vbo_sphere_normal);
+        vbo_sphere_normal = 0;
+    }
+
+    if (vbo_sphere_position)
+    {
+        glDeleteBuffers(1, &vbo_sphere_position);
+        vbo_sphere_position = 0;
+    }
+
+    if (vao_sphere)
+    {
+        glDeleteVertexArrays(1, &vao_sphere);
+        vao_sphere = 0;
     }
 
     if (shaderProgramObject)

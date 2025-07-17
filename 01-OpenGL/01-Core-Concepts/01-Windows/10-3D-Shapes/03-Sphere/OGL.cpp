@@ -481,7 +481,7 @@ int initialize(void)
             else
             {
                 GLsizei logSize;
-                glGetShaderInfoLog(vertexShaderObject, GL_INFO_LOG_LENGTH, &logSize, szLog);
+                glGetShaderInfoLog(fragmentShaderObject, GL_INFO_LOG_LENGTH, &logSize, szLog);
                 fprintf(gpFile, "ERROR : Fragment Shader Compilation Log : %s\n", szLog);
                 free(szLog);
                 szLog = NULL;
@@ -522,7 +522,7 @@ int initialize(void)
             else
             {
                 GLsizei logSize;
-                glGetShaderInfoLog(vertexShaderObject, GL_INFO_LOG_LENGTH, &logSize, szLog);
+                glGetProgramInfoLog(shaderProgramObject, GL_INFO_LOG_LENGTH, &logSize, szLog);
                 fprintf(gpFile, "ERROR : Shader Program Link Log : %s\n", szLog);
                 free(szLog);
                 szLog = NULL;
@@ -552,7 +552,7 @@ int initialize(void)
             glBufferData(
                 GL_ARRAY_BUFFER, 
                 sphere->get_number_of_vertices() * sizeof(float), 
-                sphere->get_vertices(), 
+                sphere->get_vertices().data(), 
                 GL_STATIC_DRAW
             );
             glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, 0, NULL);
