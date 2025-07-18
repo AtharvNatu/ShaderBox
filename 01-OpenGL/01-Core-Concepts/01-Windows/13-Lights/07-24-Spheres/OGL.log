@@ -3,8 +3,8 @@ WinMain() => Program Started Successfully
 OpenGL Information
 ------------------------------------------------------
 OpenGL Vendor : NVIDIA Corporation
-OpenGL Renderer : NVIDIA GeForce RTX 4050 Laptop GPU/PCIe/SSE2
-OpenGL Version : 4.6.0 NVIDIA 576.80
+OpenGL Renderer : NVIDIA GeForce RTX 3060/PCIe/SSE2
+OpenGL Version : 4.6.0 NVIDIA 576.52
 GLSL Version : 4.60 NVIDIA
 ------------------------------------------------------
 

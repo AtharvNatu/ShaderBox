@@ -1373,14 +1373,25 @@ void display(void)
 
         glBindVertexArray(vao_sphere);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_sphere_indices);
+
+        viewportWidth = (float)giWindowWidth / 5.5f;
+        viewportHeight = (float)giWindowHeight / 6.0f;
+        
+        for (int i = 0; i < 6; i++)
         {
-            glDrawElements(
-                GL_TRIANGLES, 
-                gNumIndices, 
-                GL_UNSIGNED_INT,
-                0
-            );
+            for (int j = 0; j < 4; j++)
+            {
+                glViewport(j * viewportWidth, i * viewportHeight, viewportWidth, viewportHeight);
+
+                glUniform3fv(kaUniform, 1, materials[i][j].materialAmbient);
+                glUniform3fv(kdUniform, 1, materials[i][j].materialDiffuse);
+                glUniform3fv(ksUniform, 1, materials[i][j].materialSpecular);
+                glUniform1f(materialShininessUniform, materials[i][j].materialShininess);
+
+                glDrawElements(GL_TRIANGLES, gNumIndices, GL_UNSIGNED_INT, 0);
+            }
         }
+        
         glBindVertexArray(0);
     }
     glUseProgram(0);
@@ -1391,6 +1402,29 @@ void display(void)
 void update(void)
 {
     // Code
+    if (keyPressed == 1)
+    {
+        angleForXRotation = angleForXRotation + 1.0f;
+
+        if (angleForXRotation >= 360.0f)
+            angleForXRotation = angleForXRotation - 360.0f;
+    }
+
+    if (keyPressed == 2)
+    {
+        angleForYRotation = angleForYRotation + 1.0f;
+
+        if (angleForYRotation >= 360.0f)
+            angleForYRotation = angleForYRotation - 360.0f;
+    }
+
+    if (keyPressed == 3)
+    {
+        angleForZRotation = angleForZRotation + 1.0f;
+
+        if (angleForZRotation >= 360.0f)
+            angleForZRotation = angleForZRotation - 360.0f;
+    }
 }
 
 void uninitialize(void)
