@@ -663,6 +663,7 @@ void display(void)
         glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
 
         glBindVertexArray(vao_sphere);
+        glVertexAttrib3f(ATTRIBUTE_COLOR, 0.5, 0.5, 1.0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_sphere_indices);
         {
             glDrawElements(

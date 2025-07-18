@@ -114,7 +114,8 @@ GLfloat angleForXRotation = 0.0f;
 GLfloat angleForYRotation = 0.0f;
 GLfloat angleForZRotation = 0.0f;
 
-GLfloat rotationRadius = 40.0f;
+const GLfloat rotationRadius = 40.0f;
+const GLfloat animationSpeed = 0.75f;
 // -----------------------------------------------------------------------
 
 //! Create Sphere Object
@@ -336,7 +337,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
                     bLight = !bLight;
                 break;
 
+                case 'X':
+                case 'x':
+                    keyPressed = 1;
+                    angleForXRotation = 0.0f;
+                break;
+
+                case 'Y':
+                case 'y':
+                    keyPressed = 2;
+                    angleForYRotation = 0.0f;
+                break;
+
+                case 'Z':
+                case 'z':
+                    keyPressed = 3;
+                    angleForZRotation = 0.0f;
+                break;
+
                 default:
+                    keyPressed = 0;
                 break;
             }
         break;
@@ -557,12 +577,11 @@ int initialize(void)
             "vec3 phong_ads_light;" \
             "if (u_lightEnabled == 1)" \
             "{" \
-                "vec3 ambient = u_la * u_ka;" \
-                
                 "vec3 normalized_transformed_normals = normalize(transformedNormals);" \
                 "vec3 normalized_light_direction = normalize(lightDirection);" \
                 "vec3 normalized_viewer_vector = normalize(viewerVector);" \
 
+                "vec3 ambient = u_la * u_ka;" \
                 "vec3 diffuse = u_ld * u_kd * max(dot(normalized_light_direction, normalized_transformed_normals), 0.0);" \
                 "vec3 reflectionVector = reflect(-normalized_light_direction, normalized_transformed_normals);" \
                 "vec3 specular = u_ls * u_ks * pow(max(dot(reflectionVector, normalized_viewer_vector), 0.0), u_materialShininess);" \
@@ -1307,8 +1326,8 @@ void resize(int width, int height)
     if (height <= 0)
         height = 1;
 
-    giWindowHeight = height;
-    giWindowWidth = width;
+    giWindowHeight = (GLint)height;
+    giWindowWidth = (GLint)width;
     
     glViewport(0, 0, (GLsizei)width, (GLsizei)height);
 
@@ -1331,7 +1350,7 @@ void display(void)
         vmath::mat4 modelMatrix = vmath::mat4::identity();
         vmath::mat4 viewMatrix = vmath::mat4::identity();
 
-        translationMatrix = vmath::translate(0.0f, 0.0f, -2.0f);
+        translationMatrix = vmath::translate(0.0f, 0.0f, -6.0f);
 
         modelMatrix = translationMatrix;
 
@@ -1374,8 +1393,8 @@ void display(void)
         glBindVertexArray(vao_sphere);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_sphere_indices);
 
-        viewportWidth = (float)giWindowWidth / 5.5f;
-        viewportHeight = (float)giWindowHeight / 6.0f;
+        viewportWidth = (GLfloat)giWindowWidth / 5.5f;
+        viewportHeight = (GLfloat)giWindowHeight / 6.0f;
         
         for (int i = 0; i < 6; i++)
         {
@@ -1404,26 +1423,23 @@ void update(void)
     // Code
     if (keyPressed == 1)
     {
-        angleForXRotation = angleForXRotation + 1.0f;
-
+        angleForXRotation += animationSpeed;
         if (angleForXRotation >= 360.0f)
-            angleForXRotation = angleForXRotation - 360.0f;
+            angleForXRotation = 0.0f;
     }
 
     if (keyPressed == 2)
     {
-        angleForYRotation = angleForYRotation + 1.0f;
-
+        angleForYRotation += animationSpeed;
         if (angleForYRotation >= 360.0f)
-            angleForYRotation = angleForYRotation - 360.0f;
+            angleForYRotation = 0.0f;
     }
 
     if (keyPressed == 3)
     {
-        angleForZRotation = angleForZRotation + 1.0f;
-
+        angleForZRotation += animationSpeed;
         if (angleForZRotation >= 360.0f)
-            angleForZRotation = angleForZRotation - 360.0f;
+            angleForZRotation = 0.0f;
     }
 }
 
