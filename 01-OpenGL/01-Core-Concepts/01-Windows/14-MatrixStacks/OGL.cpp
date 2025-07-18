@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 #include "OGL.h"
-#include "vmath.h"
+#include "Model-View-Matrix-Stack.hpp"
 #include "Sphere.hpp"
 
 //! OpenGL Header Files
@@ -65,13 +65,21 @@ GLuint vbo_sphere_position = 0;
 GLuint vbo_sphere_normal = 0;
 GLuint ebo_sphere_indices = 0;
 
-GLuint mvpMatrixUniform = 0;
+GLuint modelMatrixUniform = 0;
+GLuint viewMatrixUniform = 0;
+GLuint projectionMatrixUniform = 0;
 
 vmath::mat4 perspectiveProjectionMatrix;
 
 //! Create Sphere Object
 Sphere* sphere = nullptr;
 GLint gNumIndices = 0;
+
+//! Create Matrix Stack Object
+ModelViewMatrixStack matrixStack;
+
+int day = 0, year = 0, minute = 0;
+BOOL bPolygonModeIsLine = FALSE;
 
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
@@ -128,7 +136,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     hwnd = CreateWindowEx(
         WS_EX_APPWINDOW,
         szAppName,
-        TEXT("OpenGL 3D Shapes - Sphere"),
+        TEXT("OpenGL : Matrix Stacks using Solar System"),
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
         centerX,
         centerY,
@@ -280,6 +288,34 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
                     ToggleFullScreen();
                 break;
 
+                case 'D':
+					day = (day + 6) % 360;
+				break;
+				case 'd':
+					day = (day - 6) % 360;
+				break;
+
+				case 'Y':
+					year = (year + 3) % 360;
+					day = (day + 6) % 360;
+				break;
+				case 'y':
+					year = (year - 3) % 360;
+					day = (day - 6) % 360;
+				break;
+
+				case 'M':
+					minute = (minute + 3) % 360;
+				break;
+				case 'm':
+					minute = (minute - 3) % 360;
+				break;
+
+				case 'L':
+				case 'l':
+					bPolygonModeIsLine = !bPolygonModeIsLine;
+				break;
+
                 default:
                 break;
             }
@@ -410,11 +446,20 @@ int initialize(void)
     const GLchar* vertexShaderSourceCode = 
         "#version 460 core" \
         "\n" \
+        
         "in vec4 a_position;" \
-        "uniform mat4 u_mvpMatrix;" \
+        "in vec4 a_color;" \
+
+        "uniform mat4 u_modelMatrix;" \
+        "uniform mat4 u_viewMatrix;" \
+        "uniform mat4 u_projectionMatrix;" \
+
+        "out vec4 a_color_out;" \
+
         "void main(void)" \
         "{" \
-            "gl_Position = u_mvpMatrix * a_position;" \
+            "gl_Position = u_projectionMatrix * u_viewMatrix * u_modelMatrix * a_position;" \
+            "a_color_out = a_color;" \
         "}";
 
     GLuint vertexShaderObject = glCreateShader(GL_VERTEX_SHADER);
@@ -455,10 +500,11 @@ int initialize(void)
     const GLchar* fragmentShaderSourceCode = 
         "#version 460 core" \
         "\n" \
+        "in vec4 a_color_out;" \
         "out vec4 FragColor;" \
         "void main(void)" \
         "{" \
-            "FragColor = vec4(1.0, 1.0, 1.0, 1.0);" \
+            "FragColor = a_color_out;" \
         "}";
 
     GLuint fragmentShaderObject = glCreateShader(GL_FRAGMENT_SHADER);
@@ -503,6 +549,7 @@ int initialize(void)
 
     //! Bind Attribute
     glBindAttribLocation(shaderProgramObject, ATTRIBUTE_POSITION, "a_position");
+    glBindAttribLocation(shaderProgramObject, ATTRIBUTE_COLOR, "a_color");
 
     glLinkProgram(shaderProgramObject);
 
@@ -538,7 +585,9 @@ int initialize(void)
     //! OpenGL Code
 
     //! Get Uniform Location
-    mvpMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_mvpMatrix");
+    modelMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_modelMatrix");
+    viewMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_viewMatrix");
+    projectionMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_projectionMatrix");
 
     sphere = new Sphere(1.5f, 50, 16);
     gNumIndices = sphere->get_number_of_indices();
@@ -647,19 +696,37 @@ void resize(int width, int height)
 void display(void)
 {
     // Code
+
+    //! Lookat Parameters
+    vmath::vec3 eye = vmath::vec3(0.0f, 0.0f, 5.0f);
+    vmath::vec3 center = vmath::vec3(0.0f, 0.0f, 0.0f);
+    vmath::vec3 up = vmath::vec3(0.0f, 1.0f, 0.0f);
+
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    if (bPolygonModeIsLine)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    else
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     glUseProgram(shaderProgramObject);
     {
         // Transformations
         vmath::mat4 translationMatrix = vmath::mat4::identity();
-        vmath::mat4 modelViewMatrix = vmath::mat4::identity();
-        vmath::mat4 modelViewProjectionMatrix = vmath::mat4::identity();
+        vmath::mat4 scaleMatrix = vmath::mat4::identity();
+        vmath::mat4 rotationMatrix_day = vmath::mat4::identity();
+
+
+        vmath::mat4 modelMatrix = vmath::mat4::identity();
+        vmath::mat4 viewMatrix = vmath::mat4::identity();
+        vmath::mat4 projectionMatrix = vmath::mat4::identity();
 
         translationMatrix = vmath::translate(0.0f, 0.0f, -6.0f);
         modelViewMatrix = translationMatrix;
         modelViewProjectionMatrix = perspectiveProjectionMatrix * modelViewMatrix;
 
+        glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
+        glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
         glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
 
         glBindVertexArray(vao_sphere);

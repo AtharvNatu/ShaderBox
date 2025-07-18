@@ -16,7 +16,8 @@ cl.exe  /c ^
         /std:c++17 ^
         /I C:\glew\include ^
         OGL.cpp ^
-        Sphere.cpp
+        Sphere.cpp ^
+        Model-View-Matrix-Stack.cpp
 
 @echo:
 echo ----------------------------------------------------------------------------------------------------------------
