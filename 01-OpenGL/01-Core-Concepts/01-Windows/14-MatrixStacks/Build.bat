@@ -30,7 +30,7 @@ echo ---------------------------------------------------------------------------
 echo Linking Libraries and Resources...
 echo Creating Executable...
 echo ----------------------------------------------------------------------------------------------------------------
-link.exe OGL.obj Sphere.obj OGL.res /LIBPATH:C:\glew\lib\Release\x64 user32.lib gdi32.lib
+link.exe OGL.obj Sphere.obj Model-View-Matrix-Stack.obj OGL.res /LIBPATH:C:\glew\lib\Release\x64 user32.lib gdi32.lib
 
 @echo:
 echo ----------------------------------------------------------------------------------------------------------------

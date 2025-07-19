@@ -715,32 +715,89 @@ void display(void)
         vmath::mat4 translationMatrix = vmath::mat4::identity();
         vmath::mat4 scaleMatrix = vmath::mat4::identity();
         vmath::mat4 rotationMatrix_day = vmath::mat4::identity();
-
+        vmath::mat4 rotationMatrix_year = vmath::mat4::identity();
+        vmath::mat4 rotationMatrix_minute = vmath::mat4::identity();
 
         vmath::mat4 modelMatrix = vmath::mat4::identity();
         vmath::mat4 viewMatrix = vmath::mat4::identity();
-        vmath::mat4 projectionMatrix = vmath::mat4::identity();
 
-        translationMatrix = vmath::translate(0.0f, 0.0f, -6.0f);
-        modelViewMatrix = translationMatrix;
-        modelViewProjectionMatrix = perspectiveProjectionMatrix * modelViewMatrix;
+        // View Transformation
+        viewMatrix = vmath::lookat(eye, center, up);
 
-        glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
-        glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
-        glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
-
-        glBindVertexArray(vao_sphere);
-        glVertexAttrib3f(ATTRIBUTE_COLOR, 0.5, 0.5, 1.0);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_sphere_indices);
+        
+        matrixStack.pushMatrix(viewMatrix);
         {
-            glDrawElements(
-                GL_TRIANGLES, 
-                gNumIndices, 
-                GL_UNSIGNED_INT,
-                0
-            );
+            scaleMatrix = vmath::scale(0.5f, 0.5f, 0.5f);
+            modelMatrix = scaleMatrix;
+
+            // Sun
+            glUniformMatrix4fv(modelMatrixUniform, 1, GL_FALSE, modelMatrix);
+            glUniformMatrix4fv(viewMatrixUniform, 1, GL_FALSE, viewMatrix);
+            glUniformMatrix4fv(projectionMatrixUniform, 1, GL_FALSE, perspectiveProjectionMatrix);
+
+            glBindVertexArray(vao_sphere);
+            glVertexAttrib3f(ATTRIBUTE_COLOR, 1.0f, 1.0f, 0.0f);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_sphere_indices);
+            {
+                glDrawElements(GL_TRIANGLES, gNumIndices, GL_UNSIGNED_INT, 0);
+            }
+            glBindVertexArray(0);
         }
-        glBindVertexArray(0);
+        viewMatrix = matrixStack.popMatrix();
+
+        matrixStack.pushMatrix(viewMatrix);
+        {
+            rotationMatrix_year = vmath::rotate((GLfloat)year, 0.0f, 1.0f, 0.0f);
+            translationMatrix = vmath::translate(1.5f, 0.0f, 0.0f);
+            rotationMatrix_day = vmath::rotate((GLfloat)day, 0.0f, 1.0f, 0.0f);
+            scaleMatrix = vmath::scale(0.2f, 0.2f, 0.2f);
+
+            modelMatrix = rotationMatrix_year * translationMatrix;
+
+            matrixStack.pushMatrix(modelMatrix);
+            {
+                modelMatrix = modelMatrix * rotationMatrix_day;
+                modelMatrix = modelMatrix * scaleMatrix;
+
+                // Earth
+                glUniformMatrix4fv(modelMatrixUniform, 1, GL_FALSE, modelMatrix);
+                glUniformMatrix4fv(viewMatrixUniform, 1, GL_FALSE, viewMatrix);
+                glUniformMatrix4fv(projectionMatrixUniform, 1, GL_FALSE, perspectiveProjectionMatrix);
+
+                glBindVertexArray(vao_sphere);
+                glVertexAttrib3f(ATTRIBUTE_COLOR, 0.4f, 0.9f, 1.0f);
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_sphere_indices);
+                {
+                    glDrawElements(GL_TRIANGLES, gNumIndices, GL_UNSIGNED_INT, 0);
+                }
+                glBindVertexArray(0);
+            }   
+            modelMatrix = matrixStack.popMatrix();
+
+            rotationMatrix_day = vmath::rotate((GLfloat)day, 0.0f, 1.0f, 0.0f);
+            translationMatrix = vmath::translate(0.6f, 0.0f, 0.0f);
+            rotationMatrix_minute = vmath::rotate((GLfloat)minute, 0.0f, 1.0f, 0.0f);
+            scaleMatrix = vmath::scale(0.1f, 0.1f, 0.1f);
+
+            modelMatrix = modelMatrix * rotationMatrix_day * translationMatrix;
+            modelMatrix = modelMatrix * rotationMatrix_minute;
+            modelMatrix = modelMatrix * scaleMatrix;
+
+            // Moon
+            glUniformMatrix4fv(modelMatrixUniform, 1, GL_FALSE, modelMatrix);
+            glUniformMatrix4fv(viewMatrixUniform, 1, GL_FALSE, viewMatrix);
+            glUniformMatrix4fv(projectionMatrixUniform, 1, GL_FALSE, perspectiveProjectionMatrix);
+
+            glBindVertexArray(vao_sphere);
+            glVertexAttrib3f(ATTRIBUTE_COLOR, 1.0f, 1.0f, 1.0f);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_sphere_indices);
+            {
+                glDrawElements(GL_TRIANGLES, gNumIndices, GL_UNSIGNED_INT, 0);
+            }
+            glBindVertexArray(0);
+        }
+        viewMatrix = matrixStack.popMatrix();
+        
     }
     glUseProgram(0);
 
