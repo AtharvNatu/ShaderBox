@@ -1,15 +1,9 @@
-WinMain() => Program Started Successfully
-
-OpenGL Information
-------------------------------------------------------
+Log File Created Successfully ...
 OpenGL Vendor : NVIDIA Corporation
 OpenGL Renderer : NVIDIA GeForce RTX 3060/PCIe/SSE2
 OpenGL Version : 4.6.0 NVIDIA 576.52
 GLSL Version : 4.60 NVIDIA
-------------------------------------------------------
-
-Number of Supported Extensions : 404
-------------------------------------------------------
+Number Of Supported Extensions : 404
 GL_AMD_multi_draw_indirect
 GL_AMD_seamless_cubemap_per_texture
 GL_AMD_vertex_shader_viewport_index
@@ -414,6 +408,5 @@ GL_SGIX_shadow
 GL_SUN_slice_accum
 GL_WIN_swap_hint
 WGL_EXT_swap_control
-------------------------------------------------------
-WinMain() => Initialization Completed Successfully
-uninitialize() => Program Terminated Successfully
+initialize() Succeeded !!!
+Log File Closed Successfully ...

@@ -61,13 +61,7 @@ GLuint shaderProgramObject = 0;
 
 GLuint vao = 0;
 GLuint vbo = 0;
-
 GLuint mvpMatrixUniform = 0;
-GLuint numSegmentsUniform;
-GLuint numStripsUniform;
-GLuint lineColorUniform;
-
-unsigned int uiNumberOfSegments;
 
 vmath::mat4 perspectiveProjectionMatrix;
 
@@ -126,7 +120,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     hwnd = CreateWindowEx(
         WS_EX_APPWINDOW,
         szAppName,
-        TEXT("OpenGL Tessellation Shader"),
+        TEXT("OpenGL Geometry Shader"),
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
         centerX,
         centerY,
@@ -265,18 +259,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
                     DestroyWindow(hwnd);
                 break;
 
-                case VK_UP:
-                    uiNumberOfSegments++;
-                    if (uiNumberOfSegments >= 30)
-                        uiNumberOfSegments = 30;
-                break;
-
-                case VK_DOWN:
-                    uiNumberOfSegments--;
-                    if (uiNumberOfSegments <= 1)
-                        uiNumberOfSegments = 1;
-                break;
-
                 default:
                 break;
             }
@@ -407,12 +389,12 @@ int initialize(void)
     // Make the rendering context as the current context
     if (wglMakeCurrent(ghdc, ghrc) == FALSE)
         return WGL_MC_ERROR;
-
+    
     // GLEW Initialization
     initStatus = glewInit();
     if (initStatus != GLEW_OK)
         return GLEW_INIT_ERROR;
-    
+
     printGLInfo();
 
     //! Vertex Shader
@@ -420,10 +402,11 @@ int initialize(void)
     const GLchar* vertexShaderSourceCode = 
         "#version 460 core" \
         "\n" \
-        "in vec2 a_position;" \
+        "in vec4 a_position;" \
+        "uniform mat4 u_mvpMatrix;" \
         "void main(void)" \
         "{" \
-            "gl_Position = vec4(a_position, 0.0, 1.0);" \
+            "gl_Position = u_mvpMatrix * a_position;" \
         "}";
 
     GLuint vertexShaderObject = glCreateShader(GL_VERTEX_SHADER);
@@ -459,107 +442,59 @@ int initialize(void)
     }
     //! ----------------------------------------------------------------------------
     
-    //! Tessellation Control Shader
+    //! Geometry Shader
     //! ----------------------------------------------------------------------------
-    const GLchar* tessellationControlShaderSourceCode = 
+    const GLchar* geometryShaderSourceCode = 
         "#version 460 core" \
         "\n" \
         
-        "layout(vertices = 4) out;" \
-
-        "uniform int u_numSegments;" \
-        "uniform int u_numStrips;" \
-
-        "void main(void)" \
-        "{" \
-            "gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;" \
-            "gl_TessLevelOuter[0] = float(u_numStrips);" \
-            "gl_TessLevelOuter[1] = float(u_numSegments);" \
-        "}";
-
-    GLuint tessellationControlShaderObject = glCreateShader(GL_TESS_CONTROL_SHADER);
-    glShaderSource(tessellationControlShaderObject, 1, (const GLchar**)&tessellationControlShaderSourceCode, NULL);
-    glCompileShader(tessellationControlShaderObject);
-
-    status = 0;
-    infoLogLength = 0;
-    szLog = NULL;
-
-    glGetShaderiv(tessellationControlShaderObject, GL_COMPILE_STATUS, &status);
-    if (status == GL_FALSE)
-    {
-        glGetShaderiv(tessellationControlShaderObject, GL_INFO_LOG_LENGTH, &infoLogLength);
-        if (infoLogLength > 0)
-        {
-            szLog = (GLchar*)malloc(infoLogLength * sizeof(GLchar));
-            if (szLog == NULL)
-            {
-                fprintf(gpFile, "ERROR : %s() => Failed to allocate memory to szLog for Tessellation Control Shader Log !!!\n", __func__);
-                return MEM_ALLOC_FAILED;
-            }
-            else
-            {
-                GLsizei logSize;
-                glGetShaderInfoLog(tessellationControlShaderObject, GL_INFO_LOG_LENGTH, &logSize, szLog);
-                fprintf(gpFile, "ERROR : Tessellation Control Shader Compilation Log : %s\n", szLog);
-                free(szLog);
-                szLog = NULL;
-                return TCS_COMPILE_ERROR;
-            }
-
-        }
-    }
-    //! ----------------------------------------------------------------------------
-    
-    //! Tessellation Evaluation Shader
-    //! ----------------------------------------------------------------------------
-    const GLchar* tessellationEvaluationShaderSourceCode = 
-        "#version 460 core" \
-        "\n" \
-
-        "layout(isolines) in;" \
         "uniform mat4 u_mvpMatrix;" \
+        
+        "layout(triangles) in;" \
+        "layout(triangle_strip, max_vertices = 9) out;" \
 
         "void main(void)" \
         "{" \
-            "vec3 p0 = gl_in[0].gl_Position.xyz;" \
-            "vec3 p1 = gl_in[1].gl_Position.xyz;" \
-            "vec3 p2 = gl_in[2].gl_Position.xyz;" \
-            "vec3 p3 = gl_in[3].gl_Position.xyz;" \
-
-            "float u = gl_TessCoord.x;" \
-            "vec3 p = p0 * (1 - u) * (1 - u) * (1 - u) + p1 * 3 * u * (1 - u) * (1 - u) + p2 * 3 * u * u * (1 - u) + p3 * u * u * u;" \
-            "gl_Position = u_mvpMatrix * vec4(p, 1.0);" \
+            "for (int i = 0; i < 3; i++)" \
+            "{" \
+                "gl_Position = u_mvpMatrix * (gl_in[i].gl_Position + vec4(0.0, 1.0, 0.0, 1.0));" \
+                "EmitVertex();" \
+                "gl_Position = u_mvpMatrix * (gl_in[i].gl_Position + vec4(-1.0, -1.0, 0.0, 1.0));" \
+                "EmitVertex();" \
+                "gl_Position = u_mvpMatrix * (gl_in[i].gl_Position + vec4(1.0, -1.0, 0.0, 1.0));" \
+                "EmitVertex();" \
+                "EndPrimitive();" \
+            "}" \
         "}";
 
-    GLuint tessellationEvaluationShaderObject = glCreateShader(GL_TESS_EVALUATION_SHADER);
-    glShaderSource(tessellationEvaluationShaderObject, 1, (const GLchar**)&tessellationEvaluationShaderSourceCode, NULL);
-    glCompileShader(tessellationEvaluationShaderObject);
+    GLuint geometryShaderObject = glCreateShader(GL_GEOMETRY_SHADER);
+    glShaderSource(geometryShaderObject, 1, (const GLchar**)&geometryShaderSourceCode, NULL);
+    glCompileShader(geometryShaderObject);
 
     status = 0;
     infoLogLength = 0;
     szLog = NULL;
 
-    glGetShaderiv(tessellationEvaluationShaderObject, GL_COMPILE_STATUS, &status);
+    glGetShaderiv(geometryShaderObject, GL_COMPILE_STATUS, &status);
     if (status == GL_FALSE)
     {
-        glGetShaderiv(tessellationEvaluationShaderObject, GL_INFO_LOG_LENGTH, &infoLogLength);
+        glGetShaderiv(geometryShaderObject, GL_INFO_LOG_LENGTH, &infoLogLength);
         if (infoLogLength > 0)
         {
             szLog = (GLchar*)malloc(infoLogLength * sizeof(GLchar));
             if (szLog == NULL)
             {
-                fprintf(gpFile, "ERROR : %s() => Failed to allocate memory to szLog for Tessellation Evaluation Shader Log !!!\n", __func__);
+                fprintf(gpFile, "Failed to allocate memory to szLog for Geometry Shader Log\n!!!");
                 return MEM_ALLOC_FAILED;
             }
             else
             {
                 GLsizei logSize;
-                glGetShaderInfoLog(tessellationEvaluationShaderObject, GL_INFO_LOG_LENGTH, &logSize, szLog);
-                fprintf(gpFile, "ERROR : Tessellation Evaluation Shader Compilation Log : %s\n", szLog);
+                glGetShaderInfoLog(geometryShaderObject, GL_INFO_LOG_LENGTH, &logSize, szLog);
+                fprintf(gpFile, "ERROR : Geometry Shader Compilation Log : %s\n", szLog);
                 free(szLog);
                 szLog = NULL;
-                return TES_COMPILE_ERROR;
+                return GS_COMPILE_ERROR;
             }
         }
     }
@@ -570,11 +505,10 @@ int initialize(void)
     const GLchar* fragmentShaderSourceCode = 
         "#version 460 core" \
         "\n" \
-        "uniform vec4 u_lineColor;" \
         "out vec4 FragColor;" \
         "void main(void)" \
         "{" \
-            "FragColor = u_lineColor;" \
+            "FragColor = vec4(1.0, 1.0, 1.0, 1.0);" \
         "}";
 
     GLuint fragmentShaderObject = glCreateShader(GL_FRAGMENT_SHADER);
@@ -615,8 +549,7 @@ int initialize(void)
     shaderProgramObject = glCreateProgram();
 
     glAttachShader(shaderProgramObject, vertexShaderObject);
-    glAttachShader(shaderProgramObject, tessellationControlShaderObject);
-    glAttachShader(shaderProgramObject, tessellationEvaluationShaderObject);
+    glAttachShader(shaderProgramObject, geometryShaderObject);
     glAttachShader(shaderProgramObject, fragmentShaderObject);
 
     //! Bind Attribute
@@ -657,16 +590,12 @@ int initialize(void)
 
     //! Get Uniform Location
     mvpMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_mvpMatrix");
-    numSegmentsUniform = glGetUniformLocation(shaderProgramObject, "u_numSegments");
-    numStripsUniform = glGetUniformLocation(shaderProgramObject, "u_numStrips");
-    lineColorUniform = glGetUniformLocation(shaderProgramObject, "u_lineColor");
 
-    const GLfloat vertices[] = 
+    const GLfloat triangle_position[] = 
     {
-       -1.0f,   -1.0f,
-       -0.5f,   1.0f,
-       0.5f,    -1.0f,
-       1.0f,    1.0f
+        0.0f,   1.0f,  0.0f,
+        -1.0f, -1.0f, 0.0f,
+        1.0f,  -1.0f, 0.0f
     };
 
     //! VAO and VBO Related Code
@@ -676,8 +605,8 @@ int initialize(void)
         glGenBuffers(1, &vbo);
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         {
-            glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-            glVertexAttribPointer(ATTRIBUTE_POSITION, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(triangle_position), triangle_position, GL_STATIC_DRAW);
+            glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, 0, NULL);
             glEnableVertexAttribArray(ATTRIBUTE_POSITION);
         }
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -689,12 +618,10 @@ int initialize(void)
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
 
-    // Clear the screen using black color
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    // Clear the screen using blue color
+    glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
 
     perspectiveProjectionMatrix = vmath::mat4::identity();
-
-    uiNumberOfSegments = 1;
 
     // Warmup resize call
     resize(WIN_WIDTH, WIN_HEIGHT);
@@ -751,31 +678,12 @@ void display(void)
         translationMatrix = vmath::translate(0.0f, 0.0f, -4.0f);
         modelViewMatrix = translationMatrix;
         modelViewProjectionMatrix = perspectiveProjectionMatrix * modelViewMatrix;
-        
-        TCHAR str[255];
-        wsprintf(str, TEXT("OpenGL Tessellation Shader | Numbner of Segments = %d"), uiNumberOfSegments);
-        SetWindowText(ghwnd, str);
 
         glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
 
-        glUniform1i(numSegmentsUniform, uiNumberOfSegments);
-        glUniform1i(numStripsUniform, 1);
-
-        switch(uiNumberOfSegments)
-        {
-            case 1:
-                glUniform4fv(lineColorUniform, 1, vmath::vec4(1.0, 0.0, 0.0, 1.0));
-            break;
-
-            case 30:
-                glUniform4fv(lineColorUniform, 1, vmath::vec4(0.0, 1.0, 0.0, 1.0));
-            break;
-        }
-
         glBindVertexArray(vao);
         {
-            glPatchParameteri(GL_PATCH_VERTICES, 4);
-            glDrawArrays(GL_PATCHES, 0, 4);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
         }
         glBindVertexArray(0);
     }
