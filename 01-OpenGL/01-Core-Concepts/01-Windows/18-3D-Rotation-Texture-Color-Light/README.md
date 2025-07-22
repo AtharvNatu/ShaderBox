@@ -1,0 +1,1 @@
+This code serves as a template for interleaved rendering.
