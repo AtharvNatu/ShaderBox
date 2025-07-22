@@ -4,8 +4,7 @@
 #include <stdlib.h>
 
 #include "OGL.h"
-#include "Model-View-Matrix-Stack.hpp"
-#include "Sphere.hpp"
+#include "vmath.h"
 
 //! OpenGL Header Files
 #include <GL/glew.h>
@@ -60,26 +59,13 @@ enum ATTRIBUTES
 
 GLuint shaderProgramObject = 0;
 
-GLuint vao_sphere = 0;
-GLuint vbo_sphere_position = 0;
-GLuint vbo_sphere_normal = 0;
-GLuint ebo_sphere_indices = 0;
+GLuint vao = 0;
+GLuint vbo_position = 0;
+GLuint vbo_indices = 0;
 
-GLuint modelMatrixUniform = 0;
-GLuint viewMatrixUniform = 0;
-GLuint projectionMatrixUniform = 0;
+GLuint mvpMatrixUniform = 0;
 
 vmath::mat4 perspectiveProjectionMatrix;
-
-//! Create Sphere Object
-Sphere* sphere = nullptr;
-GLint gNumIndices = 0;
-
-//! Create Matrix Stack Object
-ModelViewMatrixStack matrixStack;
-
-int day = 0, year = 0, minute = 0;
-BOOL bPolygonModeIsLine = FALSE;
 
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
@@ -136,7 +122,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     hwnd = CreateWindowEx(
         WS_EX_APPWINDOW,
         szAppName,
-        TEXT("OpenGL : Matrix Stacks using Solar System"),
+        TEXT("OpenGL Indices"),
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
         centerX,
         centerY,
@@ -288,34 +274,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
                     ToggleFullScreen();
                 break;
 
-                case 'D':
-					day = (day + 6) % 360;
-				break;
-				case 'd':
-					day = (day - 6) % 360;
-				break;
-
-				case 'Y':
-					year = (year + 3) % 360;
-					day = (day + 6) % 360;
-				break;
-				case 'y':
-					year = (year - 3) % 360;
-					day = (day - 6) % 360;
-				break;
-
-				case 'M':
-					minute = (minute + 3) % 360;
-				break;
-				case 'm':
-					minute = (minute - 3) % 360;
-				break;
-
-				case 'L':
-				case 'l':
-					bPolygonModeIsLine = !bPolygonModeIsLine;
-				break;
-
                 default:
                 break;
             }
@@ -446,20 +404,11 @@ int initialize(void)
     const GLchar* vertexShaderSourceCode = 
         "#version 460 core" \
         "\n" \
-        
         "in vec4 a_position;" \
-        "in vec4 a_color;" \
-
-        "uniform mat4 u_modelMatrix;" \
-        "uniform mat4 u_viewMatrix;" \
-        "uniform mat4 u_projectionMatrix;" \
-
-        "out vec4 a_color_out;" \
-
+        "uniform mat4 u_mvpMatrix;" \
         "void main(void)" \
         "{" \
-            "gl_Position = u_projectionMatrix * u_viewMatrix * u_modelMatrix * a_position;" \
-            "a_color_out = a_color;" \
+            "gl_Position = u_mvpMatrix * a_position;" \
         "}";
 
     GLuint vertexShaderObject = glCreateShader(GL_VERTEX_SHADER);
@@ -500,11 +449,10 @@ int initialize(void)
     const GLchar* fragmentShaderSourceCode = 
         "#version 460 core" \
         "\n" \
-        "in vec4 a_color_out;" \
         "out vec4 FragColor;" \
         "void main(void)" \
         "{" \
-            "FragColor = a_color_out;" \
+            "FragColor = vec4(1.0, 1.0, 1.0, 1.0);" \
         "}";
 
     GLuint fragmentShaderObject = glCreateShader(GL_FRAGMENT_SHADER);
@@ -549,7 +497,6 @@ int initialize(void)
 
     //! Bind Attribute
     glBindAttribLocation(shaderProgramObject, ATTRIBUTE_POSITION, "a_position");
-    glBindAttribLocation(shaderProgramObject, ATTRIBUTE_COLOR, "a_color");
 
     glLinkProgram(shaderProgramObject);
 
@@ -585,59 +532,41 @@ int initialize(void)
     //! OpenGL Code
 
     //! Get Uniform Location
-    modelMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_modelMatrix");
-    viewMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_viewMatrix");
-    projectionMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_projectionMatrix");
+    mvpMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_mvpMatrix");
 
-    sphere = new Sphere(1.5f, 50, 16);
-    gNumIndices = sphere->get_number_of_indices();
+    const GLfloat square_position[] = 
+    {
+        1.0f,   1.0f,  0.0f,
+        -1.0f,  1.0f,  0.0f,
+        -1.0f,  -1.0f,  0.0f,
+        1.0f,   -1.0f,   0.0f
+    };
+
+    const GLuint square_indices[] = 
+    {
+        0, 1, 3,
+        3, 1, 2
+    };
 
     //! VAO and VBO Related Code
-
-    // VAO For Sphere
-    glGenVertexArrays(1, &vao_sphere);
-    glBindVertexArray(vao_sphere);
+    glGenVertexArrays(1, &vao);
+    glBindVertexArray(vao);
     {
-        //* Sphere Position
-        glGenBuffers(1, &vbo_sphere_position);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_sphere_position);
+        // VBO For Position
+        glGenBuffers(1, &vbo_position);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_position);
         {
-            glBufferData(
-                GL_ARRAY_BUFFER, 
-                sphere->get_number_of_vertices() * sizeof(float), 
-                sphere->get_vertices().data(), 
-                GL_STATIC_DRAW
-            );
+            glBufferData(GL_ARRAY_BUFFER, sizeof(square_position), square_position, GL_STATIC_DRAW);
             glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, 0, NULL);
             glEnableVertexAttribArray(ATTRIBUTE_POSITION);
         }
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        //* Sphere Normal
-        glGenBuffers(1, &vbo_sphere_normal);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_sphere_normal);
+        // EBO (Element Buffer Object) For Indices
+        glGenBuffers(1, &vbo_indices);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices);
         {
-            glBufferData(
-                GL_ARRAY_BUFFER, 
-                sphere->get_number_of_normals() * sizeof(float), 
-                sphere->get_normals().data(), 
-                GL_STATIC_DRAW
-            );
-            glVertexAttribPointer(ATTRIBUTE_NORMAL, 3, GL_FLOAT, GL_FALSE, 0, NULL);
-            glEnableVertexAttribArray(ATTRIBUTE_NORMAL);
-        }
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        //* Sphere EBO
-        glGenBuffers(1, &ebo_sphere_indices);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_sphere_indices);
-        {
-            glBufferData(
-                GL_ELEMENT_ARRAY_BUFFER, 
-                gNumIndices * sizeof(GLuint), 
-                sphere->get_indices().data(), 
-                GL_STATIC_DRAW
-            );
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(square_indices), square_indices, GL_STATIC_DRAW);
         }
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     }
@@ -648,8 +577,8 @@ int initialize(void)
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
 
-    // Clear the screen using black color
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    // Clear the screen using blue color
+    glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
 
     perspectiveProjectionMatrix = vmath::mat4::identity();
 
@@ -696,111 +625,28 @@ void resize(int width, int height)
 void display(void)
 {
     // Code
-
-    //! Lookat Parameters
-    vmath::vec3 eye = vmath::vec3(0.0f, 0.0f, 5.0f);
-    vmath::vec3 center = vmath::vec3(0.0f, 0.0f, 0.0f);
-    vmath::vec3 up = vmath::vec3(0.0f, 1.0f, 0.0f);
-
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    if (bPolygonModeIsLine)
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    else
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     glUseProgram(shaderProgramObject);
     {
         // Transformations
         vmath::mat4 translationMatrix = vmath::mat4::identity();
-        vmath::mat4 scaleMatrix = vmath::mat4::identity();
-        vmath::mat4 rotationMatrix_day = vmath::mat4::identity();
-        vmath::mat4 rotationMatrix_year = vmath::mat4::identity();
-        vmath::mat4 rotationMatrix_minute = vmath::mat4::identity();
+        vmath::mat4 modelViewMatrix = vmath::mat4::identity();
+        vmath::mat4 modelViewProjectionMatrix = vmath::mat4::identity();
 
-        vmath::mat4 modelMatrix = vmath::mat4::identity();
-        vmath::mat4 viewMatrix = vmath::mat4::identity();
+        translationMatrix = vmath::translate(0.0f, 0.0f, -4.0f);
+        modelViewMatrix = translationMatrix;
+        modelViewProjectionMatrix = perspectiveProjectionMatrix * modelViewMatrix;
 
-        // View Transformation
-        viewMatrix = vmath::lookat(eye, center, up);
+        glUniformMatrix4fv(mvpMatrixUniform, 1, GL_FALSE, modelViewProjectionMatrix);
 
-        
-        matrixStack.pushMatrix(viewMatrix);
+        glBindVertexArray(vao);
         {
-            scaleMatrix = vmath::scale(0.5f, 0.5f, 0.5f);
-            modelMatrix = scaleMatrix;
-
-            // Sun
-            glUniformMatrix4fv(modelMatrixUniform, 1, GL_FALSE, modelMatrix);
-            glUniformMatrix4fv(viewMatrixUniform, 1, GL_FALSE, viewMatrix);
-            glUniformMatrix4fv(projectionMatrixUniform, 1, GL_FALSE, perspectiveProjectionMatrix);
-
-            glBindVertexArray(vao_sphere);
-            glVertexAttrib3f(ATTRIBUTE_COLOR, 1.0f, 1.0f, 0.0f);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_sphere_indices);
-            {
-                glDrawElements(GL_TRIANGLES, gNumIndices, GL_UNSIGNED_INT, 0);
-            }
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_indices);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-            glBindVertexArray(0);
         }
-        viewMatrix = matrixStack.popMatrix();
-
-        matrixStack.pushMatrix(viewMatrix);
-        {
-            rotationMatrix_year = vmath::rotate((GLfloat)year, 0.0f, 1.0f, 0.0f);
-            translationMatrix = vmath::translate(1.5f, 0.0f, 0.0f);
-            rotationMatrix_day = vmath::rotate((GLfloat)day, 0.0f, 1.0f, 0.0f);
-            scaleMatrix = vmath::scale(0.2f, 0.2f, 0.2f);
-
-            modelMatrix = rotationMatrix_year * translationMatrix;
-
-            matrixStack.pushMatrix(modelMatrix);
-            {
-                modelMatrix = modelMatrix * rotationMatrix_day;
-                modelMatrix = modelMatrix * scaleMatrix;
-
-                // Earth
-                glUniformMatrix4fv(modelMatrixUniform, 1, GL_FALSE, modelMatrix);
-                glUniformMatrix4fv(viewMatrixUniform, 1, GL_FALSE, viewMatrix);
-                glUniformMatrix4fv(projectionMatrixUniform, 1, GL_FALSE, perspectiveProjectionMatrix);
-
-                glBindVertexArray(vao_sphere);
-                glVertexAttrib3f(ATTRIBUTE_COLOR, 0.4f, 0.9f, 1.0f);
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_sphere_indices);
-                {
-                    glDrawElements(GL_TRIANGLES, gNumIndices, GL_UNSIGNED_INT, 0);
-                }
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-                glBindVertexArray(0);
-            }   
-            modelMatrix = matrixStack.popMatrix();
-
-            rotationMatrix_day = vmath::rotate((GLfloat)day, 0.0f, 1.0f, 0.0f);
-            translationMatrix = vmath::translate(0.6f, 0.0f, 0.0f);
-            rotationMatrix_minute = vmath::rotate((GLfloat)minute, 0.0f, 1.0f, 0.0f);
-            scaleMatrix = vmath::scale(0.1f, 0.1f, 0.1f);
-
-            modelMatrix = modelMatrix * rotationMatrix_day * translationMatrix;
-            modelMatrix = modelMatrix * rotationMatrix_minute;
-            modelMatrix = modelMatrix * scaleMatrix;
-
-            // Moon
-            glUniformMatrix4fv(modelMatrixUniform, 1, GL_FALSE, modelMatrix);
-            glUniformMatrix4fv(viewMatrixUniform, 1, GL_FALSE, viewMatrix);
-            glUniformMatrix4fv(projectionMatrixUniform, 1, GL_FALSE, perspectiveProjectionMatrix);
-
-            glBindVertexArray(vao_sphere);
-            glVertexAttrib3f(ATTRIBUTE_COLOR, 1.0f, 1.0f, 1.0f);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_sphere_indices);
-            {
-                glDrawElements(GL_TRIANGLES, gNumIndices, GL_UNSIGNED_INT, 0);
-            }
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-            glBindVertexArray(0);
-        }
-        viewMatrix = matrixStack.popMatrix();
-        
+        glBindVertexArray(0);
     }
     glUseProgram(0);
 
@@ -820,35 +666,23 @@ void uninitialize(void)
     // Code
     if (gbFullScreen)
         ToggleFullScreen();
-
-    if (sphere)
+    
+    if (vbo_indices)
     {
-        delete sphere;
-        sphere = nullptr;
+        glDeleteBuffers(1, &vbo_indices);
+        vbo_indices = 0;
     }
 
-    if (ebo_sphere_indices)
+    if (vbo_position)
     {
-        glDeleteBuffers(1, &ebo_sphere_indices);
-        ebo_sphere_indices = 0;
+        glDeleteBuffers(1, &vbo_position);
+        vbo_position = 0;
     }
 
-    if (vbo_sphere_normal)
+    if (vao)
     {
-        glDeleteBuffers(1, &vbo_sphere_normal);
-        vbo_sphere_normal = 0;
-    }
-
-    if (vbo_sphere_position)
-    {
-        glDeleteBuffers(1, &vbo_sphere_position);
-        vbo_sphere_position = 0;
-    }
-
-    if (vao_sphere)
-    {
-        glDeleteVertexArrays(1, &vao_sphere);
-        vao_sphere = 0;
+        glDeleteVertexArrays(1, &vao);
+        vao = 0;
     }
 
     if (shaderProgramObject)
