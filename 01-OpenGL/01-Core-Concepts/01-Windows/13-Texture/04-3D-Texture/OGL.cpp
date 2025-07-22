@@ -869,6 +869,7 @@ void display(void)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture_brick);
         {
+            glUniform1i(textureSamplerUniform, 0);
             glBindVertexArray(vao_pyramid);
             {
                 glDrawArrays(GL_TRIANGLES, 0, 12);
@@ -905,6 +906,7 @@ void display(void)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture_cube);
         {
+            glUniform1i(textureSamplerUniform, 0);
             glBindVertexArray(vao_cube);
             {
                 glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
