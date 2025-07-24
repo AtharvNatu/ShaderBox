@@ -551,7 +551,7 @@ int initialize(void)
     mvpMatrixUniform = glGetUniformLocation(shaderProgramObject, "u_mvpMatrix");
 
     //* Load Mesh
-    if (loadMesh("Monkey-Head.obj") == FAILURE)
+    if (loadMesh("Monkey-Head.obj.model") == FAILURE)
     {
         fprintf(gpFile, "Failed to Load Mesh !!!\n");
         return LOAD_MESH_FAILED;

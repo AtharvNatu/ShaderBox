@@ -15,13 +15,13 @@
 // Variable Declarations
 typedef struct TAG_vecInt
 {
-    GLint* ptr;
+    GLint* ptr = NULL;
     size_t size;
 } vecInt;
 
 typedef struct TAG_vecFloat
 {
-    GLfloat* ptr;
+    GLfloat* ptr = NULL;
     size_t size;
 } vecFloat;
 
@@ -35,7 +35,7 @@ vecInt *gpVertexIndices, *gpTextureIndices, *gpNormalIndices;
 // Code
 vecInt* createIntVector(void)
 {
-    vecInt* ptr = (vecInt*)malloc((sizeof(vecInt)));
+    vecInt* ptr = (vecInt*)malloc(sizeof(vecInt));
     if (ptr == NULL)
         return NULL;
 
@@ -66,7 +66,7 @@ int pushBackToIntVector(vecInt* ptrVecInt, int data)
     return SUCCESS;
 }
 
-int pushBackToFloatVector(vecFloat* ptrVecFloat, int data)
+int pushBackToFloatVector(vecFloat* ptrVecFloat, float data)
 {
     ptrVecFloat->ptr = (GLfloat*)realloc(ptrVecFloat->ptr, (ptrVecFloat->size + 1) * sizeof(GLfloat));
 
