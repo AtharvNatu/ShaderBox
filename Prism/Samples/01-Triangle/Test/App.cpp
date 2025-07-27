@@ -3,17 +3,18 @@
 class App : public Prism
 {
     public:
+
+        void initialize()
+        {
+
+        }
+
         void display()
         {
 
         }
 
         void update()
-        {
-
-        }
-
-        void initialize()
         {
 
         }

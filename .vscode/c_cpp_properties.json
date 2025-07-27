@@ -4,8 +4,7 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:\\glew\\include",
-                "C:\\FreeType"
+                "C:\\glew\\include"
             ],
             "defines": [
                 "_DEBUG",
