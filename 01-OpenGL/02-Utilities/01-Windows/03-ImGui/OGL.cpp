@@ -870,7 +870,7 @@ void renderImGui(void)
     ImGui::Begin("ImGui Demo");
     ImGui::Text("Hello From Dear ImGui !!!");
     ImGui::Checkbox("Enable Diffuse Lighting", &bLight);
-    ImGui::SliderFloat("Cube Rotation Speed", (float*)&animationSpeed, 0.01f, 5.0f);
+    ImGui::SliderFloat("Cube Rotation Speed", (float*)&animationSpeed, 0.01f, 1.0f);
     ImGui::Text("FPS : %.1f", ImGui::GetIO().Framerate);
     ImGui::End();
 
