@@ -83,7 +83,7 @@ vmath::mat4 perspectiveProjectionMatrix;
 GLfloat angleCube = 0.0f;
 
 //! Adjust according to your GPU
-const GLfloat animationSpeed = 0.75f;
+GLfloat animationSpeed = 0.75f;
 
 //? Light Related
 //? -----------------------------------------------------------------------
@@ -366,7 +366,6 @@ void ToggleFullScreen(void)
                 );
             }
 
-            ShowCursor(FALSE);
             gbFullScreen = TRUE;
         }
     }
@@ -384,7 +383,6 @@ void ToggleFullScreen(void)
             SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER | SWP_FRAMECHANGED | SWP_NOZORDER
         );
 
-        ShowCursor(TRUE);
         gbFullScreen = FALSE;
     }
 }
@@ -867,11 +865,14 @@ void renderImGui(void)
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::Begin("ImGui Demo");
-    ImGui::Text("Hello From Dear ImGui !!!");
-    ImGui::Checkbox("Enable Diffuse Lighting", &bLight);
-    ImGui::SliderFloat("Cube Rotation Speed", (float*)&animationSpeed, 0.01f, 1.0f);
-    ImGui::Text("FPS : %.1f", ImGui::GetIO().Framerate);
+    ImGui::SetWindowSize(ImVec2(450, 150));
+    ImGui::Begin("ImGui");
+    {
+        ImGui::Checkbox("Enable Diffuse Lighting", &bLight);
+        ImGui::SliderFloat("Cube Rotation Speed", (float*)&animationSpeed, 0.05f, 3.0f);
+        ImGui::Text("FPS : %.1f", ImGui::GetIO().Framerate);
+        ImGui::Text("GPU : %s", glGetString(GL_RENDERER));
+    }
     ImGui::End();
 
     ImGui::Render();
