@@ -106,8 +106,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     int initialize(void);
     void display(void);
     void update(void);
+    void ToggleFullScreen(void);
     void uninitialize(void);
-    void renderImGui(void);
 
     // Variable Declarations
     WNDCLASSEX wndclass;
@@ -218,6 +218,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
             fprintf(gpFile, "%s() => Initialization Completed Successfully\n", __func__);
         break;
     }
+
+    ToggleFullScreen();
 
     // Show and Update Window
     ShowWindow(hwnd, iCmdShow);
@@ -390,6 +392,7 @@ void ToggleFullScreen(void)
 int initialize(void)
 {
     // Function Declarations
+    void initializeImGui();
     void resize(int, int);
     void printGLInfo(void);
 
@@ -441,19 +444,7 @@ int initialize(void)
 
     printGLInfo();
 
-    //! Setup ImGui Context
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
-
-    //! Setup ImGui Style
-    ImGui::StyleColorsDark();
-
-    //! Setup Platform / Renderer Backends
-    ImGui_ImplWin32_InitForOpenGL(ghwnd);
-    ImGui_ImplOpenGL3_Init();
+    initializeImGui();
 
     //! Vertex Shader
     //! ----------------------------------------------------------------------------
@@ -779,6 +770,23 @@ void printGLInfo(void)
     fprintf(gpFile, "------------------------------------------------------\n"); 
 }
 
+void initializeImGui(void)
+{
+    //! Setup ImGui Context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+
+    //! Setup ImGui Style
+    ImGui::StyleColorsDark();
+
+    //! Setup Platform / Renderer Backends
+    ImGui_ImplWin32_InitForOpenGL(ghwnd);
+    ImGui_ImplOpenGL3_Init();
+}
+
 void resize(int width, int height)
 {
     // Code
@@ -892,14 +900,13 @@ void uninitialize(void)
 {
     // Function Declarations
     void ToggleFullScreen(void);
+    void uninitializeImGui(void);
 
     // Code
     if (gbFullScreen)
         ToggleFullScreen();
 
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext();
+    uninitializeImGui();
 
     if (vbo_cube_normal)
     {
@@ -977,4 +984,12 @@ void uninitialize(void)
         fclose(gpFile);
         gpFile = NULL;
     }
+}
+
+void uninitializeImGui(void)
+{
+    // Code
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
 }
