@@ -99,6 +99,8 @@ GLfloat lightPosition[] = { 0.0f, 0.0f, 2.0f, 1.0f };
 GLfloat materialDiffuse[] = { 0.0f, 0.7f, 0.7f, 1.0f };
 //? -----------------------------------------------------------------------
 
+ImFont* font;
+
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
 {
@@ -392,7 +394,7 @@ void ToggleFullScreen(void)
 int initialize(void)
 {
     // Function Declarations
-    void initializeImGui();
+    void initializeImGui(const char*, float);
     void resize(int, int);
     void printGLInfo(void);
 
@@ -444,7 +446,7 @@ int initialize(void)
 
     printGLInfo();
 
-    initializeImGui();
+    initializeImGui("ImGui\\Poppins-Regular.ttf", 20.0f);
 
     //! Vertex Shader
     //! ----------------------------------------------------------------------------
@@ -770,7 +772,7 @@ void printGLInfo(void)
     fprintf(gpFile, "------------------------------------------------------\n"); 
 }
 
-void initializeImGui(void)
+void initializeImGui(const char* fontFile, float fontSize)
 {
     //! Setup ImGui Context
     IMGUI_CHECKVERSION();
@@ -785,6 +787,8 @@ void initializeImGui(void)
     //! Setup Platform / Renderer Backends
     ImGui_ImplWin32_InitForOpenGL(ghwnd);
     ImGui_ImplOpenGL3_Init();
+
+    io.Fonts->AddFontFromFileTTF(fontFile, fontSize, NULL, io.Fonts->GetGlyphRangesDefault());
 }
 
 void resize(int width, int height)
@@ -873,14 +877,16 @@ void renderImGui(void)
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::SetWindowSize(ImVec2(450, 150));
+    ImGui::SetWindowSize(ImVec2(486, 150));
     ImGui::Begin("ImGui");
+    ImGui::PushFont(font);
     {
         ImGui::Checkbox("Enable Diffuse Lighting", &bLight);
         ImGui::SliderFloat("Cube Rotation Speed", (float*)&animationSpeed, 0.05f, 3.0f);
         ImGui::Text("FPS : %.1f", ImGui::GetIO().Framerate);
         ImGui::Text("GPU : %s", glGetString(GL_RENDERER));
     }
+    ImGui::PopFont();
     ImGui::End();
 
     ImGui::Render();
