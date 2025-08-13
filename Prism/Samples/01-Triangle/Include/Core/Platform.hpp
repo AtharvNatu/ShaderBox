@@ -1,14 +1,14 @@
 #ifndef PLATFORM_HPP
 #define PLATFORM_HPP
 
-enum class Platform
+enum Platform
 {
     Windows = 1,
     Linux = 2,
     macOS = 3
 };
 
-enum class API
+enum API
 {
     OpenGL = 1,
     Vulkan = 2,
@@ -18,7 +18,7 @@ enum class API
     WebGPU = 6
 };
 
-enum class SDK
+enum SDK
 {
     Win32 = 1,
     X11 = 2,

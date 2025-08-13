@@ -5,8 +5,9 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 
-enum INIT_ERRORS
+enum INIT_STATUS
 {
+    SUCCESS = 0,
     CPF_ERROR = -1,
     SPF_ERROR = -2,
     WGL_CC_ERROR = -3,

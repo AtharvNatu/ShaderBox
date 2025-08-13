@@ -17,12 +17,25 @@ class Win32Window
         HINSTANCE hInstance = NULL;
 
         LPCWSTR lpwstrTitle;
+        std::string strTitle;
+        int windowWidth;
+        int windowHeight;
     
     public:
-        Win32Window(const char* windowTitle, int windowWidth, int windowHeight);
+        Win32Window(std::string _windowTitle, int _windowWidth, int _windowHeight);
+        Win32Window();
         ~Win32Window();
 
-        BOOL initialize(int windowWidth, int windowHeight);
+        std::string getWindowTitle() const;
+        void setWindowTitle(std::string _windowTitle);
+
+        int getWindowWidth() const;
+        void setWindowWidth(int _windowWidth);
+
+        int getWindowHeight() const;
+        void setWindowHeight(int _windowHeight);
+
+        void initialize();
         void uninitialize();
 
         int render();

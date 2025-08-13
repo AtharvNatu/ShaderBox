@@ -8,19 +8,59 @@ BOOL bDone = FALSE;
 WINDOWPLACEMENT wpPrev;
 DWORD dwStyle;
 
-Win32Window::Win32Window(const char* windowTitle, int windowWidth, int windowHeight)
+Win32Window::Win32Window(std::string _windowTitle, int _windowWidth, int _windowHeight)
 {
     // Code
     this->hInstance = GetModuleHandle(NULL);
 
-    std::string sTitle(windowTitle);
-    std::wstring wTitle(sTitle.begin(), sTitle.end());
+    strTitle = _windowTitle;
+    std::wstring wTitle(strTitle.begin(), strTitle.end());
     lpwstrTitle = wTitle.c_str();
 
-    initialize(windowWidth, windowHeight);
+    windowHeight = _windowHeight;
+    windowWidth = _windowWidth;
+
+    initialize();
 }
 
-BOOL Win32Window::initialize(int windowWidth, int windowHeight)
+Win32Window::Win32Window()
+{
+    this->hInstance = GetModuleHandle(NULL);
+}
+
+std::string Win32Window::getWindowTitle() const
+{
+    return strTitle;
+}
+
+void Win32Window::setWindowTitle(std::string _windowTitle)
+{
+    strTitle = _windowTitle;
+    std::wstring wTitle(strTitle.begin(), strTitle.end());
+    lpwstrTitle = wTitle.c_str();
+}
+
+int Win32Window::getWindowWidth() const
+{
+    return windowWidth;
+}
+
+void Win32Window::setWindowWidth(int _windowWidth)
+{
+    windowWidth = _windowWidth;
+}
+
+int Win32Window::getWindowHeight() const
+{
+    return windowHeight;
+}
+
+void Win32Window::setWindowHeight(int _windowHeight)
+{
+    windowHeight = _windowHeight;
+}
+
+void Win32Window::initialize()
 {
     // Variable Declarations
     WNDCLASSEX wndclass;
@@ -75,8 +115,6 @@ BOOL Win32Window::initialize(int windowWidth, int windowHeight)
     // Bring the window to foreground and set focus
     SetForegroundWindow(this->hwnd);
     SetFocus(this->hwnd);
-
-    return TRUE;
 }
 
 int Win32Window::render()
