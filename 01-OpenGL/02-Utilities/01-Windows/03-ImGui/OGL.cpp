@@ -7,9 +7,9 @@
 #include "vmath.h"
 
 //! ImGui Related
-#include "ImGui/imgui.h"
-#include "ImGui/backends/imgui_impl_opengl3.h"
-#include "ImGui/backends/imgui_impl_win32.h"
+#include "imgui.h"
+#include "imgui_impl_opengl3.h"
+#include "imgui_impl_win32.h"
 
 //! OpenGL Header Files
 #include <GL/glew.h>

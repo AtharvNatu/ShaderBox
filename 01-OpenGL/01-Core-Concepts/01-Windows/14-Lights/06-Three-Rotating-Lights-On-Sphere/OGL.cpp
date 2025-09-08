@@ -1069,95 +1069,95 @@ void display(void)
         glUseProgram(shaderProgramObject_pv);
     else if (chosenShader == 'f')
         glUseProgram(shaderProgramObject_pf);
-    {
-        // Transformations
-        vmath::mat4 translationMatrix = vmath::mat4::identity();
-        vmath::mat4 modelMatrix = vmath::mat4::identity();
-        vmath::mat4 viewMatrix = vmath::mat4::identity();
 
-        translationMatrix = vmath::translate(0.0f, 0.0f, -6.0f);
+    // Transformations
+    vmath::mat4 translationMatrix = vmath::mat4::identity();
+    vmath::mat4 modelMatrix = vmath::mat4::identity();
+    vmath::mat4 viewMatrix = vmath::mat4::identity();
 
-        modelMatrix = translationMatrix;
+    translationMatrix = vmath::translate(0.0f, 0.0f, -6.0f);
 
-        // Light 0
-        lights[0].lightPosition[2] = radius * cos(vmath::radians(lightAngleZero));
-        lights[0].lightPosition[1] = radius * sin(vmath::radians(lightAngleZero));
+    modelMatrix = translationMatrix;
 
-        // Light 1
-        lights[1].lightPosition[0] = radius * cos(vmath::radians(lightAngleOne));
-        lights[1].lightPosition[2] = radius * sin(vmath::radians(lightAngleOne));
+    // Light 0
+    lights[0].lightPosition[2] = radius * cos(vmath::radians(lightAngleZero));
+    lights[0].lightPosition[1] = radius * sin(vmath::radians(lightAngleZero));
 
-        // Light 2
-        lights[2].lightPosition[1] = radius * sin(vmath::radians(lightAngleTwo));
-        lights[2].lightPosition[0] = radius * cos(vmath::radians(lightAngleTwo));
+    // Light 1
+    lights[1].lightPosition[0] = radius * cos(vmath::radians(lightAngleOne));
+    lights[1].lightPosition[2] = radius * sin(vmath::radians(lightAngleOne));
+
+    // Light 2
+    lights[2].lightPosition[1] = radius * sin(vmath::radians(lightAngleTwo));
+    lights[2].lightPosition[0] = radius * cos(vmath::radians(lightAngleTwo));
 
 
-        if (chosenShader == 'v')
-        {       
-            glUniformMatrix4fv(modelMatrixUniform_pv, 1, GL_FALSE, modelMatrix);
-            glUniformMatrix4fv(viewMatrixUniform_pv, 1, GL_FALSE, viewMatrix);
-            glUniformMatrix4fv(projectionMatrixUniform_pv, 1, GL_FALSE, perspectiveProjectionMatrix);
+    if (chosenShader == 'v')
+    {       
+        glUniformMatrix4fv(modelMatrixUniform_pv, 1, GL_FALSE, modelMatrix);
+        glUniformMatrix4fv(viewMatrixUniform_pv, 1, GL_FALSE, viewMatrix);
+        glUniformMatrix4fv(projectionMatrixUniform_pv, 1, GL_FALSE, perspectiveProjectionMatrix);
 
-            if (bLight)
-            {
-                glUniform1i(lightEnabledUniform_pv, 1);
-
-                for (int i = 0; i < 3; i++)
-                {
-                    glUniform3fv(laUniform_pv[i], 1, lights[i].lightAmbient);
-                    glUniform3fv(ldUniform_pv[i], 1, lights[i].lightDiffuse);
-                    glUniform3fv(lsUniform_pv[i], 1, lights[i].lightSpecular);
-                    glUniform4fv(lightPositionUniform_pv[i], 1, lights[i].lightPosition);
-                }
-                
-                glUniform3fv(kaUniform_pv, 1, materialAmbient);
-                glUniform3fv(kdUniform_pv, 1, materialDiffuse);
-                glUniform3fv(ksUniform_pv, 1, materialSpecular);
-                glUniform1f(materialShininessUniform_pv, materialShininess);
-            }
-            else
-                glUniform1i(lightEnabledUniform_pv, 0);
-        }
-        else if (chosenShader == 'f')
-        {       
-            glUniformMatrix4fv(modelMatrixUniform_pf, 1, GL_FALSE, modelMatrix);
-            glUniformMatrix4fv(viewMatrixUniform_pf, 1, GL_FALSE, viewMatrix);
-            glUniformMatrix4fv(projectionMatrixUniform_pf, 1, GL_FALSE, perspectiveProjectionMatrix);
-
-            if (bLight)
-            {
-                glUniform1i(lightEnabledUniform_pf, 1);
-
-                for (int i = 0; i < 3; i++)
-                {
-                    glUniform3fv(laUniform_pf[i], 1, lights[i].lightAmbient);
-                    glUniform3fv(ldUniform_pf[i], 1, lights[i].lightDiffuse);
-                    glUniform3fv(lsUniform_pf[i], 1, lights[i].lightSpecular);
-                    glUniform4fv(lightPositionUniform_pf[i], 1, lights[i].lightPosition);
-                }
-
-                glUniform3fv(kaUniform_pf, 1, materialAmbient);
-                glUniform3fv(kdUniform_pf, 1, materialDiffuse);
-                glUniform3fv(ksUniform_pf, 1, materialSpecular);
-                glUniform1f(materialShininessUniform_pf, materialShininess);
-            }
-            else
-                glUniform1i(lightEnabledUniform_pf, 0);
-        }
-
-        glBindVertexArray(vao_sphere);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_sphere_indices);
+        if (bLight)
         {
-            glDrawElements(
-                GL_TRIANGLES, 
-                gNumIndices, 
-                GL_UNSIGNED_INT,
-                0
-            );
+            glUniform1i(lightEnabledUniform_pv, 1);
+
+            for (int i = 0; i < 3; i++)
+            {
+                glUniform3fv(laUniform_pv[i], 1, lights[i].lightAmbient);
+                glUniform3fv(ldUniform_pv[i], 1, lights[i].lightDiffuse);
+                glUniform3fv(lsUniform_pv[i], 1, lights[i].lightSpecular);
+                glUniform4fv(lightPositionUniform_pv[i], 1, lights[i].lightPosition);
+            }
+            
+            glUniform3fv(kaUniform_pv, 1, materialAmbient);
+            glUniform3fv(kdUniform_pv, 1, materialDiffuse);
+            glUniform3fv(ksUniform_pv, 1, materialSpecular);
+            glUniform1f(materialShininessUniform_pv, materialShininess);
         }
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
+        else
+            glUniform1i(lightEnabledUniform_pv, 0);
     }
+    else if (chosenShader == 'f')
+    {       
+        glUniformMatrix4fv(modelMatrixUniform_pf, 1, GL_FALSE, modelMatrix);
+        glUniformMatrix4fv(viewMatrixUniform_pf, 1, GL_FALSE, viewMatrix);
+        glUniformMatrix4fv(projectionMatrixUniform_pf, 1, GL_FALSE, perspectiveProjectionMatrix);
+
+        if (bLight)
+        {
+            glUniform1i(lightEnabledUniform_pf, 1);
+
+            for (int i = 0; i < 3; i++)
+            {
+                glUniform3fv(laUniform_pf[i], 1, lights[i].lightAmbient);
+                glUniform3fv(ldUniform_pf[i], 1, lights[i].lightDiffuse);
+                glUniform3fv(lsUniform_pf[i], 1, lights[i].lightSpecular);
+                glUniform4fv(lightPositionUniform_pf[i], 1, lights[i].lightPosition);
+            }
+
+            glUniform3fv(kaUniform_pf, 1, materialAmbient);
+            glUniform3fv(kdUniform_pf, 1, materialDiffuse);
+            glUniform3fv(ksUniform_pf, 1, materialSpecular);
+            glUniform1f(materialShininessUniform_pf, materialShininess);
+        }
+        else
+            glUniform1i(lightEnabledUniform_pf, 0);
+    }
+
+    glBindVertexArray(vao_sphere);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_sphere_indices);
+    {
+        glDrawElements(
+            GL_TRIANGLES, 
+            gNumIndices, 
+            GL_UNSIGNED_INT,
+            0
+        );
+    }
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    
     glUseProgram(0);
 
     SwapBuffers(ghdc);

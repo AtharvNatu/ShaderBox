@@ -4,7 +4,10 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:\\glew\\include"
+                "C:\\glew\\include",
+                "C:\\VulkanSDK\\Vulkan\\Include",
+                "C:\\VulkanSDK\\Vulkan\\Include\\glslang",
+                "C:\\VulkanSDK\\Vulkan\\Include\\glm"
             ],
             "defines": [
                 "_DEBUG",
