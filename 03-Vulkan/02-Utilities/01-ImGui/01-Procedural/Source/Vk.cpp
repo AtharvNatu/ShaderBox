@@ -192,7 +192,6 @@ float fAngle = 0.0f;
 //! ImGui Related
 ImFont* font;
 ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-static float smoothedFPS = 0.0f;
 
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
@@ -5410,16 +5409,10 @@ void renderImGui(void)
     {
         ImGui::Text("Cube Rotation Speed");
         ImGui::SliderFloat("##", (float*)&fAnimationSpeed, 0.001f, 0.1f);
-        
-        ImGui::Spacing();
-        ImGui::Spacing();
-        ImGui::ColorEdit3("VkClearColor", (float*)&clear_color);
 
         ImGui::Spacing();
         ImGui::Spacing();
-        float currentFPS = ImGui::GetIO().Framerate;
-        smoothedFPS = 0.9f * smoothedFPS + 0.1f * currentFPS;
-        ImGui::TextColored(ImVec4(250.0f/255.0f, 206.0f/255.0f, 32.0f/255.0f, 1.0f), "FPS : %.1f", smoothedFPS);
+        ImGui::ColorEdit3("VkClearColor", (float*)&clear_color);
     }
     ImGui::PopFont();
     ImGui::End();
