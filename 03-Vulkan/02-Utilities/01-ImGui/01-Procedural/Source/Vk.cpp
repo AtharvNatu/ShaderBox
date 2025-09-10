@@ -1,8 +1,6 @@
 #include <Windows.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <vector>
-#include <string>
 
 //! Vulkan Related Header Files
 #define VK_USE_PLATFORM_WIN32_KHR
@@ -188,17 +186,19 @@ VkViewport vkViewport;
 VkRect2D vkRect2D_scissor;
 VkPipeline vkPipeline = VK_NULL_HANDLE;
 
-const float fAnimationSpeed = 0.02f;
+float fAnimationSpeed = 0.02f;
 float fAngle = 0.0f;
 
 //! ImGui Related
-ImGui_ImplVulkan_InitInfo imGui_vulkan_initInfo;
+ImFont* font;
+ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
 {
     // Function Declarations
     VkResult initialize(void);
+    void ToggleFullScreen(void);
     VkResult display(void);
     void update(void);
     void uninitialize(void);
@@ -248,7 +248,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     hwnd = CreateWindowEx(
         WS_EX_APPWINDOW,
         szAppName,
-        TEXT("Atharv Natu : Vulkan Cube with Texture"),
+        TEXT("Atharv Natu : Vulkan ImGui"),
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
         (screenX / 2) - (WIN_WIDTH / 2),
         (screenY / 2) - (WIN_HEIGHT / 2),
@@ -272,6 +272,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     }
     else
         fprintf(gpFile, "%s() => initialize() Succeeded\n", __func__);
+
+    ToggleFullScreen();
 
     // Show and Update Window
     ShowWindow(hwnd, iCmdShow);
@@ -305,6 +307,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
                     fprintf(gpFile, "%s() => Call To Display Failed !!!\n", __func__);
                     bDone = TRUE;
                 }
+
+
 
                 //* Update the scene
                 update();
@@ -429,7 +433,6 @@ void ToggleFullScreen(void)
                 );
             }
 
-            ShowCursor(FALSE);
             gbFullScreen = TRUE;
         }
     }
@@ -710,9 +713,9 @@ VkResult initialize(void)
 
     //! Initialize Clear Color Values (Analogous to glClearColor())
     memset((void*)&vkClearColorValue, 0, sizeof(VkClearColorValue));
-    vkClearColorValue.float32[0] = 0.0f;    //* R
-    vkClearColorValue.float32[1] = 0.0f;    //* G
-    vkClearColorValue.float32[2] = 0.0f;    //* B
+    vkClearColorValue.float32[0] = 0.5f;    //* R
+    vkClearColorValue.float32[1] = 0.5f;    //* G
+    vkClearColorValue.float32[2] = 0.5f;    //* B
     vkClearColorValue.float32[3] = 1.0f;    //* A
 
     //! Set Default Clear Depth and Stencil Values
@@ -720,18 +723,18 @@ VkResult initialize(void)
     vkClearDepthStencilValue.depth = 1.0f;
     vkClearDepthStencilValue.stencil = 0;
 
-    vkResult = buildCommandBuffers();
-    if (vkResult != VK_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => buildCommandBuffers() Failed\n", __func__);
-        vkResult = VK_ERROR_INITIALIZATION_FAILED;
-        return vkResult;
-    }
-    else
-        fprintf(gpFile, "%s() => buildCommandBuffers() Succeeded\n", __func__);
+    //! Initialize ImGui
+    initializeImGui("ImGui\\Poppins-Regular.ttf", 24.0f);
 
-    //! Initialize ImGUI
-    initializeImGui("ImGui\\Poppins-Regular.ttf", 20.0f);
+    // vkResult = buildCommandBuffers();
+    // if (vkResult != VK_SUCCESS)
+    // {
+    //     fprintf(gpFile, "%s() => buildCommandBuffers() Failed\n", __func__);
+    //     vkResult = VK_ERROR_INITIALIZATION_FAILED;
+    //     return vkResult;
+    // }
+    // else
+    //     fprintf(gpFile, "%s() => buildCommandBuffers() Succeeded\n", __func__);
 
     //! Initialization Completed
     bInitialized = TRUE;
@@ -954,6 +957,8 @@ VkResult display(void)
 {
     // Function Declarations
     VkResult resize(int, int);
+    void renderImGui(void);
+    VkResult recordCommandBufferForImage(uint32_t imageIndex);
     VkResult updateUniformBuffer(void);
 
     // Variable Declarations
@@ -992,6 +997,17 @@ VkResult display(void)
     if (vkResult != VK_SUCCESS)
     {
         fprintf(gpFile, "%s() => vkResetFences() Failed : %d\n", __func__, vkResult);
+        return vkResult;
+    }
+
+    //!!! ImGui Render
+    renderImGui();
+
+    //!!! RECORD COMMANDS FOR CURRENT IMAGE
+    vkResult = recordCommandBufferForImage(currentImageIndex);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => recordCommandBufferForImage() Failed : %d\n", __func__, vkResult);
         return vkResult;
     }
 
@@ -1058,12 +1074,14 @@ void update(void)
     fAngle += fAnimationSpeed;
     if (fAngle >= 360.0f)
         fAngle = 0.0f;
+
 }
 
 void uninitialize(void)
 {
     // Function Declarations
     void ToggleFullScreen(void);
+    void uninitializeImGui(void);
 
     // Code
     if (gbFullScreen)
@@ -1082,6 +1100,8 @@ void uninitialize(void)
         vkDeviceWaitIdle(vkDevice);
         fprintf(gpFile, "%s() => vkDeviceWaitIdle() Succeeded\n", __func__);
     }
+
+    uninitializeImGui();
 
     //* Step - 7 of Fences and Semaphores
     for (uint32_t i = 0; i < swapchainImageCount; i++)
@@ -1370,6 +1390,14 @@ void uninitialize(void)
         fclose(gpFile);
         gpFile = NULL;
     }
+}
+
+void uninitializeImGui(void)
+{
+    // Code
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
 }
 
 //! Definition of Vulkan Related Functions
@@ -4588,7 +4616,9 @@ VkResult createDescriptorPool(void)
     vkDescriptorPoolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     vkDescriptorPoolCreateInfo.poolSizeCount = _ARRAYSIZE(vkDescriptorPoolSize_array);
     vkDescriptorPoolCreateInfo.pPoolSizes = vkDescriptorPoolSize_array;
-    vkDescriptorPoolCreateInfo.maxSets = 2;
+
+    for (int i = 0; i < _ARRAYSIZE(vkDescriptorPoolSize_array); i++)
+        vkDescriptorPoolCreateInfo.maxSets += vkDescriptorPoolSize_array[i].descriptorCount;
 
     vkResult = vkCreateDescriptorPool(vkDevice, &vkDescriptorPoolCreateInfo, NULL, &vkDescriptorPool);
     if (vkResult != VK_SUCCESS)
@@ -5086,8 +5116,10 @@ VkResult createFences(void)
 
 VkResult buildCommandBuffers(void)
 {
-    // Code
+    // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
+
+    // Code
 
     //! Loop per swapchain image
     for (uint32_t i = 0; i < swapchainImageCount; i++)
@@ -5202,12 +5234,134 @@ VkResult buildCommandBuffers(void)
     return vkResult;
 }
 
+VkResult recordCommandBufferForImage(uint32_t imageIndex)
+{
+    // Variable Declarations
+    VkResult vkResult = VK_SUCCESS;
+
+    // Code
+    VkCommandBuffer commandBuffer = vkCommandBuffer_array[imageIndex];
+
+    //* Step - 1 => Reset Command Buffer
+    vkResult = vkResetCommandBuffer(commandBuffer, 0);   //! 0 specifies not to release the resources
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkResetCommandBuffer() Failed : %d\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+
+    //* Step - 2
+    VkCommandBufferBeginInfo vkCommandBufferBeginInfo;
+    memset((void*)&vkCommandBufferBeginInfo, 0, sizeof(VkCommandBufferBeginInfo));
+    vkCommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    vkCommandBufferBeginInfo.pNext = NULL;
+    vkCommandBufferBeginInfo.flags = 0;     //! 0 specifies that we will use only the primary command buffer, and not going to use this command buffer simultaneously between multiple threads
+
+    //* Step - 3
+    vkResult = vkBeginCommandBuffer(commandBuffer, &vkCommandBufferBeginInfo);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkBeginCommandBuffer() Failed : %d\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+
+    //* Step - 4 => Set Clear Value
+    VkClearValue vkClearValue_array[2];
+    memset((void*)vkClearValue_array, 0, sizeof(VkClearValue) * _ARRAYSIZE(vkClearValue_array));
+    vkClearValue_array[0].color = vkClearColorValue;
+    vkClearValue_array[1].depthStencil = vkClearDepthStencilValue;
+
+    //* Step - 5
+    VkRenderPassBeginInfo vkRenderPassBeginInfo;
+    memset((void*)&vkRenderPassBeginInfo, 0, sizeof(VkRenderPassBeginInfo));
+    vkRenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    vkRenderPassBeginInfo.pNext = NULL;
+    vkRenderPassBeginInfo.renderPass = vkRenderPass;
+    vkRenderPassBeginInfo.renderArea.offset.x = 0;
+    vkRenderPassBeginInfo.renderArea.offset.y = 0;
+    vkRenderPassBeginInfo.renderArea.extent.width = vkExtent2D_swapchain.width;
+    vkRenderPassBeginInfo.renderArea.extent.height = vkExtent2D_swapchain.height;
+    vkRenderPassBeginInfo.clearValueCount = _ARRAYSIZE(vkClearValue_array);
+    vkRenderPassBeginInfo.pClearValues = vkClearValue_array;
+    vkRenderPassBeginInfo.framebuffer = vkFramebuffer_array[imageIndex];
+    
+    //* Step - 6
+    vkCmdBeginRenderPass(commandBuffer, &vkRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    {
+        //! Bind with Pipeline
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline);
+
+        //! Bind the Descriptor Set to the Pipeline
+        vkCmdBindDescriptorSets(
+            commandBuffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            vkPipelineLayout,
+            0,
+            1,
+            &vkDescriptorSet,
+            0,
+            NULL
+        );
+
+        //! Bind with Vertex Position Buffer
+        VkDeviceSize vkDeviceSize_offset_position[1];
+        memset((void*)vkDeviceSize_offset_position, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_position));
+        vkCmdBindVertexBuffers(
+            commandBuffer, 
+            0, 
+            1, 
+            &vertexData_position.vkBuffer, 
+            vkDeviceSize_offset_position
+        );
+
+        //! Bind with Vertex Texture Buffer
+        VkDeviceSize vkDeviceSize_offset_texture[1];
+        memset((void*)vkDeviceSize_offset_texture, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_texture));
+        vkCmdBindVertexBuffers(
+            commandBuffer, 
+            1, 
+            1, 
+            &vertexData_texcoord.vkBuffer, 
+            vkDeviceSize_offset_texture
+        );
+
+        //! Vulkan Drawing Function
+        vkCmdDraw(commandBuffer, 36, 1, 0, 0);
+
+        ImDrawData* imDrawData = ImGui::GetDrawData();
+        if (imDrawData != nullptr && imDrawData->TotalVtxCount > 0)
+        {
+            vkClearColorValue.float32[0] = clear_color.x * clear_color.w;    //* R
+            vkClearColorValue.float32[1] = clear_color.y * clear_color.w;    //* G
+            vkClearColorValue.float32[2] = clear_color.z * clear_color.w;    //* B
+            vkClearColorValue.float32[3] = clear_color.w;                   //* A
+            ImGui_ImplVulkan_RenderDrawData(imDrawData, commandBuffer);
+        }
+            
+    }
+    //* Step - 7
+    vkCmdEndRenderPass(commandBuffer);
+
+    //* Step - 8
+    vkResult = vkEndCommandBuffer(commandBuffer);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkEndCommandBuffer() Failed : %d\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+
+    return vkResult;
+}
+
 void initializeImGui(const char* fontFile, float fontSize)
 {
     //! Setup ImGui Context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 
@@ -5242,6 +5396,30 @@ void initializeImGui(const char* fontFile, float fontSize)
 
     io.Fonts->AddFontFromFileTTF(fontFile, fontSize, NULL, io.Fonts->GetGlyphRangesDefault());
 }
+
+void renderImGui(void)
+{
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::SetWindowSize(ImVec2(410, 200));
+    ImGui::Begin("Vulkan : ImGui");
+    ImGui::PushFont(font);
+    {
+        ImGui::Text("Cube Rotation Speed");
+        ImGui::SliderFloat("##", (float*)&fAnimationSpeed, 0.001f, 0.1f);
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::ColorEdit3("VkClearColor", (float*)&clear_color);
+    }
+    ImGui::PopFont();
+    ImGui::End();
+
+    ImGui::Render();
+}
+
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
     VkDebugReportFlagsEXT vkDebugReportFlagsEXT,
