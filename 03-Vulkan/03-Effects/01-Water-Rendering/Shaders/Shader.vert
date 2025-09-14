@@ -2,24 +2,20 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(location = 0) in vec4 vPosition;
-layout(location = 1) in vec4 vColor;
+layout(location = 1) in vec2 vTexcoord;
 
-layout(location = 0) out vec4 out_color;
+layout(location = 0) out vec2 out_texcoord;
 
-layout(push_constant) uniform PushModel
-{
-    mat4 modelMatrix;
-} uModel;
-
-layout(binding = 0) uniform vpMatrix 
+layout(binding = 0) uniform mvpMatrix 
 { 
+    mat4 modelMatrix;
     mat4 viewMatrix;
     mat4 projectionMatrix;
-} uVP;
+} uMVP;
 
 void main(void)
 {
     // Code
-    gl_Position = uVP.projectionMatrix * uVP.viewMatrix * uModel.modelMatrix * vPosition;
-    out_color = vColor;
+    gl_Position = uMVP.projectionMatrix * uMVP.viewMatrix * uMVP.modelMatrix * vPosition;
+    out_texcoord = vTexcoord;
 }

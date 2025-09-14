@@ -64,11 +64,11 @@ initialize() => getPhysicalDevice() Succeeded
 
 VULKAN INFORMATION
 ------------------------------------------------------------------------------------------------
-Vulkan API Version : 1.4.303
-Device Name : NVIDIA GeForce RTX 4050 Laptop GPU
+Vulkan API Version : 1.4.312
+Device Name : NVIDIA GeForce RTX 3060
 Device Type : Discrete GPU (dGPU)
 Vendor ID : 0x10de
-Device ID : 0x28e1
+Device ID : 0x2503
 ------------------------------------------------------------------------------------------------
 
 printVkInfo() => free() Succeeded For vkPhysicalDevice_array
@@ -87,6 +87,7 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_copy_command
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_create_renderpass2
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_dedicated_allocation
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_deferred_host_operations
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_depth_clamp_zero_one
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_depth_stencil_resolve
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_descriptor_update_template
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_device_group
@@ -117,6 +118,7 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance4
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance5
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance6
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance7
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance8
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_map_memory2
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_multiview
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_pipeline_binary
@@ -134,6 +136,7 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_sampler_mirr
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_sampler_ycbcr_conversion
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_separate_depth_stencil_layouts
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_atomic_int64
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_bfloat16
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_clock
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_draw_parameters
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_expect_assume
@@ -162,7 +165,7 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_decode
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_decode_h264
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_decode_h265
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_decode_queue
-fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_encode_av1
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_decode_vp9
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_encode_h264
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_encode_h265
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_encode_quantization_map
@@ -283,6 +286,7 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_diagno
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_generated_commands
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_generated_commands_compute
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_disk_cache_utils
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_compute_queue
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_memory
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_memory_win32
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_fill_rectangle
@@ -324,7 +328,7 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_GOOGLE_hlsl_func
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_GOOGLE_user_type
 
 ------------------------------------------------------------------------------------------------
-fillDeviceExtensionNames() => Vulkan Device Extension Count : 247
+fillDeviceExtensionNames() => Vulkan Device Extension Count : 251
 ------------------------------------------------------------------------------------------------
 
 fillDeviceExtensionNames() => VK_KHR_SWAPCHAIN_EXTENSION_NAME Extension Found
@@ -354,83 +358,79 @@ createImagesAndImageViews() => Call 1 : vkGetSwapchainImagesKHR() => Swapchain I
 createImagesAndImageViews() => Call 2 : vkGetSwapchainImagesKHR() Succeeded
 createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 0
 createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 1
+createImagesAndImageViews() => getSupportedDepthFormat() Succeded
+createImagesAndImageViews() => vkCreateImage() Succeeded
+createImagesAndImageViews() => vkAllocateMemory() Succeeded For Depth
+createImagesAndImageViews() => vkBindImageMemory() Succeeded For Depth
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Depth
 initialize() => createImagesAndImageViews() Succeeded
 createCommandPool() => vkCreateCommandPool() Succeeded
 initialize() => createCommandPool() Succeeded
 createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 0
 createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 1
 initialize() => createCommandBuffers() Succeeded
-__createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Position Buffer For Building Index : 0
-__createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Position Buffer For Building Index : 0
-__createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Position Buffer For Building Index : 0
-__createVertexBuffer() => vkMapMemory() Succeeded For Vertex Position Buffer For Building Index : 0
-__createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Color Buffer For Building Index : 0
-__createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Color Buffer For Building Index : 0
-__createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Color Buffer For Building Index : 0
-__createVertexBuffer() => vkMapMemory() Succeeded For Vertex Color Buffer For Building Index : 0
-__createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Position Buffer For Building Index : 1
-__createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Position Buffer For Building Index : 1
-__createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Position Buffer For Building Index : 1
-__createVertexBuffer() => vkMapMemory() Succeeded For Vertex Position Buffer For Building Index : 1
-__createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Color Buffer For Building Index : 1
-__createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Color Buffer For Building Index : 1
-__createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Color Buffer For Building Index : 1
-__createVertexBuffer() => vkMapMemory() Succeeded For Vertex Color Buffer For Building Index : 1
-__createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Position Buffer For Building Index : 2
-__createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Position Buffer For Building Index : 2
-__createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Position Buffer For Building Index : 2
-__createVertexBuffer() => vkMapMemory() Succeeded For Vertex Position Buffer For Building Index : 2
-__createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Color Buffer For Building Index : 2
-__createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Color Buffer For Building Index : 2
-__createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Color Buffer For Building Index : 2
-__createVertexBuffer() => vkMapMemory() Succeeded For Vertex Color Buffer For Building Index : 2
-__createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Position Buffer For Building Index : 3
-__createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Position Buffer For Building Index : 3
-__createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Position Buffer For Building Index : 3
-__createVertexBuffer() => vkMapMemory() Succeeded For Vertex Position Buffer For Building Index : 3
-__createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Color Buffer For Building Index : 3
-__createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Color Buffer For Building Index : 3
-__createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Color Buffer For Building Index : 3
-__createVertexBuffer() => vkMapMemory() Succeeded For Vertex Color Buffer For Building Index : 3
-__createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Position Buffer For Building Index : 4
-__createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Position Buffer For Building Index : 4
-__createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Position Buffer For Building Index : 4
-__createVertexBuffer() => vkMapMemory() Succeeded For Vertex Position Buffer For Building Index : 4
-__createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Color Buffer For Building Index : 4
-__createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Color Buffer For Building Index : 4
-__createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Color Buffer For Building Index : 4
-__createVertexBuffer() => vkMapMemory() Succeeded For Vertex Color Buffer For Building Index : 4
-__createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Position Buffer For Building Index : 5
-__createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Position Buffer For Building Index : 5
-__createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Position Buffer For Building Index : 5
-__createVertexBuffer() => vkMapMemory() Succeeded For Vertex Position Buffer For Building Index : 5
-__createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Color Buffer For Building Index : 5
-__createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Color Buffer For Building Index : 5
-__createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Color Buffer For Building Index : 5
-__createVertexBuffer() => vkMapMemory() Succeeded For Vertex Color Buffer For Building Index : 5
-__createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Position Buffer For Building Index : 6
-__createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Position Buffer For Building Index : 6
-__createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Position Buffer For Building Index : 6
-__createVertexBuffer() => vkMapMemory() Succeeded For Vertex Position Buffer For Building Index : 6
-__createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Color Buffer For Building Index : 6
-__createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Color Buffer For Building Index : 6
-__createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Color Buffer For Building Index : 6
-__createVertexBuffer() => vkMapMemory() Succeeded For Vertex Color Buffer For Building Index : 6
+createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Position Buffer
+createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Position Buffer
+createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Position Buffer
+createVertexBuffer() => vkMapMemory() Succeeded For Vertex Position Buffer
+createVertexBuffer() => vkCreateBuffer() Succeeded For Vertex Texture Buffer
+createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Texture Buffer
+createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Texture Buffer
+createVertexBuffer() => vkMapMemory() Succeeded For Vertex Texture Buffer
 initialize() => createVertexBuffer() Succeeded
+
+Assets/Images/Cube.png Properties
+-------------------------------------------
+Image Width = 246
+Image Height = 244
+Image Size = 240096
+-------------------------------------------
+
+createTexture() => vkCreateBuffer() Succeeded For Staging Buffer : Assets/Images/Cube.png
+createTexture() => vkAllocateMemory() Succeeded For Staging Buffer : Assets/Images/Cube.png
+createTexture() => vkBindBufferMemory() Succeeded For Staging Buffer : Assets/Images/Cube.png
+createTexture() => vkMapMemory() Succeeded For Staging Buffer : Assets/Images/Cube.png
+createTexture() => stbi_image_free() Called For Texture : Assets/Images/Cube.png
+createTexture() => vkCreateImage() Succeeded For Texture : Assets/Images/Cube.png
+createTexture() => vkAllocateMemory() Succeeded For Texture : Assets/Images/Cube.png
+createTexture() => vkBindImageMemory() Succeeded For Texture : Assets/Images/Cube.png
+createTexture() => vkAllocateCommandBuffers() Succeeded For vkCommandBuffer_transition_image_layout
+createTexture() => vkBeginCommandBuffer() Succeeded For vkCommandBuffer_transition_image_layout
+createTexture() => vkEndCommandBuffer() Succeeded For vkCommandBuffer_transition_image_layout
+createTexture() => vkQueueSubmit() Succeeded For vkSubmitInfo_transition_image_layout
+createTexture() => vkQueueWaitIdle() Succeeded For vkCommandBuffer_transition_image_layout
+createTexture() => vkFreeCommandBuffers() Succeeded For vkCommandBuffer_transition_image_layout
+createTexture() => vkAllocateCommandBuffers() Succeeded For vkCommandBuffer_buffer_to_image_copy
+createTexture() => vkBeginCommandBuffer() Succeeded For vkCommandBuffer_buffer_to_image_copy
+createTexture() => vkEndCommandBuffer() Succeeded For vkCommandBuffer_buffer_to_image_copy
+createTexture() => vkQueueSubmit() Succeeded For vkSubmitInfo_buffer_to_copy
+createTexture() => vkQueueWaitIdle() Succeeded For vkCommandBuffer_buffer_to_image_copy
+createTexture() => vkFreeCommandBuffers() Succeeded For vkCommandBuffer_buffer_to_image_copy
+createTexture() => vkAllocateCommandBuffers() Succeeded For vkCommandBuffer_transition_image_layout
+createTexture() => vkBeginCommandBuffer() Succeeded For vkCommandBuffer_transition_image_layout
+createTexture() => vkEndCommandBuffer() Succeeded For vkCommandBuffer_transition_image_layout
+createTexture() => vkQueueSubmit() Succeeded For vkSubmitInfo_transition_image_layout
+createTexture() => vkQueueWaitIdle() Succeeded For vkCommandBuffer_transition_image_layout
+createTexture() => vkFreeCommandBuffers() Succeeded For vkCommandBuffer_transition_image_layout
+createTexture() => vkDestroyBuffer() Succeeded For vkBuffer_stagingBuffer
+createTexture() => vkFreeMemory() Succeeded For vkDeviceMemory_stagingBuffer
+createTexture() => vkCreateImageView() Succeeded For Texture : Assets/Images/Cube.png
+createTexture() => vkCreateSampler() Succeeded For Texture : Assets/Images/Cube.png
+initialize() => createTexture() Succeeded For Cube.png
 createUniformBuffer() => vkCreateBuffer() Succeeded For Uniform Data
 createUniformBuffer() => vkAllocateMemory() Succeeded For Uniform Data
 createUniformBuffer() => vkBindBufferMemory() Succeeded For Uniform Data
 createUniformBuffer() => updateUniformBuffer() Succeeded
 initialize() => createUniformBuffer() Succeeded
-createShaders() => Succeeded In Opening SPIR-V Shader File : Shader.vert.spv
-createShaders() => Successfully Read Shader From SPIR-V Shader File : Shader.vert.spv
-createShaders() => Closed SPIR-V File : Shader.vert.spv
+createShaders() => Succeeded In Opening SPIR-V Shader File : Bin/Shader.vert.spv
+createShaders() => Successfully Read Shader From SPIR-V Shader File : Bin/Shader.vert.spv
+createShaders() => Closed SPIR-V File : Bin/Shader.vert.spv
 createShaders() => vkCreateShaderModule() Succeeded For Vertex Shader
 createShaders() => free() Succeeded For shaderData
 createShaders() => Vertex Shader Module Successfully Created
-createShaders() => Succeeded In Opening SPIR-V Shader File : Shader.frag.spv
-createShaders() => Successfully Read Shader From SPIR-V Shader File : Shader.frag.spv
-createShaders() => Closed SPIR-V File : Shader.frag.spv
+createShaders() => Succeeded In Opening SPIR-V Shader File : Bin/Shader.frag.spv
+createShaders() => Successfully Read Shader From SPIR-V Shader File : Bin/Shader.frag.spv
+createShaders() => Closed SPIR-V File : Bin/Shader.frag.spv
 createShaders() => vkCreateShaderModule() Succeeded For Fragment Shader
 createShaders() => free() Succeeded For shaderData
 createShaders() => Fragment Shader Module Successfully Created
@@ -454,13 +454,6 @@ initialize() => createSemaphores() Succeeded
 createFences() => vkCreateFence() Succeeded For Index : 0
 createFences() => vkCreateFence() Succeeded For Index : 1
 initialize() => createFences() Succeeded
-buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 0
-buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 0
-buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
-buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
-buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
-buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
-initialize() => buildCommandBuffers() Succeeded
 initialize() => Initialization Completed Successfully
 WinMain() => initialize() Succeeded
 getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 1 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
@@ -468,7 +461,7 @@ getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 2 : vkGetPhysicalDeviceSur
 getPhysicalDeviceSurfaceFormatAndColorSpace() => free() Succeeded For vkSurfaceFormatKHR_array
 createSwapchain() => getPhysicalDeviceSurfaceFormatAndColorSpace() Succeeded
 createSwapchain() => vkGetPhysicalDeviceSurfaceCapabilitiesKHR() Succeeded
-createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 1920 x 1080
+createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 2048 x 1152
 getPhysicalDevicePresentMode() => Call 1 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
 getPhysicalDevicePresentMode() => Call 2 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
 
@@ -483,6 +476,11 @@ createImagesAndImageViews() => Call 1 : vkGetSwapchainImagesKHR() => Swapchain I
 createImagesAndImageViews() => Call 2 : vkGetSwapchainImagesKHR() Succeeded
 createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 0
 createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 1
+createImagesAndImageViews() => getSupportedDepthFormat() Succeded
+createImagesAndImageViews() => vkCreateImage() Succeeded
+createImagesAndImageViews() => vkAllocateMemory() Succeeded For Depth
+createImagesAndImageViews() => vkBindImageMemory() Succeeded For Depth
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Depth
 createRenderPass() => vkCreateRenderPass() Succeeded
 createPipelineLayout() => vkCreatePipelineLayout() Succeeded
 createPipeline() => vkCreatePipelineCache() Succeeded
@@ -496,72 +494,14 @@ buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
 buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
 buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
 buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
-getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 1 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
-getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 2 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
-getPhysicalDeviceSurfaceFormatAndColorSpace() => free() Succeeded For vkSurfaceFormatKHR_array
-createSwapchain() => getPhysicalDeviceSurfaceFormatAndColorSpace() Succeeded
-createSwapchain() => vkGetPhysicalDeviceSurfaceCapabilitiesKHR() Succeeded
-createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 784 x 561
-getPhysicalDevicePresentMode() => Call 1 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
-getPhysicalDevicePresentMode() => Call 2 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
-
-------------------------------------------------------------------------------------------------
-Vulkan Physical Device Present Mode : VK_PRESENT_MODE_MAILBOX_KHR
-------------------------------------------------------------------------------------------------
-
-getPhysicalDevicePresentMode() => free() Succeeded For vkPresentModeKHR_array
-createSwapchain() => getPhysicalDevicePresentMode() Succeeded
-createSwapchain() => vkCreateSwapchainKHR() Succeeded
-createImagesAndImageViews() => Call 1 : vkGetSwapchainImagesKHR() => Swapchain Image Count = 2
-createImagesAndImageViews() => Call 2 : vkGetSwapchainImagesKHR() Succeeded
-createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 0
-createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 1
-createRenderPass() => vkCreateRenderPass() Succeeded
-createPipelineLayout() => vkCreatePipelineLayout() Succeeded
-createPipeline() => vkCreatePipelineCache() Succeeded
-createPipeline() => vkCreateGraphicsPipelines() Succeeded
-createPipeline() => vkDestroyPipelineCache() Succeeded
-createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 0
-createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 1
-buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 0
-buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 0
-buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
-buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
-buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
-buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
-getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 1 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
-getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 2 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
-getPhysicalDeviceSurfaceFormatAndColorSpace() => free() Succeeded For vkSurfaceFormatKHR_array
-createSwapchain() => getPhysicalDeviceSurfaceFormatAndColorSpace() Succeeded
-createSwapchain() => vkGetPhysicalDeviceSurfaceCapabilitiesKHR() Succeeded
-createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 1920 x 1009
-getPhysicalDevicePresentMode() => Call 1 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
-getPhysicalDevicePresentMode() => Call 2 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
-
-------------------------------------------------------------------------------------------------
-Vulkan Physical Device Present Mode : VK_PRESENT_MODE_MAILBOX_KHR
-------------------------------------------------------------------------------------------------
-
-getPhysicalDevicePresentMode() => free() Succeeded For vkPresentModeKHR_array
-createSwapchain() => getPhysicalDevicePresentMode() Succeeded
-createSwapchain() => vkCreateSwapchainKHR() Succeeded
-createImagesAndImageViews() => Call 1 : vkGetSwapchainImagesKHR() => Swapchain Image Count = 2
-createImagesAndImageViews() => Call 2 : vkGetSwapchainImagesKHR() Succeeded
-createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 0
-createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 1
-createRenderPass() => vkCreateRenderPass() Succeeded
-createPipelineLayout() => vkCreatePipelineLayout() Succeeded
-createPipeline() => vkCreatePipelineCache() Succeeded
-createPipeline() => vkCreateGraphicsPipelines() Succeeded
-createPipeline() => vkDestroyPipelineCache() Succeeded
-createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 0
-createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 1
-buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 0
-buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 0
-buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
-buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
-buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
-buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-VkMappedMemoryRange-size-01390 ] Object 0: handle = 0x67022e000000004b, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0xdd4e6d8b | vkFlushMappedMemoryRanges(): pMemoryRanges[0].size (1064) is not a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize (64) and offset + size (0 + 1064 = 1064) not equal to the memory size (1072).
+The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must either be a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize, or offset plus size must equal the size of memory (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-VkMappedMemoryRange-size-01390)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-VkMappedMemoryRange-size-01390 ] Object 0: handle = 0x73a850000000004d, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0xdd4e6d8b | vkFlushMappedMemoryRanges(): pMemoryRanges[0].size (936) is not a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize (64) and offset + size (0 + 936 = 936) not equal to the memory size (944).
+The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must either be a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize, or offset plus size must equal the size of memory (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-VkMappedMemoryRange-size-01390)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-VkMappedMemoryRange-size-01390 ] Object 0: handle = 0x7cd292000000004f, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0xdd4e6d8b | vkFlushMappedMemoryRanges(): pMemoryRanges[0].size (1064) is not a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize (64) and offset + size (0 + 1064 = 1064) not equal to the memory size (1072).
+The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must either be a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize, or offset plus size must equal the size of memory (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-VkMappedMemoryRange-size-01390)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-VkMappedMemoryRange-size-01390 ] Object 0: handle = 0x7ddd740000000051, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0xdd4e6d8b | vkFlushMappedMemoryRanges(): pMemoryRanges[0].size (1064) is not a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize (64) and offset + size (0 + 1064 = 1064) not equal to the memory size (1072).
+The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must either be a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize, or offset plus size must equal the size of memory (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-VkMappedMemoryRange-size-01390)
 uninitialize() => vkDeviceWaitIdle() Succeeded
 uninitialize() => vkDestroyFence() Succeeded For Index : 0
 uninitialize() => vkDestroyFence() Succeeded For Index : 1
@@ -580,38 +520,21 @@ uninitialize() => vkDestroyShaderModule() Succeeded For Fragment Shader
 uninitialize() => vkDestroyShaderModule() Succeeded For Vertex Shader
 uninitialize() => vkFreeMemory() Succeeded For uniformData.vkDeviceMemory
 uninitialize() => vkDestroyBuffer() Succedded For uniformData.vkBuffer
-uninitialize() => vkFreeMemory() Succeeded For Color Buffer, Building Index : 6
-uninitialize() => vkDestroyBuffer() Succeeded For Color Buffer, Building Index : 6
-uninitialize() => vkFreeMemory() Succeeded For Position Buffer, Building Index : 6
-uninitialize() => vkDestroyBuffer() Succeeded For Position Buffer, Building Index : 6
-uninitialize() => vkFreeMemory() Succeeded For Color Buffer, Building Index : 5
-uninitialize() => vkDestroyBuffer() Succeeded For Color Buffer, Building Index : 5
-uninitialize() => vkFreeMemory() Succeeded For Position Buffer, Building Index : 5
-uninitialize() => vkDestroyBuffer() Succeeded For Position Buffer, Building Index : 5
-uninitialize() => vkFreeMemory() Succeeded For Color Buffer, Building Index : 4
-uninitialize() => vkDestroyBuffer() Succeeded For Color Buffer, Building Index : 4
-uninitialize() => vkFreeMemory() Succeeded For Position Buffer, Building Index : 4
-uninitialize() => vkDestroyBuffer() Succeeded For Position Buffer, Building Index : 4
-uninitialize() => vkFreeMemory() Succeeded For Color Buffer, Building Index : 3
-uninitialize() => vkDestroyBuffer() Succeeded For Color Buffer, Building Index : 3
-uninitialize() => vkFreeMemory() Succeeded For Position Buffer, Building Index : 3
-uninitialize() => vkDestroyBuffer() Succeeded For Position Buffer, Building Index : 3
-uninitialize() => vkFreeMemory() Succeeded For Color Buffer, Building Index : 2
-uninitialize() => vkDestroyBuffer() Succeeded For Color Buffer, Building Index : 2
-uninitialize() => vkFreeMemory() Succeeded For Position Buffer, Building Index : 2
-uninitialize() => vkDestroyBuffer() Succeeded For Position Buffer, Building Index : 2
-uninitialize() => vkFreeMemory() Succeeded For Color Buffer, Building Index : 1
-uninitialize() => vkDestroyBuffer() Succeeded For Color Buffer, Building Index : 1
-uninitialize() => vkFreeMemory() Succeeded For Position Buffer, Building Index : 1
-uninitialize() => vkDestroyBuffer() Succeeded For Position Buffer, Building Index : 1
-uninitialize() => vkFreeMemory() Succeeded For Color Buffer, Building Index : 0
-uninitialize() => vkDestroyBuffer() Succeeded For Color Buffer, Building Index : 0
-uninitialize() => vkFreeMemory() Succeeded For Position Buffer, Building Index : 0
-uninitialize() => vkDestroyBuffer() Succeeded For Position Buffer, Building Index : 0
+uninitialize() => vkDestroySampler() Succeeded For vkSampler_texture
+uninitialize() => vkDestroyImageView() Succeeded For vkImage_texture
+uninitialize() => vkFreeMemory() Succeeded For vkDeviceMemory_texture
+uninitialize() => vkDestroyImage() Succeeded For vkImage_texture
+uninitialize() => vkFreeMemory() Succeeded For vertexData_texcoord.vkDeviceMemory
+uninitialize() => vkDestroyBuffer() Succeeded For vertexData_texcoord.vkBuffer
+uninitialize() => vkFreeMemory() Succeeded For vertexData_position.vkDeviceMemory
+uninitialize() => vkDestroyBuffer() Succeeded For vertexData_position.vkBuffer
 uninitialize() => vkFreeCommandBuffers() Succeeded For Index : 0
 uninitialize() => vkFreeCommandBuffers() Succeeded For Index : 1
 uninitialize() => free() Succeeded For vkCommandBuffer_array
 uninitialize() => vkDestroyCommandPool() Succeeded
+uninitialize() => vkDestroyImageView() Succeeded For vkImageView_depth
+uninitialize() => vkDestroyImage() Succeeded For vkImage_depth
+uninitialize() => vkFreeMemory() Succeeded For vkDeviceMemory_depth
 uninitialize() => vkDestroyImageView() Succeeded
 uninitialize() => free() Succeeded For swapchainImageView_array
 uninitialize() => free() Succeeded For swapchainImage_array
