@@ -42,7 +42,7 @@ cl.exe  /c ^
         /I %IMGUI_PATH% ^
         /I %IMGUI_BACKENDS% ^
         /I %INCLUDE_PATH% ^
-        %SOURCE_PATH%\Vk.cpp ^
+        %SOURCE_PATH%\*.cpp ^
         %IMGUI_PATH%\imgui.cpp ^
         %IMGUI_PATH%\imgui_draw.cpp ^
         %IMGUI_PATH%\imgui_widgets.cpp ^
@@ -55,65 +55,66 @@ if errorlevel 1 (
         echo Compilation Failed !!!
         exit /b 1
 )
-
-@echo:
-echo ----------------------------------------------------------------------------------------------------------------
-echo Compiling Resource Files ...
-echo ----------------------------------------------------------------------------------------------------------------
-rc.exe ^
-        /I %INCLUDE_PATH% ^
-        /I %IMAGES_PATH%^
-        /fo %BIN_DIR%\Vk.res ^
-        Assets\Vk.rc
-
-if errorlevel 1 (
-        @echo:
-        echo Resource Compilation Failed !!!
-        exit /b 1
 )
 
-@echo:
-if %SPV% == 1 (
-    echo ----------------------------------------------------------------------------------------------------------------
-    echo Compiling Shader Files To SPIR-V Binaries ...
-    echo ----------------------------------------------------------------------------------------------------------------
-    cd Shaders
-    %VULKAN_BIN_PATH%\glslangValidator.exe -V -H -o Shader.vert.spv Shader.vert
-    %VULKAN_BIN_PATH%\glslangValidator.exe -V -H -o Shader.frag.spv Shader.frag
-    move Shader.vert.spv ../Bin
-    move Shader.frag.spv ../Bin
-    cd ..
-    if errorlevel 1 (
-        @echo:
-        echo Shader Compilation Failed !!!
-        exit /b 1
-    )
-)
+@REM @echo:
+@REM echo ----------------------------------------------------------------------------------------------------------------
+@REM echo Compiling Resource Files ...
+@REM echo ----------------------------------------------------------------------------------------------------------------
+@REM rc.exe ^
+@REM         /I %INCLUDE_PATH% ^
+@REM         /I %IMAGES_PATH%^
+@REM         /fo %BIN_DIR%\Vk.res ^
+@REM         Assets\Vk.rc
 
-@echo:
-echo ----------------------------------------------------------------------------------------------------------------
-echo Linking Libraries and Resources...
-echo Creating Executable...
-echo ----------------------------------------------------------------------------------------------------------------
-link.exe ^
-        /OUT:%BIN_DIR%\Vk.exe ^
-        %BIN_DIR%\*.obj ^
-        %BIN_DIR%\Vk.res ^
-        /LIBPATH:%VULKAN_LIB_PATH% user32.lib gdi32.lib /SUBSYSTEM:WINDOWS
+@REM if errorlevel 1 (
+@REM         @echo:
+@REM         echo Resource Compilation Failed !!!
+@REM         exit /b 1
+@REM )
 
-if errorlevel 1 (
-        @echo:
-        echo Linking Failed !!!
-        exit /b 1
-)
+@REM @echo:
+@REM if %SPV% == 1 (
+@REM     echo ----------------------------------------------------------------------------------------------------------------
+@REM     echo Compiling Shader Files To SPIR-V Binaries ...
+@REM     echo ----------------------------------------------------------------------------------------------------------------
+@REM     cd Shaders
+@REM     %VULKAN_BIN_PATH%\glslangValidator.exe -V -H -o Shader.vert.spv Shader.vert
+@REM     %VULKAN_BIN_PATH%\glslangValidator.exe -V -H -o Shader.frag.spv Shader.frag
+@REM     move Shader.vert.spv ../Bin
+@REM     move Shader.frag.spv ../Bin
+@REM     cd ..
+@REM     if errorlevel 1 (
+@REM         @echo:
+@REM         echo Shader Compilation Failed !!!
+@REM         exit /b 1
+@REM     )
+@REM )
 
-move /Y %BIN_DIR%\Vk.exe . >nul 2>&1
+@REM @echo:
+@REM echo ----------------------------------------------------------------------------------------------------------------
+@REM echo Linking Libraries and Resources...
+@REM echo Creating Executable...
+@REM echo ----------------------------------------------------------------------------------------------------------------
+@REM link.exe ^
+@REM         /OUT:%BIN_DIR%\Vk.exe ^
+@REM         %BIN_DIR%\*.obj ^
+@REM         %BIN_DIR%\Vk.res ^
+@REM         /LIBPATH:%VULKAN_LIB_PATH% user32.lib gdi32.lib libfftw3f-3.lib /SUBSYSTEM:WINDOWS
 
-@echo:
-echo ----------------------------------------------------------------------------------------------------------------
-echo Launching Application ...
-echo ----------------------------------------------------------------------------------------------------------------
-Vk.exe
+@REM if errorlevel 1 (
+@REM         @echo:
+@REM         echo Linking Failed !!!
+@REM         exit /b 1
+@REM )
 
-)
+@REM move /Y %BIN_DIR%\Vk.exe . >nul 2>&1
+
+@REM @echo:
+@REM echo ----------------------------------------------------------------------------------------------------------------
+@REM echo Launching Application ...
+@REM echo ----------------------------------------------------------------------------------------------------------------
+@REM Vk.exe
+
+@REM )
 
