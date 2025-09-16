@@ -22,6 +22,7 @@
 #include "imgui_impl_win32.h"
 
 #include "Vk.h"
+#include "WSTessendorf.hpp"
 
 //! Vulkan Related Libraries
 #pragma comment(lib, "vulkan-1.lib")
@@ -194,7 +195,12 @@ ImFont* font;
 ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
 //! Water Related
+const uint32_t minTileSize = 16;
+const uint32_t maxTileSize = 1024;
 
+WSTessendorf* tesserndorfModel = nullptr;
+VertexData vertexData_mesh;
+VertexData vertexData_index;
 
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
@@ -486,6 +492,7 @@ VkResult initialize(void)
     VkResult createFences(void);
     VkResult buildCommandBuffers(void);
     void initializeImGui(const char* fontFile, float fontSize);
+    void createTessendorfModel(void);
 
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -728,6 +735,9 @@ VkResult initialize(void)
 
     //! Initialize ImGui
     initializeImGui("ImGui\\Poppins-Regular.ttf", 24.0f);
+
+    //! Create Tess Model
+    createTessendorfModel();
 
     // vkResult = buildCommandBuffers();
     // if (vkResult != VK_SUCCESS)
@@ -1085,6 +1095,7 @@ void uninitialize(void)
     // Function Declarations
     void ToggleFullScreen(void);
     void uninitializeImGui(void);
+    void deleteTessendorfModel(void);
 
     // Code
     if (gbFullScreen)
@@ -1103,6 +1114,8 @@ void uninitialize(void)
         vkDeviceWaitIdle(vkDevice);
         fprintf(gpFile, "%s() => vkDeviceWaitIdle() Succeeded\n", __func__);
     }
+
+    deleteTessendorfModel();
 
     uninitializeImGui();
 
@@ -1243,6 +1256,35 @@ void uninitialize(void)
         vkDestroyImage(vkDevice, vkImage_texture, NULL);
         vkImage_texture = NULL;
         fprintf(gpFile, "%s() => vkDestroyImage() Succeeded For vkImage_texture\n", __func__);
+    }
+
+    //! Water Surface Mesh
+    if (vertexData_index.vkDeviceMemory)
+    {
+        vkFreeMemory(vkDevice, vertexData_index.vkDeviceMemory, NULL);
+        vertexData_index.vkDeviceMemory = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vertexData_index.vkDeviceMemory\n", __func__);
+    }
+
+    if (vertexData_index.vkBuffer)
+    {
+        vkDestroyBuffer(vkDevice, vertexData_index.vkBuffer, NULL);
+        vertexData_index.vkBuffer = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vertexData_index.vkBuffer\n", __func__);
+    }
+
+    if (vertexData_mesh.vkDeviceMemory)
+    {
+        vkFreeMemory(vkDevice, vertexData_mesh.vkDeviceMemory, NULL);
+        vertexData_mesh.vkDeviceMemory = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vertexData_mesh.vkDeviceMemory\n", __func__);
+    }
+
+    if (vertexData_mesh.vkBuffer)
+    {
+        vkDestroyBuffer(vkDevice, vertexData_mesh.vkBuffer, NULL);
+        vertexData_mesh.vkBuffer = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vertexData_mesh.vkBuffer\n", __func__);
     }
 
     //* Step - 14 of Vertex Buffer
@@ -1393,14 +1435,6 @@ void uninitialize(void)
         fclose(gpFile);
         gpFile = NULL;
     }
-}
-
-void uninitializeImGui(void)
-{
-    // Code
-    ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext();
 }
 
 //! Definition of Vulkan Related Functions
@@ -4524,7 +4558,12 @@ VkResult createDescriptorSetLayout(void)
     VkResult vkResult = VK_SUCCESS;
 
     //! Initialize VkDescriptorSetLayoutBinding
-    VkDescriptorSetLayoutBinding vkDescriptorSetLayoutBinding_array[2]; // 0 -> Uniform, 1 -> Texture Image
+
+    // 0 -> Vertex UBO
+    // 1 -> Water Surface UBO
+    // 2 -> Displacement Map
+    // 3 -> Normal Map
+    VkDescriptorSetLayoutBinding vkDescriptorSetLayoutBinding_array[4]; 
     memset((void*)vkDescriptorSetLayoutBinding_array, 0, sizeof(VkDescriptorSetLayoutBinding) * _ARRAYSIZE(vkDescriptorSetLayoutBinding_array));
 
     vkDescriptorSetLayoutBinding_array[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -4533,11 +4572,23 @@ VkResult createDescriptorSetLayout(void)
     vkDescriptorSetLayoutBinding_array[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     vkDescriptorSetLayoutBinding_array[0].pImmutableSamplers = NULL;
 
-    vkDescriptorSetLayoutBinding_array[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    vkDescriptorSetLayoutBinding_array[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     vkDescriptorSetLayoutBinding_array[1].binding = 1;   //! Mapped with layout(binding = 1) in fragment shader
     vkDescriptorSetLayoutBinding_array[1].descriptorCount = 1;
     vkDescriptorSetLayoutBinding_array[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     vkDescriptorSetLayoutBinding_array[1].pImmutableSamplers = NULL;
+
+    vkDescriptorSetLayoutBinding_array[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    vkDescriptorSetLayoutBinding_array[2].binding = 2;   //! Mapped with layout(binding = 2) in vertex shader
+    vkDescriptorSetLayoutBinding_array[2].descriptorCount = 1;
+    vkDescriptorSetLayoutBinding_array[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    vkDescriptorSetLayoutBinding_array[2].pImmutableSamplers = NULL;
+
+    vkDescriptorSetLayoutBinding_array[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    vkDescriptorSetLayoutBinding_array[3].binding = 3;   //! Mapped with layout(binding = 3) in fragment shader
+    vkDescriptorSetLayoutBinding_array[3].descriptorCount = 1;
+    vkDescriptorSetLayoutBinding_array[3].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    vkDescriptorSetLayoutBinding_array[3].pImmutableSamplers = NULL;
 
     //* Step - 3
     VkDescriptorSetLayoutCreateInfo vkDescriptorSetLayoutCreateInfo;
@@ -5359,6 +5410,25 @@ VkResult recordCommandBufferForImage(uint32_t imageIndex)
     return vkResult;
 }
 
+
+VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
+    VkDebugReportFlagsEXT vkDebugReportFlagsEXT,
+    VkDebugReportObjectTypeEXT vkDebugReportObjectTypeEXT,
+    uint64_t object,
+    size_t location,
+    int32_t messageCode,
+    const char* pLayerPrefix,
+    const char* pMessage,
+    void* pUserData
+)
+{
+    // Code
+    fprintf(gpFile, "ADN_VALIDATION : debugReportCallback() => %s(%d) = %s\n", pLayerPrefix, messageCode, pMessage);
+    return VK_FALSE;
+}
+
+
+//! ImGui Related Functions
 void initializeImGui(const char* fontFile, float fontSize)
 {
     //! Setup ImGui Context
@@ -5423,21 +5493,46 @@ void renderImGui(void)
     ImGui::Render();
 }
 
-
-VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
-    VkDebugReportFlagsEXT vkDebugReportFlagsEXT,
-    VkDebugReportObjectTypeEXT vkDebugReportObjectTypeEXT,
-    uint64_t object,
-    size_t location,
-    int32_t messageCode,
-    const char* pLayerPrefix,
-    const char* pMessage,
-    void* pUserData
-)
+void uninitializeImGui(void)
 {
     // Code
-    fprintf(gpFile, "ADN_VALIDATION : debugReportCallback() => %s(%d) = %s\n", pLayerPrefix, messageCode, pMessage);
-    return VK_FALSE;
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
 }
 
+//! Water Related Functions
+void createTessendorfModel(void)
+{
+    const uint32_t sampleCount = tesserndorfModel->s_kDefaultTileSize;
+    const uint32_t waveLength = tesserndorfModel->s_kDefaultTileLength;
 
+    tesserndorfModel = new WSTessendorf(sampleCount, waveLength);
+}
+
+void deleteTessendorfModel(void)
+{
+    if (tesserndorfModel)
+    {
+        delete tesserndorfModel;
+        tesserndorfModel = nullptr;
+    }
+}
+
+//* Mesh Related
+static uint32_t getMaxVertexCount()
+{
+    return (maxTileSize + 1) * (maxTileSize + 1);
+}
+
+static uint32_t getMaxIndexCount()
+{
+    const uint32_t indicesPerTriangle = 3, trianglesPerQuad = 2;
+    return getMaxVertexCount() * indicesPerTriangle * trianglesPerQuad;
+}
+
+VkResult createMesh()
+{
+    // Variable Declarations
+    VkResult vkResult = VK_SUCCESS;
+}
