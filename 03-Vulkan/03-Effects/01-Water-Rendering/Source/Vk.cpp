@@ -150,7 +150,23 @@ typedef struct
     glm::mat4 modelMatrix;
     glm::mat4 viewMatrix;
     glm::mat4 projectionMatrix;
-} MVP_UniformData;
+    float heightAmp;
+    float choppy;
+    float scale;
+} VertexUBO;
+
+typedef struct
+{
+    glm::vec4 cameraPosition;
+    glm::vec4 absorptionCoefficient;
+    glm::vec4 scatterCoefficient;
+    glm::vec4 backScatterCoefficient;
+    glm::vec4 terrainColor;
+    float height;
+    float skyIntensity;
+    float specularIntensity;
+    float specularHighlights;
+} WaterSurfaceUBO;
 
 typedef struct
 {
@@ -158,7 +174,8 @@ typedef struct
     VkDeviceMemory vkDeviceMemory;
 } UniformData;
 
-UniformData uniformData;
+UniformData uniformData_vertex;
+UniformData uniformData_water_surface;
 
 //? Texture Related Variables
 VkImage vkImage_texture = VK_NULL_HANDLE;
@@ -1215,18 +1232,32 @@ void uninitialize(void)
     }
 
     //* Destroy Uniform Buffer
-    if (uniformData.vkDeviceMemory)
+    if (uniformData_water_surface.vkDeviceMemory)
     {
-        vkFreeMemory(vkDevice, uniformData.vkDeviceMemory, NULL);
-        uniformData.vkDeviceMemory = VK_NULL_HANDLE;
-        fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For uniformData.vkDeviceMemory\n", __func__);
+        vkFreeMemory(vkDevice, uniformData_water_surface.vkDeviceMemory, NULL);
+        uniformData_water_surface.vkDeviceMemory = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For uniformData_water_surface.vkDeviceMemory\n", __func__);
     }
 
-    if (uniformData.vkBuffer)
+    if (uniformData_water_surface.vkBuffer)
     {
-        vkDestroyBuffer(vkDevice, uniformData.vkBuffer, NULL);
-        uniformData.vkBuffer = VK_NULL_HANDLE;
-        fprintf(gpFile, "%s() => vkDestroyBuffer() Succedded For uniformData.vkBuffer\n", __func__);
+        vkDestroyBuffer(vkDevice, uniformData_water_surface.vkBuffer, NULL);
+        uniformData_water_surface.vkBuffer = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkDestroyBuffer() Succedded For uniformData_water_surface.vkBuffer\n", __func__);
+    }
+
+    if (uniformData_vertex.vkDeviceMemory)
+    {
+        vkFreeMemory(vkDevice, uniformData_vertex.vkDeviceMemory, NULL);
+        uniformData_vertex.vkDeviceMemory = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For uniformData_vertex.vkDeviceMemory\n", __func__);
+    }
+
+    if (uniformData_vertex.vkBuffer)
+    {
+        vkDestroyBuffer(vkDevice, uniformData_vertex.vkBuffer, NULL);
+        uniformData_vertex.vkBuffer = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkDestroyBuffer() Succedded For uniformData_vertex.vkBuffer\n", __func__);
     }
 
     //* Texture Related
@@ -4259,28 +4290,31 @@ VkResult createUniformBuffer(void)
     VkResult vkResult = VK_SUCCESS;
 
     // Code
+
+    //! Vertex Uniform Buffer
+    //! ---------------------------------------------------------------------------------------------------------
     VkBufferCreateInfo vkBufferCreateInfo;
     memset((void*)&vkBufferCreateInfo, 0, sizeof(VkBufferCreateInfo));
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.flags = 0;
     vkBufferCreateInfo.pNext = NULL;
-    vkBufferCreateInfo.size = sizeof(MVP_UniformData);
+    vkBufferCreateInfo.size = sizeof(VertexUBO);
     vkBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
-    memset((void*)&uniformData, 0, sizeof(UniformData));
+    memset((void*)&uniformData_vertex, 0, sizeof(UniformData));
 
-    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &uniformData.vkBuffer);
+    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &uniformData_vertex.vkBuffer);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s() => vkCreateBuffer() Failed For Uniform Data : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkCreateBuffer() Failed For Vertex Uniform Data : %d !!!\n", __func__, vkResult);
         return vkResult;
     }
     else
-        fprintf(gpFile, "%s() => vkCreateBuffer() Succeeded For Uniform Data\n", __func__);
+        fprintf(gpFile, "%s() => vkCreateBuffer() Succeeded For Vertex Uniform Data\n", __func__);
     
     VkMemoryRequirements vkMemoryRequirements;
     memset((void*)&vkMemoryRequirements, 0, sizeof(VkMemoryRequirements));
-    vkGetBufferMemoryRequirements(vkDevice, uniformData.vkBuffer, &vkMemoryRequirements);
+    vkGetBufferMemoryRequirements(vkDevice, uniformData_vertex.vkBuffer, &vkMemoryRequirements);
 
     VkMemoryAllocateInfo vkMemoryAllocateInfo;
     memset((void*)&vkMemoryAllocateInfo, 0, sizeof(VkMemoryAllocateInfo));
@@ -4303,23 +4337,89 @@ VkResult createUniformBuffer(void)
         vkMemoryRequirements.memoryTypeBits >>= 1;
     }
 
-    vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo, NULL, &uniformData.vkDeviceMemory);
+    vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo, NULL, &uniformData_vertex.vkDeviceMemory);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s() => vkAllocateMemory() Failed For Uniform Data : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkAllocateMemory() Failed For Vertex Uniform Data : %d !!!\n", __func__, vkResult);
         return vkResult;
     }     
     else
-        fprintf(gpFile, "%s() => vkAllocateMemory() Succeeded For Uniform Data\n", __func__);
+        fprintf(gpFile, "%s() => vkAllocateMemory() Succeeded For Vertex Uniform Data\n", __func__);
 
-    vkResult = vkBindBufferMemory(vkDevice, uniformData.vkBuffer, uniformData.vkDeviceMemory, 0);
+    vkResult = vkBindBufferMemory(vkDevice, uniformData_vertex.vkBuffer, uniformData_vertex.vkDeviceMemory, 0);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s() => vkBindBufferMemory() Failed For Uniform Data : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkBindBufferMemory() Failed For Vertex Uniform Data : %d !!!\n", __func__, vkResult);
         return vkResult;
     }
     else
-        fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Uniform Data\n", __func__);
+        fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Vertex Uniform Data\n", __func__);
+    //! ---------------------------------------------------------------------------------------------------------
+
+
+    //! Water Surface Uniform Buffer
+    //! ---------------------------------------------------------------------------------------------------------
+    memset((void*)&vkBufferCreateInfo, 0, sizeof(VkBufferCreateInfo));
+    vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    vkBufferCreateInfo.flags = 0;
+    vkBufferCreateInfo.pNext = NULL;
+    vkBufferCreateInfo.size = sizeof(WaterSurfaceUBO);
+    vkBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+    memset((void*)&uniformData_water_surface, 0, sizeof(UniformData));
+
+    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &uniformData_water_surface.vkBuffer);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkCreateBuffer() Failed For Water Surface Uniform Data : %d !!!\n", __func__, vkResult);
+        return vkResult;
+    }
+    else
+        fprintf(gpFile, "%s() => vkCreateBuffer() Succeeded For Water Surface Uniform Data\n", __func__);
+    
+    VkMemoryRequirements vkMemoryRequirements;
+    memset((void*)&vkMemoryRequirements, 0, sizeof(VkMemoryRequirements));
+    vkGetBufferMemoryRequirements(vkDevice, uniformData_water_surface.vkBuffer, &vkMemoryRequirements);
+
+    VkMemoryAllocateInfo vkMemoryAllocateInfo;
+    memset((void*)&vkMemoryAllocateInfo, 0, sizeof(VkMemoryAllocateInfo));
+    vkMemoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    vkMemoryAllocateInfo.pNext = NULL;
+    vkMemoryAllocateInfo.allocationSize = vkMemoryRequirements.size;
+    vkMemoryAllocateInfo.memoryTypeIndex = 0;
+
+    for (uint32_t i = 0; i < vkPhysicalDeviceMemoryProperties.memoryTypeCount; i++)
+    {
+        if ((vkMemoryRequirements.memoryTypeBits & 1) == 1)
+        {
+            if (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+            {
+                vkMemoryAllocateInfo.memoryTypeIndex = i;
+                break;
+            }
+        }
+
+        vkMemoryRequirements.memoryTypeBits >>= 1;
+    }
+
+    vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo, NULL, &uniformData_water_surface.vkDeviceMemory);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkAllocateMemory() Failed For Water Surface Uniform Data : %d !!!\n", __func__, vkResult);
+        return vkResult;
+    }     
+    else
+        fprintf(gpFile, "%s() => vkAllocateMemory() Succeeded For Water Surface Uniform Data\n", __func__);
+
+    vkResult = vkBindBufferMemory(vkDevice, uniformData_water_surface.vkBuffer, uniformData_water_surface.vkDeviceMemory, 0);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkBindBufferMemory() Failed For Water Surface Uniform Data : %d !!!\n", __func__, vkResult);
+        return vkResult;
+    }
+    else
+        fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Water Surface Uniform Data\n", __func__);
+    
 
     vkResult = updateUniformBuffer();
     if (vkResult != VK_SUCCESS)
@@ -4331,6 +4431,7 @@ VkResult createUniformBuffer(void)
         fprintf(gpFile, "%s() => updateUniformBuffer() Succeeded\n", __func__);
 
 
+
     return vkResult;
 }
 
@@ -4340,28 +4441,15 @@ VkResult updateUniformBuffer(void)
     VkResult vkResult = VK_SUCCESS;
 
     // Code
-    MVP_UniformData mvp_UniformData;
-    memset((void*)&mvp_UniformData, 0, sizeof(MVP_UniformData));
+    VertexUBO vertexUBO;
+    memset((void*)&vertexUBO, 0, sizeof(VertexUBO));
 
     //! Update Matrices
-    glm::mat4 translationMatrix = glm::mat4(1.0f);
-    glm::mat4 scaleMatrix = glm::mat4(1.0f);
-    glm::mat4 rotationMatrix_x = glm::mat4(1.0f);
-    glm::mat4 rotationMatrix_y = glm::mat4(1.0f);
-    glm::mat4 rotationMatrix_z = glm::mat4(1.0f);
-    glm::mat4 rotationMatrix = glm::mat4(1.0f);
+    glm::mat4 translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -6.0f));
 
-    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -6.0f));
-    scaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.75f, 0.75f, 0.75f));
-    rotationMatrix_x = glm::rotate(glm::mat4(1.0f), glm::radians(fAngle), glm::vec3(1.0f, 0.0f, 0.0f));
-    rotationMatrix_y = glm::rotate(glm::mat4(1.0f), glm::radians(fAngle), glm::vec3(0.0f, 1.0f, 0.0f));
-    rotationMatrix_z = glm::rotate(glm::mat4(1.0f), glm::radians(fAngle), glm::vec3(0.0f, 0.0f, 1.0f));
-    rotationMatrix = rotationMatrix_x * rotationMatrix_y * rotationMatrix_z;
-
-    mvp_UniformData.modelMatrix = glm::mat4(1.0f);
-    mvp_UniformData.modelMatrix = translationMatrix * scaleMatrix * rotationMatrix;
-    mvp_UniformData.viewMatrix = glm::mat4(1.0f);
-
+    vertexUBO.modelMatrix = glm::mat4(1.0f);
+    vertexUBO.modelMatrix = translationMatrix;
+    vertexUBO.viewMatrix = glm::mat4(1.0f);
     glm::mat4 perspectiveProjectionMatrix = glm::mat4(1.0f);
     perspectiveProjectionMatrix = glm::perspective(
         glm::radians(45.0f),
@@ -4371,11 +4459,13 @@ VkResult updateUniformBuffer(void)
     );
     //! 2D Matrix with Column Major (Like OpenGL)
     perspectiveProjectionMatrix[1][1] = perspectiveProjectionMatrix[1][1] * (-1.0f);
-    mvp_UniformData.projectionMatrix = perspectiveProjectionMatrix;
+    vertexUBO.projectionMatrix = perspectiveProjectionMatrix;
+
+    vertexUBO.scale = 1.0f;
 
     //! Map Uniform Buffer
     void* data = NULL;
-    vkResult = vkMapMemory(vkDevice, uniformData.vkDeviceMemory, 0, sizeof(MVP_UniformData), 0, &data);
+    vkResult = vkMapMemory(vkDevice, uniformData_vertex.vkDeviceMemory, 0, sizeof(VertexUBO), 0, &data);
     if (vkResult != VK_SUCCESS)
     {
         fprintf(gpFile, "%s() => vkMapMemory() Failed For Uniform Buffer : %d !!!\n", __func__, vkResult);
@@ -4383,10 +4473,30 @@ VkResult updateUniformBuffer(void)
     }
 
     //! Copy the data to the mapped buffer (present on device memory)
-    memcpy(data, &mvp_UniformData, sizeof(MVP_UniformData));
+    memcpy(data, &vertexUBO, sizeof(VertexUBO));
 
     //! Unmap memory
-    vkUnmapMemory(vkDevice, uniformData.vkDeviceMemory);
+    vkUnmapMemory(vkDevice, uniformData_vertex.vkDeviceMemory);
+
+    WaterSurfaceUBO waterSurfaceUBO;
+    memset((void*)&waterSurfaceUBO, 0, sizeof(WaterSurfaceUBO));
+
+    // waterSurfaceUBO.
+
+    //! Map Uniform Buffer
+    void* data = NULL;
+    vkResult = vkMapMemory(vkDevice, uniformData_vertex.vkDeviceMemory, 0, sizeof(VertexUBO), 0, &data);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkMapMemory() Failed For Uniform Buffer : %d !!!\n", __func__, vkResult);
+        return vkResult;
+    }
+
+    //! Copy the data to the mapped buffer (present on device memory)
+    memcpy(data, &vertexUBO, sizeof(VertexUBO));
+
+    //! Unmap memory
+    vkUnmapMemory(vkDevice, uniformData_vertex.vkDeviceMemory);
 
     return vkResult;
 }
@@ -5535,4 +5645,6 @@ VkResult createMesh()
 {
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
+
+    return vkResult;
 }
