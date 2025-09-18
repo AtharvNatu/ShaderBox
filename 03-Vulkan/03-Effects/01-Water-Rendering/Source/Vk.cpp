@@ -4461,6 +4461,7 @@ VkResult updateUniformBuffer(void)
     perspectiveProjectionMatrix[1][1] = perspectiveProjectionMatrix[1][1] * (-1.0f);
     vertexUBO.projectionMatrix = perspectiveProjectionMatrix;
 
+    vertexUBO.choppy = tesserndorfModel->GetDisplacementLambda();
     vertexUBO.scale = 1.0f;
 
     //! Map Uniform Buffer
@@ -4484,7 +4485,7 @@ VkResult updateUniformBuffer(void)
     // waterSurfaceUBO.
 
     //! Map Uniform Buffer
-    void* data = NULL;
+    data = NULL;
     vkResult = vkMapMemory(vkDevice, uniformData_vertex.vkDeviceMemory, 0, sizeof(VertexUBO), 0, &data);
     if (vkResult != VK_SUCCESS)
     {
@@ -5648,3 +5649,4 @@ VkResult createMesh()
 
     return vkResult;
 }
+

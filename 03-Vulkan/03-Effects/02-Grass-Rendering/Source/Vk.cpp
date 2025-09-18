@@ -1483,14 +1483,6 @@ void uninitialize(void)
     }
 }
 
-void uninitializeImGui(void)
-{
-    // Code
-    ImGui_ImplVulkan_Shutdown();
-    ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext();
-}
-
 //! Definition of Vulkan Related Functions
 VkResult createVulkanInstance(void)
 {
@@ -5494,6 +5486,7 @@ VkResult recordCommandBufferForImage(uint32_t imageIndex)
         //! Vulkan Drawing Function
         vkCmdDraw(commandBuffer, grassPosition.size(), 1, 0, 0);
 
+        //! ImGui Render Draw Data
         ImDrawData* imDrawData = ImGui::GetDrawData();
         if (imDrawData != nullptr && imDrawData->TotalVtxCount > 0)
         {
@@ -5502,7 +5495,7 @@ VkResult recordCommandBufferForImage(uint32_t imageIndex)
             vkClearColorValue.float32[2] = clear_color.z * clear_color.w;    //* B
             vkClearColorValue.float32[3] = clear_color.w;                   //* A
             ImGui_ImplVulkan_RenderDrawData(imDrawData, commandBuffer);
-        }
+        }   
 
     }
     //* Step - 7
@@ -5520,6 +5513,24 @@ VkResult recordCommandBufferForImage(uint32_t imageIndex)
     return vkResult;
 }
 
+VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
+    VkDebugReportFlagsEXT vkDebugReportFlagsEXT,
+    VkDebugReportObjectTypeEXT vkDebugReportObjectTypeEXT,
+    uint64_t object,
+    size_t location,
+    int32_t messageCode,
+    const char* pLayerPrefix,
+    const char* pMessage,
+    void* pUserData
+)
+{
+    // Code
+    fprintf(gpFile, "ADN_VALIDATION : debugReportCallback() => %s(%d) = %s\n", pLayerPrefix, messageCode, pMessage);
+    return VK_FALSE;
+}
+
+
+//! ImGui Related Functions
 void initializeImGui(const char* fontFile, float fontSize)
 {
     //! Setup ImGui Context
@@ -5584,19 +5595,12 @@ void renderImGui(void)
     ImGui::Render();
 }
 
-
-VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
-    VkDebugReportFlagsEXT vkDebugReportFlagsEXT,
-    VkDebugReportObjectTypeEXT vkDebugReportObjectTypeEXT,
-    uint64_t object,
-    size_t location,
-    int32_t messageCode,
-    const char* pLayerPrefix,
-    const char* pMessage,
-    void* pUserData
-)
+void uninitializeImGui(void)
 {
     // Code
-    fprintf(gpFile, "ADN_VALIDATION : debugReportCallback() => %s(%d) = %s\n", pLayerPrefix, messageCode, pMessage);
-    return VK_FALSE;
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
 }
+
+
