@@ -178,10 +178,17 @@ UniformData uniformData_vertex;
 UniformData uniformData_water_surface;
 
 //? Texture Related Variables
-VkImage vkImage_texture = VK_NULL_HANDLE;
-VkDeviceMemory vkDeviceMemory_texture = VK_NULL_HANDLE;
-VkImageView vkImageView_texture = VK_NULL_HANDLE;
-VkSampler vkSampler_texture = VK_NULL_HANDLE;
+VkImage vkImage_texture_displacement_map = VK_NULL_HANDLE;
+VkImage vkImage_texture_normal_map = VK_NULL_HANDLE;
+
+VkDeviceMemory vkDeviceMemory_texture_displacement_map = VK_NULL_HANDLE;
+VkDeviceMemory vkDeviceMemory_texture_normal_map = VK_NULL_HANDLE;
+
+VkImageView vkImageView_texture_displacement_map = VK_NULL_HANDLE;
+VkImageView vkImageView_texture_normal_map = VK_NULL_HANDLE;
+
+VkSampler vkSampler_texture_displacement_map = VK_NULL_HANDLE;
+VkSampler vkSampler_texture_normal_map = VK_NULL_HANDLE;
 
 //? Shader Related Variables
 VkShaderModule vkShaderModule_vertex_shader = VK_NULL_HANDLE;
@@ -215,9 +222,24 @@ ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 const uint32_t minTileSize = 16;
 const uint32_t maxTileSize = 1024;
 
-WSTessendorf* tesserndorfModel = nullptr;
+const float waterCoefficient[] = { 0.420, 0.063, 0.019 };
+float scatterCoefficientLambda0[] = { 0.037, 0.219, 1.824 };
+float backScatterCoefficient[3];
+const float terrainColor[] = { 0.964, 1.0, 0.824 };
+
+WSTessendorf* tessendorfModel = nullptr;
 VertexData vertexData_mesh;
 VertexData vertexData_index;
+
+// Camera Related
+glm::vec3 cameraPosition = glm::vec3(0.0f, 1.0f, 3.0f);
+glm::vec3 cameraEye = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
+float cameraSpeed = 0.0f;
+
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
+int numFrames = 0;
 
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
@@ -495,7 +517,7 @@ VkResult initialize(void)
     VkResult createCommandPool(void);
     VkResult createCommandBuffers(void);
     VkResult createVertexBuffer(void);
-    VkResult createTexture(const char*);
+    VkResult createTexture(int, VkImage*, VkDeviceMemory*, VkImageView*, VkSampler*);
     VkResult createUniformBuffer(void);
     VkResult createShaders();
     VkResult createDescriptorSetLayout(void);
@@ -608,14 +630,23 @@ VkResult initialize(void)
         fprintf(gpFile, "%s() => createVertexBuffer() Succeeded\n", __func__);
 
     //! Create Texture
-    vkResult = createTexture("Assets/Images/Cube.png");
+    vkResult = createTexture(1, &vkImage_texture_displacement_map, &vkDeviceMemory_texture_displacement_map, &vkImageView_texture_displacement_map, &vkSampler_texture_displacement_map);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s() => createTexture() Failed For Cube.png : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => createTexture() Failed For Displacement Map : %d !!!\n", __func__, vkResult);
         return vkResult;
     }
     else
-        fprintf(gpFile, "%s() => createTexture() Succeeded For Cube.png\n", __func__);
+        fprintf(gpFile, "%s() => createTexture() Succeeded For Displacement Map\n", __func__);
+
+    vkResult = createTexture(2, &vkImage_texture_normal_map, &vkDeviceMemory_texture_normal_map, &vkImageView_texture_normal_map, &vkSampler_texture_normal_map);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => createTexture() Failed For Normals Map : %d !!!\n", __func__, vkResult);
+        return vkResult;
+    }
+    else
+        fprintf(gpFile, "%s() => createTexture() Succeeded For Normals Map\n", __func__);
 
     //! Create Uniform Buffer
     vkResult = createUniformBuffer();
@@ -1105,6 +1136,9 @@ void update(void)
     if (fAngle >= 360.0f)
         fAngle = 0.0f;
 
+    cameraSpeed = 0.5 * deltaTime;
+
+    cameraPosition = cameraPosition + cameraSpeed * cameraEye;
 }
 
 void uninitialize(void)
@@ -1260,36 +1294,65 @@ void uninitialize(void)
         fprintf(gpFile, "%s() => vkDestroyBuffer() Succedded For uniformData_vertex.vkBuffer\n", __func__);
     }
 
-    //* Texture Related
-    if (vkSampler_texture)
+    //* Normal Map
+    if (vkSampler_texture_normal_map)
     {
-        vkDestroySampler(vkDevice, vkSampler_texture, NULL);
-        vkSampler_texture = VK_NULL_HANDLE;
-        fprintf(gpFile, "%s() => vkDestroySampler() Succeeded For vkSampler_texture\n", __func__);
+        vkDestroySampler(vkDevice, vkSampler_texture_normal_map, NULL);
+        vkSampler_texture_normal_map = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkDestroySampler() Succeeded For vkSampler_texture_normal_map\n", __func__);
     }
 
-    if (vkImageView_texture)
+    if (vkImageView_texture_normal_map)
     {
-        vkDestroyImageView(vkDevice, vkImageView_texture, NULL);
-        vkImageView_texture = NULL;
-        fprintf(gpFile, "%s() => vkDestroyImageView() Succeeded For vkImage_texture\n", __func__);
+        vkDestroyImageView(vkDevice, vkImageView_texture_normal_map, NULL);
+        vkImageView_texture_normal_map = NULL;
+        fprintf(gpFile, "%s() => vkDestroyImageView() Succeeded For vkImageView_texture_normal_map\n", __func__);
     }
 
-    if (vkDeviceMemory_texture)
+    if (vkDeviceMemory_texture_normal_map)
     {
-        vkFreeMemory(vkDevice, vkDeviceMemory_texture, NULL);
-        vkDeviceMemory_texture = VK_NULL_HANDLE;
-        fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vkDeviceMemory_texture\n", __func__);
+        vkFreeMemory(vkDevice, vkDeviceMemory_texture_normal_map, NULL);
+        vkDeviceMemory_texture_normal_map = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vkDeviceMemory_texture_normal_map\n", __func__);
     }
 
-    if (vkImage_texture)
+    if (vkImage_texture_normal_map)
     {
-        vkDestroyImage(vkDevice, vkImage_texture, NULL);
-        vkImage_texture = NULL;
-        fprintf(gpFile, "%s() => vkDestroyImage() Succeeded For vkImage_texture\n", __func__);
+        vkDestroyImage(vkDevice, vkImage_texture_normal_map, NULL);
+        vkImage_texture_normal_map = NULL;
+        fprintf(gpFile, "%s() => vkDestroyImage() Succeeded For vkImage_texture_normal_map\n", __func__);
     }
 
-    //! Water Surface Mesh
+    //* Displacement Map
+    if (vkSampler_texture_displacement_map)
+    {
+        vkDestroySampler(vkDevice, vkSampler_texture_displacement_map, NULL);
+        vkSampler_texture_displacement_map = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkDestroySampler() Succeeded For vkSampler_texture_displacement_map\n", __func__);
+    }
+
+    if (vkImageView_texture_displacement_map)
+    {
+        vkDestroyImageView(vkDevice, vkImageView_texture_displacement_map, NULL);
+        vkImageView_texture_displacement_map = NULL;
+        fprintf(gpFile, "%s() => vkDestroyImageView() Succeeded For vkImageView_texture_displacement_map\n", __func__);
+    }
+
+    if (vkDeviceMemory_texture_displacement_map)
+    {
+        vkFreeMemory(vkDevice, vkDeviceMemory_texture_displacement_map, NULL);
+        vkDeviceMemory_texture_displacement_map = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vkDeviceMemory_texture_displacement_map\n", __func__);
+    }
+
+    if (vkImage_texture_displacement_map)
+    {
+        vkDestroyImage(vkDevice, vkImage_texture_displacement_map, NULL);
+        vkImage_texture_displacement_map = NULL;
+        fprintf(gpFile, "%s() => vkDestroyImage() Succeeded For vkImage_texture_displacement_map\n", __func__);
+    }
+
+    //* Water Surface Mesh
     if (vertexData_index.vkDeviceMemory)
     {
         vkFreeMemory(vkDevice, vertexData_index.vkDeviceMemory, NULL);
@@ -3158,12 +3221,14 @@ VkResult createVertexBuffer(void)
     return vkResult;
 }
 
-VkResult createTexture(const char* textureFileName)
+VkResult createTexture(int mapNumber, VkImage* vkImage_texture, VkDeviceMemory* vkDeviceMemory_texture, VkImageView* vkImageView_texture, VkSampler* vkSampler_texture)
 {
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
     uint8_t* imageData = NULL;
-    int imageWidth = 0, imageHeight = 0, numChannels = 0;
+    
+    //!Tile Size
+    int imageWidth = 512, imageHeight = 512;
 
     VkBuffer vkBuffer_stagingBuffer = VK_NULL_HANDLE;
     VkDeviceMemory vkDeviceMemory_stagingBuffer = VK_NULL_HANDLE;
@@ -3171,23 +3236,16 @@ VkResult createTexture(const char* textureFileName)
 
     // Code
 
-    //! Step - 1
-    imageData = stbi_load(textureFileName, &imageWidth, &imageHeight, &numChannels, STBI_rgb_alpha);
-    if (imageData == NULL || imageWidth <= 0 || imageHeight <= 0 || numChannels <= 0)
+    if (mapNumber == 1)
     {
-        fprintf(gpFile, "%s() => stbi_load() Failed For %s !!!\n", __func__, textureFileName);
-        vkResult = VK_ERROR_INITIALIZATION_FAILED;
-        return vkResult;
+        imageSize = sizeof(WSTessendorf::Displacement) * tessendorfModel->GetDisplacementCount();
+        imageData = (uint8_t*)tessendorfModel->GetDisplacements().data();
     }
-   
-    imageSize = imageWidth * imageHeight * 4;
-
-    fprintf(gpFile, "\n%s Properties\n", textureFileName);
-    fprintf(gpFile, "-------------------------------------------\n");
-    fprintf(gpFile, "Image Width = %d\n", imageWidth);
-    fprintf(gpFile, "Image Height = %d\n", imageHeight);
-    fprintf(gpFile, "Image Size = %lld\n", imageSize);
-    fprintf(gpFile, "-------------------------------------------\n\n");   
+    else if (mapNumber == 2)
+    {
+        imageSize = sizeof(WSTessendorf::Normal) * tessendorfModel->GetNormalCount();
+        imageData = (uint8_t*)tessendorfModel->GetNormals().data();
+    }
 
     //! Step - 2
     VkBufferCreateInfo vkBufferCreateInfo_stagingBuffer;
@@ -3202,22 +3260,13 @@ VkResult createTexture(const char* textureFileName)
     vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo_stagingBuffer, NULL, &vkBuffer_stagingBuffer);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s() => vkCreateBuffer() Failed For Staging Buffer : %s, Error Code : %d !!!\n", __func__, textureFileName, vkResult);
+        fprintf(gpFile, "%s() => vkCreateBuffer() Failed For Staging Buffer : %d !!!\n", __func__, vkResult);
         vkResult = VK_ERROR_INITIALIZATION_FAILED;
-
-        //* Cleanup Code
-        if (imageData)
-        {
-            stbi_image_free(imageData);
-            imageData = NULL;
-            fprintf(gpFile, "%s() => stbi_image_free() Called For Texture : %s\n", __func__, textureFileName);
-        }
-
         return vkResult;
     }
         
     else
-        fprintf(gpFile, "%s() => vkCreateBuffer() Succeeded For Staging Buffer : %s\n", __func__, textureFileName);
+        fprintf(gpFile, "%s() => vkCreateBuffer() Succeeded For Staging Buffer\n", __func__);
 
     VkMemoryRequirements vkMemoryRequirements_stagingBuffer;
     memset((void*)&vkMemoryRequirements_stagingBuffer, 0, sizeof(VkMemoryRequirements));
@@ -3246,7 +3295,7 @@ VkResult createTexture(const char* textureFileName)
     vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo_stagingBuffer, NULL, &vkDeviceMemory_stagingBuffer);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s() => vkAllocateMemory() Failed For Staging Buffer : %s, Error Code : %d !!!\n", __func__, textureFileName, vkResult);
+        fprintf(gpFile, "%s() => vkAllocateMemory() Failed For Staging Buffer : %d !!!\n", __func__, vkResult);
         vkResult = VK_ERROR_INITIALIZATION_FAILED;
 
         //* Cleanup Code
@@ -3256,22 +3305,15 @@ VkResult createTexture(const char* textureFileName)
             vkBuffer_stagingBuffer = VK_NULL_HANDLE;
             fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vkBuffer_stagingBuffer\n", __func__);
         }
-        if (imageData)
-        {
-            stbi_image_free(imageData);
-            imageData = NULL;
-            fprintf(gpFile, "%s() => stbi_image_free() Called For Texture : %s\n", __func__, textureFileName);
-        }
-
         return vkResult;
     }
     else
-        fprintf(gpFile, "%s() => vkAllocateMemory() Succeeded For Staging Buffer : %s\n", __func__, textureFileName);
+        fprintf(gpFile, "%s() => vkAllocateMemory() Succeeded For Staging Buffer\n", __func__);
 
     vkResult = vkBindBufferMemory(vkDevice, vkBuffer_stagingBuffer, vkDeviceMemory_stagingBuffer, 0);
     if (vkResult != VK_SUCCESS)
     { 
-        fprintf(gpFile, "%s() => vkBindBufferMemory() Failed For Staging Buffer : %s, Error Code : %d !!!\n", __func__, textureFileName, vkResult);
+        fprintf(gpFile, "%s() => vkBindBufferMemory() Failed For Staging Buffer : %d !!!\n", __func__, vkResult);
         vkResult = VK_ERROR_INITIALIZATION_FAILED;
 
         //* Cleanup Code
@@ -3281,22 +3323,18 @@ VkResult createTexture(const char* textureFileName)
             vkDeviceMemory_stagingBuffer = VK_NULL_HANDLE;
             fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vkDeviceMemory_stagingBuffer\n", __func__);
         }
+
         if (vkBuffer_stagingBuffer)
         {
             vkDestroyBuffer(vkDevice, vkBuffer_stagingBuffer, NULL);
             vkBuffer_stagingBuffer = VK_NULL_HANDLE;
             fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vkBuffer_stagingBuffer\n", __func__);
         }
-        if (imageData)
-        {
-            stbi_image_free(imageData);
-            imageData = NULL;
-        }
 
         return vkResult;
     }
     else
-        fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Staging Buffer : %s\n", __func__, textureFileName);
+        fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Staging Buffer\n", __func__);
 
     void* data = NULL;
     vkResult = vkMapMemory(
@@ -3309,7 +3347,7 @@ VkResult createTexture(const char* textureFileName)
     );
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s() => vkMapMemory() Failed For Staging Buffer : %s, Error Code : %d !!!\n", __func__, textureFileName, vkResult);
+        fprintf(gpFile, "%s() => vkMapMemory() Failed For Staging Buffer : %d !!!\n", __func__, vkResult);
         vkResult = VK_ERROR_INITIALIZATION_FAILED;
 
         //* Cleanup Code
@@ -3319,32 +3357,22 @@ VkResult createTexture(const char* textureFileName)
             vkDeviceMemory_stagingBuffer = VK_NULL_HANDLE;
             fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vkDeviceMemory_stagingBuffer\n", __func__);
         }
+
         if (vkBuffer_stagingBuffer)
         {
             vkDestroyBuffer(vkDevice, vkBuffer_stagingBuffer, NULL);
             vkBuffer_stagingBuffer = VK_NULL_HANDLE;
             fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vkBuffer_stagingBuffer\n", __func__);
         }
-        if (imageData)
-        {
-            stbi_image_free(imageData);
-            imageData = NULL;
-            fprintf(gpFile, "%s() => stbi_image_free() Called For Texture : %s\n", __func__, textureFileName);
-        }
 
         return vkResult;
     }
     else
-        fprintf(gpFile, "%s() => vkMapMemory() Succeeded For Staging Buffer : %s\n", __func__, textureFileName);
+        fprintf(gpFile, "%s() => vkMapMemory() Succeeded For Staging Buffer\n", __func__);
 
     memcpy(data, imageData, imageSize);
 
     vkUnmapMemory(vkDevice, vkDeviceMemory_stagingBuffer);
-
-    //* Free the image data given by stb, as it is copied in image staging buffer
-    stbi_image_free(imageData);
-    imageData = NULL;
-    fprintf(gpFile, "%s() => stbi_image_free() Called For Texture : %s\n", __func__, textureFileName);
 
     //! Step - 3
     VkImageCreateInfo vkImageCreateInfo;
@@ -3365,10 +3393,10 @@ VkResult createTexture(const char* textureFileName)
     vkImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     vkImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    vkResult = vkCreateImage(vkDevice, &vkImageCreateInfo, NULL, &vkImage_texture);
+    vkResult = vkCreateImage(vkDevice, &vkImageCreateInfo, NULL, vkImage_texture);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s() => vkCreateImage() Failed For Texture : %s, Error Code : %d !!!\n", __func__, textureFileName, vkResult);
+        fprintf(gpFile, "%s() => vkCreateImage() Failed For Texture : %d !!!\n", __func__, vkResult);
         vkResult = VK_ERROR_INITIALIZATION_FAILED;
 
         //* Cleanup Code
@@ -3388,11 +3416,11 @@ VkResult createTexture(const char* textureFileName)
         return vkResult;
     }     
     else
-        fprintf(gpFile, "%s() => vkCreateImage() Succeeded For Texture : %s\n", __func__, textureFileName);
+        fprintf(gpFile, "%s() => vkCreateImage() Succeeded For Texture\n", __func__);
 
     VkMemoryRequirements vkMemoryRequirements_image;
     memset((void*)&vkMemoryRequirements_image, 0, sizeof(VkMemoryRequirements));
-    vkGetImageMemoryRequirements(vkDevice, vkImage_texture, &vkMemoryRequirements_image);
+    vkGetImageMemoryRequirements(vkDevice, *vkImage_texture, &vkMemoryRequirements_image);
 
     VkMemoryAllocateInfo vkMemoryAllocateInfo_image;
     memset((void*)&vkMemoryAllocateInfo_image, 0, sizeof(VkMemoryAllocateInfo));
@@ -3414,10 +3442,10 @@ VkResult createTexture(const char* textureFileName)
         vkMemoryRequirements_image.memoryTypeBits >>= 1;
     }
 
-    vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo_image, NULL, &vkDeviceMemory_texture);
+    vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo_image, NULL, vkDeviceMemory_texture);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s() => vkAllocateMemory() Failed For Texture : %s, Error Code : %d !!!\n", __func__, textureFileName, vkResult);
+        fprintf(gpFile, "%s() => vkAllocateMemory() Failed For Texture : %d !!!\n", __func__, vkResult);
         vkResult = VK_ERROR_INITIALIZATION_FAILED;
 
         //* Cleanup Code
@@ -3437,12 +3465,12 @@ VkResult createTexture(const char* textureFileName)
         return vkResult;
     }
     else
-        fprintf(gpFile, "%s() => vkAllocateMemory() Succeeded For Texture : %s\n", __func__, textureFileName);
+        fprintf(gpFile, "%s() => vkAllocateMemory() Succeeded For Texture\n", __func__);
 
-    vkResult = vkBindImageMemory(vkDevice, vkImage_texture, vkDeviceMemory_texture, 0);
+    vkResult = vkBindImageMemory(vkDevice, *vkImage_texture, *vkDeviceMemory_texture, 0);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s() => vkBindImageMemory() Failed For Texture : %s, Error Code : %d !!!\n", __func__, textureFileName, vkResult);
+        fprintf(gpFile, "%s() => vkBindImageMemory() Failed For Texture : %d !!!\n", __func__, vkResult);
         vkResult = VK_ERROR_INITIALIZATION_FAILED;
 
         //* Cleanup Code
@@ -3452,23 +3480,18 @@ VkResult createTexture(const char* textureFileName)
             vkDeviceMemory_stagingBuffer = VK_NULL_HANDLE;
             fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vkDeviceMemory_stagingBuffer\n", __func__);
         }
+
         if (vkBuffer_stagingBuffer)
         {
             vkDestroyBuffer(vkDevice, vkBuffer_stagingBuffer, NULL);
             vkBuffer_stagingBuffer = VK_NULL_HANDLE;
             fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vkBuffer_stagingBuffer\n", __func__);
         }
-        if (imageData)
-        {
-            stbi_image_free(imageData);
-            imageData = NULL;
-            fprintf(gpFile, "%s() => stbi_image_free() Called For Texture : %s\n", __func__, textureFileName);
-        }
 
         return vkResult;
     }      
     else
-        fprintf(gpFile, "%s() => vkBindImageMemory() Succeeded For Texture : %s\n", __func__, textureFileName);
+        fprintf(gpFile, "%s() => vkBindImageMemory() Succeeded For Texture\n", __func__);
 
     //! Step - 4
     //! ----------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -3558,7 +3581,7 @@ VkResult createTexture(const char* textureFileName)
     vkImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
     vkImageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     vkImageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    vkImageMemoryBarrier.image = vkImage_texture;
+    vkImageMemoryBarrier.image = *vkImage_texture;
     vkImageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     vkImageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
     vkImageMemoryBarrier.subresourceRange.baseMipLevel = 0;
@@ -3823,7 +3846,7 @@ VkResult createTexture(const char* textureFileName)
     vkCmdCopyBufferToImage(
         vkCommandBuffer_buffer_to_image_copy,
         vkBuffer_stagingBuffer,
-        vkImage_texture,
+        *vkImage_texture,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1,
         &vkBufferImageCopy
@@ -3844,13 +3867,13 @@ VkResult createTexture(const char* textureFileName)
         }
         if (vkImage_texture)
         {
-            vkDestroyImage(vkDevice, vkImage_texture, NULL);
+            vkDestroyImage(vkDevice, *vkImage_texture, NULL);
             vkImage_texture = NULL;
             fprintf(gpFile, "%s() => vkDestroyImage() Succeeded For vkImage_texture\n", __func__);
         }
         if (vkDeviceMemory_texture)
         {
-            vkFreeMemory(vkDevice, vkDeviceMemory_texture, NULL);
+            vkFreeMemory(vkDevice, *vkDeviceMemory_texture, NULL);
             vkDeviceMemory_texture = VK_NULL_HANDLE;
             fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vkDeviceMemory_texture\n", __func__);
         }
@@ -4033,7 +4056,7 @@ VkResult createTexture(const char* textureFileName)
     vkImageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     vkImageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     vkImageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    vkImageMemoryBarrier.image = vkImage_texture;
+    vkImageMemoryBarrier.image = *vkImage_texture;
     vkImageMemoryBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     vkImageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
     vkImageMemoryBarrier.subresourceRange.baseMipLevel = 0;
@@ -4238,25 +4261,25 @@ VkResult createTexture(const char* textureFileName)
     vkImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
     vkImageViewCreateInfo.subresourceRange.layerCount = 1;
     vkImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    vkImageViewCreateInfo.image = vkImage_texture;
+    vkImageViewCreateInfo.image = *vkImage_texture;
 
-    vkResult = vkCreateImageView(vkDevice, &vkImageViewCreateInfo, NULL, &vkImageView_texture);
+    vkResult = vkCreateImageView(vkDevice, &vkImageViewCreateInfo, NULL, vkImageView_texture);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s() => vkCreateImageView() Failed For Texture : %s, Error Code : %d !!!\n", __func__, textureFileName, vkResult);
+        fprintf(gpFile, "%s() => vkCreateImageView() Failed For Texture : %d !!!\n", __func__, vkResult);
         vkResult = VK_ERROR_INITIALIZATION_FAILED;
         return vkResult;
     }   
     else
-        fprintf(gpFile, "%s() => vkCreateImageView() Succeeded For Texture : %s\n", __func__, textureFileName);
+        fprintf(gpFile, "%s() => vkCreateImageView() Succeeded For Texture\n", __func__);
 
     //! Step - 9
     VkSamplerCreateInfo vkSamplerCreateInfo;
     memset((void*)&vkSamplerCreateInfo, 0, sizeof(VkSamplerCreateInfo));
     vkSamplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     vkSamplerCreateInfo.pNext = NULL;
-    vkSamplerCreateInfo.magFilter = VK_FILTER_LINEAR;
-    vkSamplerCreateInfo.minFilter = VK_FILTER_LINEAR;
+    vkSamplerCreateInfo.magFilter = VK_FILTER_NEAREST;
+    vkSamplerCreateInfo.minFilter = VK_FILTER_NEAREST;
     vkSamplerCreateInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     vkSamplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     vkSamplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
@@ -4268,15 +4291,15 @@ VkResult createTexture(const char* textureFileName)
     vkSamplerCreateInfo.compareEnable = VK_FALSE;
     vkSamplerCreateInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 
-    vkResult = vkCreateSampler(vkDevice, &vkSamplerCreateInfo, NULL, &vkSampler_texture);
+    vkResult = vkCreateSampler(vkDevice, &vkSamplerCreateInfo, NULL, vkSampler_texture);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s() => vkCreateSampler() Failed For Texture : %s, Error Code : %d !!!\n", __func__, textureFileName, vkResult);
+        fprintf(gpFile, "%s() => vkCreateSampler() Failed For Texture : %d !!!\n", __func__, vkResult);
         vkResult = VK_ERROR_INITIALIZATION_FAILED;
         return vkResult;
     }    
     else
-        fprintf(gpFile, "%s() => vkCreateSampler() Succeeded For Texture : %s\n", __func__, textureFileName);
+        fprintf(gpFile, "%s() => vkCreateSampler() Succeeded For Texture\n", __func__);
 
     return vkResult;
 }
@@ -4359,13 +4382,6 @@ VkResult createUniformBuffer(void)
 
     //! Water Surface Uniform Buffer
     //! ---------------------------------------------------------------------------------------------------------
-    memset((void*)&vkBufferCreateInfo, 0, sizeof(VkBufferCreateInfo));
-    vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    vkBufferCreateInfo.flags = 0;
-    vkBufferCreateInfo.pNext = NULL;
-    vkBufferCreateInfo.size = sizeof(WaterSurfaceUBO);
-    vkBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-
     memset((void*)&uniformData_water_surface, 0, sizeof(UniformData));
 
     vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &uniformData_water_surface.vkBuffer);
@@ -4377,11 +4393,9 @@ VkResult createUniformBuffer(void)
     else
         fprintf(gpFile, "%s() => vkCreateBuffer() Succeeded For Water Surface Uniform Data\n", __func__);
     
-    VkMemoryRequirements vkMemoryRequirements;
     memset((void*)&vkMemoryRequirements, 0, sizeof(VkMemoryRequirements));
     vkGetBufferMemoryRequirements(vkDevice, uniformData_water_surface.vkBuffer, &vkMemoryRequirements);
 
-    VkMemoryAllocateInfo vkMemoryAllocateInfo;
     memset((void*)&vkMemoryAllocateInfo, 0, sizeof(VkMemoryAllocateInfo));
     vkMemoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     vkMemoryAllocateInfo.pNext = NULL;
@@ -4430,13 +4444,15 @@ VkResult createUniformBuffer(void)
     else
         fprintf(gpFile, "%s() => updateUniformBuffer() Succeeded\n", __func__);
 
-
-
     return vkResult;
 }
 
 VkResult updateUniformBuffer(void)
 {
+    // Function Declarations
+    void computeScatteringCoefficientPA01(float);
+    void computeBackScatteringCoefficientPA01(void);
+
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
 
@@ -4461,7 +4477,7 @@ VkResult updateUniformBuffer(void)
     perspectiveProjectionMatrix[1][1] = perspectiveProjectionMatrix[1][1] * (-1.0f);
     vertexUBO.projectionMatrix = perspectiveProjectionMatrix;
 
-    vertexUBO.choppy = tesserndorfModel->GetDisplacementLambda();
+    vertexUBO.choppy = tessendorfModel->GetDisplacementLambda();
     vertexUBO.scale = 1.0f;
 
     //! Map Uniform Buffer
@@ -4469,7 +4485,7 @@ VkResult updateUniformBuffer(void)
     vkResult = vkMapMemory(vkDevice, uniformData_vertex.vkDeviceMemory, 0, sizeof(VertexUBO), 0, &data);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s() => vkMapMemory() Failed For Uniform Buffer : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkMapMemory() Failed For Uniform Buffer (Vertex UBO) : %d !!!\n", __func__, vkResult);
         return vkResult;
     }
 
@@ -4482,22 +4498,52 @@ VkResult updateUniformBuffer(void)
     WaterSurfaceUBO waterSurfaceUBO;
     memset((void*)&waterSurfaceUBO, 0, sizeof(WaterSurfaceUBO));
 
-    // waterSurfaceUBO.
+    // Water Surface
+    waterSurfaceUBO.height = 50.0f;
+
+    waterSurfaceUBO.absorptionCoefficient[0] = waterCoefficient[0];
+    waterSurfaceUBO.absorptionCoefficient[1] = waterCoefficient[1];
+    waterSurfaceUBO.absorptionCoefficient[2] = waterCoefficient[2];
+    waterSurfaceUBO.absorptionCoefficient[3] = 0.0f;
+
+    computeScatteringCoefficientPA01(scatterCoefficientLambda0[0]);
+    waterSurfaceUBO.scatterCoefficient[0] = scatterCoefficientLambda0[0];
+    waterSurfaceUBO.scatterCoefficient[1] = scatterCoefficientLambda0[1];
+    waterSurfaceUBO.scatterCoefficient[2] = scatterCoefficientLambda0[2];
+    waterSurfaceUBO.scatterCoefficient[3] = 0.0f;
+
+    computeBackScatteringCoefficientPA01();
+    waterSurfaceUBO.backScatterCoefficient[0] = backScatterCoefficient[0];
+    waterSurfaceUBO.backScatterCoefficient[1] = backScatterCoefficient[1];
+    waterSurfaceUBO.backScatterCoefficient[2] = backScatterCoefficient[2];
+    waterSurfaceUBO.backScatterCoefficient[3] = 0.0f;
+
+    waterSurfaceUBO.terrainColor[0] = terrainColor[0];
+    waterSurfaceUBO.terrainColor[1] = terrainColor[1];
+    waterSurfaceUBO.terrainColor[2] = terrainColor[2];
+    waterSurfaceUBO.terrainColor[3] = 0.0f;
+
+    waterSurfaceUBO.skyIntensity = 1.0;
+    waterSurfaceUBO.specularIntensity = 1.0;
+    waterSurfaceUBO.specularHighlights = 32.0;
+
+    glm::mat4 viewMatrix = glm::lookAt(cameraPosition, cameraPosition + cameraEye, cameraUp);
+    waterSurfaceUBO.cameraPosition = glm::vec4(cameraPosition, 0.0);
 
     //! Map Uniform Buffer
     data = NULL;
-    vkResult = vkMapMemory(vkDevice, uniformData_vertex.vkDeviceMemory, 0, sizeof(VertexUBO), 0, &data);
+    vkResult = vkMapMemory(vkDevice, uniformData_water_surface.vkDeviceMemory, 0, sizeof(WaterSurfaceUBO), 0, &data);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s() => vkMapMemory() Failed For Uniform Buffer : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkMapMemory() Failed For Uniform Buffer (WaterSurfaceUBO) : %d !!!\n", __func__, vkResult);
         return vkResult;
     }
 
     //! Copy the data to the mapped buffer (present on device memory)
-    memcpy(data, &vertexUBO, sizeof(VertexUBO));
+    memcpy(data, &waterSurfaceUBO, sizeof(WaterSurfaceUBO));
 
     //! Unmap memory
-    vkUnmapMemory(vkDevice, uniformData_vertex.vkDeviceMemory);
+    vkUnmapMemory(vkDevice, uniformData_water_surface.vkDeviceMemory);
 
     return vkResult;
 }
@@ -4820,28 +4866,42 @@ VkResult createDescriptorSet(void)
         fprintf(gpFile, "%s() => vkAllocateDescriptorSets() Succeeded\n", __func__);
     
     //* Describe whether we want buffer as uniform or image as uniform
-    VkDescriptorBufferInfo vkDescriptorBufferInfo;
-    memset((void*)&vkDescriptorBufferInfo, 0, sizeof(VkDescriptorBufferInfo));
-    vkDescriptorBufferInfo.buffer = uniformData.vkBuffer;
-    vkDescriptorBufferInfo.offset = 0;
-    vkDescriptorBufferInfo.range = sizeof(MVP_UniformData);
+    VkDescriptorBufferInfo vkDescriptorBufferInfo_array[2];
+    memset((void*)vkDescriptorBufferInfo_array, 0, sizeof(VkDescriptorBufferInfo) * _ARRAYSIZE(vkDescriptorBufferInfo_array));
+
+    //! Vertex UBO
+    vkDescriptorBufferInfo_array[0].buffer = uniformData_vertex.vkBuffer;
+    vkDescriptorBufferInfo_array[0].offset = 0;
+    vkDescriptorBufferInfo_array[0].range = sizeof(VertexUBO);
+
+    //! Water Surface UBO
+    vkDescriptorBufferInfo_array[1].buffer = uniformData_water_surface.vkBuffer;
+    vkDescriptorBufferInfo_array[1].offset = 0;
+    vkDescriptorBufferInfo_array[1].range = sizeof(WaterSurfaceUBO);
 
     //! Descriptor Image Info
-    VkDescriptorImageInfo vkDescriptorImageInfo;
-    memset((void*)&vkDescriptorImageInfo, 0, sizeof(VkDescriptorImageInfo));
-    vkDescriptorImageInfo.imageView = vkImageView_texture;
-    vkDescriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    vkDescriptorImageInfo.sampler = vkSampler_texture;
+    VkDescriptorImageInfo vkDescriptorImageInfo_array[2];
+    memset((void*)&vkDescriptorImageInfo_array, 0, sizeof(VkDescriptorImageInfo) * _ARRAYSIZE(vkDescriptorImageInfo_array));
+    
+    //! Displacement Map Sampler
+    vkDescriptorImageInfo_array[0].imageView = vkImageView_texture_displacement_map;
+    vkDescriptorImageInfo_array[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    vkDescriptorImageInfo_array[0].sampler = vkSampler_texture_displacement_map;
+    
+    //! Normal Map Sampler
+    vkDescriptorImageInfo_array[1].imageView = vkImageView_texture_normal_map;
+    vkDescriptorImageInfo_array[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    vkDescriptorImageInfo_array[1].sampler = vkSampler_texture_normal_map;
     
     /* Update above descriptor set directly to the shader
     There are 2 ways :-
         1) Writing directly to the shader
         2) Copying from one shader to another shader
     */
-    VkWriteDescriptorSet vkWriteDescriptorSet_array[2];
+    VkWriteDescriptorSet vkWriteDescriptorSet_array[4];
     memset((void*)vkWriteDescriptorSet_array, 0, sizeof(VkWriteDescriptorSet) * _ARRAYSIZE(vkWriteDescriptorSet_array));
 
-    //! Uniform Buffer Object
+    //! Vertex UBO
     vkWriteDescriptorSet_array[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     vkWriteDescriptorSet_array[0].pNext = NULL;
     vkWriteDescriptorSet_array[0].dstSet = vkDescriptorSet;
@@ -4849,21 +4909,45 @@ VkResult createDescriptorSet(void)
     vkWriteDescriptorSet_array[0].dstBinding = 0;
     vkWriteDescriptorSet_array[0].descriptorCount = 1;
     vkWriteDescriptorSet_array[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    vkWriteDescriptorSet_array[0].pBufferInfo = &vkDescriptorBufferInfo;
+    vkWriteDescriptorSet_array[0].pBufferInfo = &vkDescriptorBufferInfo_array[0];
     vkWriteDescriptorSet_array[0].pImageInfo = NULL;
     vkWriteDescriptorSet_array[0].pTexelBufferView = NULL;
 
-    //! Texture Image and Sampler
+    //! Water Surface UBO
     vkWriteDescriptorSet_array[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     vkWriteDescriptorSet_array[1].pNext = NULL;
     vkWriteDescriptorSet_array[1].dstSet = vkDescriptorSet;
     vkWriteDescriptorSet_array[1].dstArrayElement = 0;
+    vkWriteDescriptorSet_array[1].dstBinding = 0;
     vkWriteDescriptorSet_array[1].descriptorCount = 1;
-    vkWriteDescriptorSet_array[1].dstBinding = 1;
-    vkWriteDescriptorSet_array[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    vkWriteDescriptorSet_array[1].pBufferInfo = NULL;
-    vkWriteDescriptorSet_array[1].pImageInfo = &vkDescriptorImageInfo;
+    vkWriteDescriptorSet_array[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    vkWriteDescriptorSet_array[1].pBufferInfo = &vkDescriptorBufferInfo_array[1];
+    vkWriteDescriptorSet_array[1].pImageInfo = NULL;
     vkWriteDescriptorSet_array[1].pTexelBufferView = NULL;
+
+    //! Displacement Map
+    vkWriteDescriptorSet_array[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    vkWriteDescriptorSet_array[2].pNext = NULL;
+    vkWriteDescriptorSet_array[2].dstSet = vkDescriptorSet;
+    vkWriteDescriptorSet_array[2].dstArrayElement = 0;
+    vkWriteDescriptorSet_array[2].descriptorCount = 1;
+    vkWriteDescriptorSet_array[2].dstBinding = 2;
+    vkWriteDescriptorSet_array[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    vkWriteDescriptorSet_array[2].pBufferInfo = NULL;
+    vkWriteDescriptorSet_array[2].pImageInfo = &vkDescriptorImageInfo_array[0];
+    vkWriteDescriptorSet_array[2].pTexelBufferView = NULL;
+
+    //! Normal Map
+    vkWriteDescriptorSet_array[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    vkWriteDescriptorSet_array[3].pNext = NULL;
+    vkWriteDescriptorSet_array[3].dstSet = vkDescriptorSet;
+    vkWriteDescriptorSet_array[3].dstArrayElement = 0;
+    vkWriteDescriptorSet_array[3].descriptorCount = 1;
+    vkWriteDescriptorSet_array[3].dstBinding = 3;
+    vkWriteDescriptorSet_array[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    vkWriteDescriptorSet_array[3].pBufferInfo = NULL;
+    vkWriteDescriptorSet_array[3].pImageInfo = &vkDescriptorImageInfo_array[1];
+    vkWriteDescriptorSet_array[3].pTexelBufferView = NULL;
 
     vkUpdateDescriptorSets(vkDevice, _ARRAYSIZE(vkWriteDescriptorSet_array), vkWriteDescriptorSet_array, 0, NULL);
 
@@ -5615,18 +5699,18 @@ void uninitializeImGui(void)
 //! Water Related Functions
 void createTessendorfModel(void)
 {
-    const uint32_t sampleCount = tesserndorfModel->s_kDefaultTileSize;
-    const uint32_t waveLength = tesserndorfModel->s_kDefaultTileLength;
+    const uint32_t sampleCount = tessendorfModel->s_kDefaultTileSize;
+    const uint32_t waveLength = tessendorfModel->s_kDefaultTileLength;
 
-    tesserndorfModel = new WSTessendorf(sampleCount, waveLength);
+    tessendorfModel = new WSTessendorf(sampleCount, waveLength);
 }
 
 void deleteTessendorfModel(void)
 {
-    if (tesserndorfModel)
+    if (tessendorfModel)
     {
-        delete tesserndorfModel;
-        tesserndorfModel = nullptr;
+        delete tessendorfModel;
+        tessendorfModel = nullptr;
     }
 }
 
@@ -5647,6 +5731,27 @@ VkResult createMesh()
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
 
+    // const VkDeviceSize maxVerticesSize = sizeof()
+
     return vkResult;
+}
+
+
+//* Wave Computation Related
+void computeScatteringCoefficientPA01(float lambda)
+{
+    for (int i = 0; i < 3; i++)
+        scatterCoefficientLambda0[i] = 
+        lambda * (
+            (-0.00113 * scatterCoefficientLambda0[i] + 1.62517f) 
+            / 
+            (-0.00113 * 514.0 + 1.62517)
+        );
+}
+
+void computeBackScatteringCoefficientPA01(void)
+{
+    for (int i = 0; i < 3; i++)
+        backScatterCoefficient[i] = 0.01829 * scatterCoefficientLambda0[i] + 0.00006f;
 }
 
