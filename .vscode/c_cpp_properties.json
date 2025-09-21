@@ -7,7 +7,8 @@
                 "C:\\glew\\include",
                 "C:\\VulkanSDK\\Vulkan\\Include",
                 "C:\\VulkanSDK\\Vulkan\\Include\\glslang",
-                "C:\\VulkanSDK\\Vulkan\\Include\\glm"
+                "C:\\VulkanSDK\\Vulkan\\Include\\glm",
+                "C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.8\\include"
             ],
             "defines": [
                 "_DEBUG",
