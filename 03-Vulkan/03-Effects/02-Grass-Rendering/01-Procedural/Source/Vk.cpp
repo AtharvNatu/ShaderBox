@@ -150,7 +150,6 @@ typedef struct
 
 //? Position Related Variables
 VertexData vertexData_position;
-VertexData vertexData_texcoord;
 
 //? Uniform Related Variables
 typedef struct
@@ -159,7 +158,8 @@ typedef struct
     glm::mat4 projectionMatrix;
     glm::vec4 cameraPosition;
     float time;
-} Host_UniformData;
+    float windStrength;
+} GrassUBO;
 
 typedef struct
 {
@@ -204,25 +204,20 @@ VkViewport vkViewport;
 VkRect2D vkRect2D_scissor;
 VkPipeline vkPipeline = VK_NULL_HANDLE;
 
-float fAnimationSpeed = 0.02f;
-float fAngle = 0.0f;
-
 std::vector<glm::vec3> grassPosition;
 
 glm::vec3 cameraPosition = glm::vec3(0.0f, 1.0f, 3.0f);
 glm::vec3 cameraEye = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
 float cameraSpeed = 0.0f;
-
 float deltaTime = 0.0f;
-float lastFrame = 0.0f;
-int numFrames = 0;
+float windStrength = 0.1f;
 
 StopWatchInterface* timer = NULL;
 
 //! ImGui Related
 ImFont* font;
-ImVec4 clear_color = ImVec4(0.815f, 0.917f, 0.964f, 1.00f);
+ImVec4 clearColor = ImVec4(0.815f, 0.917f, 0.964f, 1.00f);
 
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
@@ -279,7 +274,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     hwnd = CreateWindowEx(
         WS_EX_APPWINDOW,
         szAppName,
-        TEXT("Atharv Natu : Vulkan Grass Rendering"),
+        TEXT("Atharv Natu : Vulkan Grass Rendering using Instancing"),
         WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_VISIBLE,
         (screenX / 2) - (WIN_WIDTH / 2),
         (screenY / 2) - (WIN_HEIGHT / 2),
@@ -338,8 +333,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
                     fprintf(gpFile, "%s() => Call To Display Failed !!!\n", __func__);
                     bDone = TRUE;
                 }
-
-
 
                 //* Update the scene
                 update();
@@ -499,6 +492,7 @@ VkResult initialize(void)
     VkResult createImagesAndImageViews(void);
     VkResult createCommandPool(void);
     VkResult createCommandBuffers(void);
+    void populateGrassData(void);
     VkResult createVertexBuffer(void);
     VkResult createTexture(const char*, VkImage*, VkDeviceMemory*, VkImageView*, VkSampler*);
     VkResult createUniformBuffer(void);
@@ -599,6 +593,8 @@ VkResult initialize(void)
     }
     else
         fprintf(gpFile, "%s() => createCommandBuffers() Succeeded\n", __func__);
+
+    populateGrassData();
 
     //! Create Vertex Buffer
     vkResult = createVertexBuffer();
@@ -1116,10 +1112,6 @@ VkResult display(void)
 void update(void)
 {
     // Code
-    fAngle += fAnimationSpeed;
-    if (fAngle >= 360.0f)
-        fAngle = 0.0f;
-
     cameraSpeed = 0.5 * deltaTime;
 
     cameraPosition = cameraPosition + cameraSpeed * cameraEye;
@@ -1334,20 +1326,6 @@ void uninitialize(void)
     }
 
     //* Step - 14 of Vertex Buffer
-    if (vertexData_texcoord.vkDeviceMemory)
-    {
-        vkFreeMemory(vkDevice, vertexData_texcoord.vkDeviceMemory, NULL);
-        vertexData_texcoord.vkDeviceMemory = VK_NULL_HANDLE;
-        fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vertexData_texcoord.vkDeviceMemory\n", __func__);
-    }
-
-    if (vertexData_texcoord.vkBuffer)
-    {
-        vkDestroyBuffer(vkDevice, vertexData_texcoord.vkBuffer, NULL);
-        vertexData_texcoord.vkBuffer = VK_NULL_HANDLE;
-        fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vertexData_texcoord.vkBuffer\n", __func__);
-    }
-
     if (vertexData_position.vkDeviceMemory)
     {
         vkFreeMemory(vkDevice, vertexData_position.vkDeviceMemory, NULL);
@@ -2887,87 +2865,11 @@ VkResult createCommandBuffers(void)
     return vkResult;
 }
 
-VkResult createVertexBuffer(void)
+void populateGrassData()
 {
-    // Variable Declarations
-    VkResult vkResult = VK_SUCCESS;
-
-    //* Step - 3
-    float cube_texcoords[] =
-    {
-        // Front Face
-        0.0f,  1.0f,   // Top Right
-        1.0f,  1.0f,   // Top Left
-        0.0f,  0.0f,   // Bottom Right
-
-        0.0f,  0.0f,   // Bottom Right
-        1.0f,  1.0f,   // Top Left
-        1.0f,  0.0f,   // Bottom Left
-
-        // Right Face
-        0.0f,  1.0f,   // Top Right
-        1.0f,  1.0f,   // Top Left
-        0.0f,  0.0f,   // Bottom Right
-
-        0.0f,  0.0f,   // Bottom Right
-        1.0f,  1.0f,   // Top Left
-        1.0f,  0.0f,   // Bottom Left
-
-        // Back Face
-        0.0f,  1.0f,   // Top Right
-        1.0f,  1.0f,   // Top Left
-        0.0f,  0.0f,   // Bottom Right
-
-        0.0f,  0.0f,   // Bottom Right
-        1.0f,  1.0f,   // Top Left
-        1.0f,  0.0f,   // Bottom Left
-
-        // Left Face
-        0.0f,  1.0f,   // Top Right
-        1.0f,  1.0f,   // Top Left
-        0.0f,  0.0f,   // Bottom Right
-
-        0.0f,  0.0f,   // Bottom Right
-        1.0f,  1.0f,   // Top Left
-        1.0f,  0.0f,   // Bottom Left
-
-        // Top Face
-        0.0f,  1.0f,   // Top Right
-        1.0f,  1.0f,   // Top Left
-        0.0f,  0.0f,   // Bottom Right
-
-        0.0f,  0.0f,   // Bottom Right
-        1.0f,  1.0f,   // Top Left
-        1.0f,  0.0f,   // Bottom Left
-
-        // Bottom Face
-        0.0f,  1.0f,   // Top Right
-        1.0f,  1.0f,   // Top Left
-        0.0f,  0.0f,   // Bottom Right
-
-        0.0f,  0.0f,   // Bottom Right
-        1.0f,  1.0f,   // Top Left
-        1.0f,  0.0f,   // Bottom Left
-    };
-
-    // Code 
-
     // Grass Position
     srand(time(NULL));
 
-    glm::vec3 temp;
-    // for (float x = -50.0f; x < 50.0f; x = x + 0.1f) // 1000
-    // {
-    //     for (float z = -50.0f; z < 50.0f; z = z + 0.1f) // 1002
-    //     {
-    //         int randomNumberX = rand() % 10 + 1;
-    //         int randomNumberZ = rand() % 10 + 1;
-
-    //         temp = glm::vec3(x + (float)randomNumberX / 50.0f, 0, z + (float)randomNumberZ / 50.0f);
-
-    //         grassPosition.push_back(temp);
-    //     }
-    // }
     for (float x = -10.0f; x < 10.0f; x = x + 0.1f) // 1000
     {
         for (float z = -10.0f; z < 10.0f; z = z + 0.1f) // 1002
@@ -2975,16 +2877,24 @@ VkResult createVertexBuffer(void)
             int randomNumberX = rand() % 10 + 1;
             int randomNumberZ = rand() % 10 + 1;
 
-            temp = glm::vec3(x + (float)randomNumberX / 10.0f, 0, z + (float)randomNumberZ / 10.0f);
+            glm::vec3 temp = glm::vec3(x + (float)randomNumberX / 10.0f, 0, z + (float)randomNumberZ / 10.0f);
 
             grassPosition.push_back(temp);
         }
     }
+}
 
-    //! Vertex Position
-    //! ---------------------------------------------------------------------------------------------------------------------------------
-    //* Step - 4
-    memset((void*)&vertexData_position, 0, sizeof(VertexData));
+VkResult createVertexBuffer(void)
+{
+    // Variable Declarations
+    VkResult vkResult = VK_SUCCESS;
+    VertexData vertexData_stagingBuffer;
+
+    // Code 
+
+    //! Staging Buffer => To Copy Grass Position Data To GPU
+    //------------------------------------------------------------------------------------------------------------------------------
+    memset((void*)&vertexData_stagingBuffer, 0, sizeof(VertexData));
 
     //* Step - 5
     VkBufferCreateInfo vkBufferCreateInfo;
@@ -2993,19 +2903,20 @@ VkResult createVertexBuffer(void)
     vkBufferCreateInfo.flags = 0;   //! Valid Flags are used in sparse(scattered) buffers
     vkBufferCreateInfo.pNext = NULL;
     vkBufferCreateInfo.size = grassPosition.size() * sizeof(glm::vec3);
-    vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    vkBufferCreateInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    vkBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     //* Step - 6
-    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &vertexData_position.vkBuffer);
+    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &vertexData_stagingBuffer.vkBuffer);
     if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => vkCreateBuffer() Failed For Vertex Position Buffer : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkCreateBuffer() Failed For Staging Vertex Position Buffer : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkCreateBuffer() Succeeded For Vertex Position Buffer\n", __func__);
+        fprintf(gpFile, "%s() => vkCreateBuffer() Succeeded For Staging Vertex Position Buffer\n", __func__);
 
     //* Step - 7
     VkMemoryRequirements vkMemoryRequirements;
     memset((void*)&vkMemoryRequirements, 0, sizeof(VkMemoryRequirements));
-    vkGetBufferMemoryRequirements(vkDevice, vertexData_position.vkBuffer, &vkMemoryRequirements);
+    vkGetBufferMemoryRequirements(vkDevice, vertexData_stagingBuffer.vkBuffer, &vkMemoryRequirements);
 
     //* Step - 8
     VkMemoryAllocateInfo vkMemoryAllocateInfo;
@@ -3022,7 +2933,7 @@ VkResult createVertexBuffer(void)
         if ((vkMemoryRequirements.memoryTypeBits & 1) == 1)
         {
             //* Step - 8.3
-            if (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+            if (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
             {
                 //* Step - 8.4
                 vkMemoryAllocateInfo.memoryTypeIndex = i;
@@ -3035,7 +2946,7 @@ VkResult createVertexBuffer(void)
     }
 
     //* Step - 9
-    vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo, NULL, &vertexData_position.vkDeviceMemory);
+    vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo, NULL, &vertexData_stagingBuffer.vkDeviceMemory);
     if (vkResult != VK_SUCCESS)
         fprintf(gpFile, "%s() => vkAllocateMemory() Failed For Vertex Position Buffer : %d !!!\n", __func__, vkResult);
     else
@@ -3043,7 +2954,7 @@ VkResult createVertexBuffer(void)
 
     //* Step - 10
     //! Binds Vulkan Device Memory Object Handle with the Vulkan Buffer Object Handle
-    vkResult = vkBindBufferMemory(vkDevice, vertexData_position.vkBuffer, vertexData_position.vkDeviceMemory, 0);
+    vkResult = vkBindBufferMemory(vkDevice, vertexData_stagingBuffer.vkBuffer, vertexData_stagingBuffer.vkDeviceMemory, 0);
     if (vkResult != VK_SUCCESS)
         fprintf(gpFile, "%s() => vkBindBufferMemory() Failed For Vertex Position Buffer : %d !!!\n", __func__, vkResult);
     else
@@ -3051,7 +2962,7 @@ VkResult createVertexBuffer(void)
 
     //* Step - 11
     void* data = NULL;
-    vkResult = vkMapMemory(vkDevice, vertexData_position.vkDeviceMemory, 0, vkMemoryAllocateInfo.allocationSize, 0, &data);
+    vkResult = vkMapMemory(vkDevice, vertexData_stagingBuffer.vkDeviceMemory, 0, vkMemoryAllocateInfo.allocationSize, 0, &data);
     if (vkResult != VK_SUCCESS)
         fprintf(gpFile, "%s() => vkMapMemory() Failed For Vertex Position Buffer : %d !!!\n", __func__, vkResult);
     else
@@ -3061,32 +2972,33 @@ VkResult createVertexBuffer(void)
     memcpy(data, grassPosition.data(), grassPosition.size() * sizeof(glm::vec3));
 
     //* Step - 13
-    vkUnmapMemory(vkDevice, vertexData_position.vkDeviceMemory);
-    //! ---------------------------------------------------------------------------------------------------------------------------------
+    vkUnmapMemory(vkDevice, vertexData_stagingBuffer.vkDeviceMemory);
+    //------------------------------------------------------------------------------------------------------------------------------
 
-    //! Vertex Texture
-    //! ---------------------------------------------------------------------------------------------------------------------------------
+    //! Device Local Buffer
+    //------------------------------------------------------------------------------------------------------------------------------
     //* Step - 4
-    memset((void*)&vertexData_texcoord, 0, sizeof(VertexData));
+    memset((void*)&vertexData_position, 0, sizeof(VertexData));
 
     //* Step - 5
     memset((void*)&vkBufferCreateInfo, 0, sizeof(VkBufferCreateInfo));
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.flags = 0;   //! Valid Flags are used in sparse(scattered) buffers
     vkBufferCreateInfo.pNext = NULL;
-    vkBufferCreateInfo.size = sizeof(cube_texcoords);
-    vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    vkBufferCreateInfo.size = grassPosition.size() * sizeof(glm::vec3);
+    vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    vkBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
     //* Step - 6
-    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &vertexData_texcoord.vkBuffer);
+    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &vertexData_position.vkBuffer);
     if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => vkCreateBuffer() Failed For Vertex Texture Buffer : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkCreateBuffer() Failed For Vertex Position Device-Local Buffer : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkCreateBuffer() Succeeded For Vertex Texture Buffer\n", __func__);
+        fprintf(gpFile, "%s() => vkCreateBuffer() Succeeded For Vertex Position Device-Local Buffer\n", __func__);
 
     //* Step - 7
     memset((void*)&vkMemoryRequirements, 0, sizeof(VkMemoryRequirements));
-    vkGetBufferMemoryRequirements(vkDevice, vertexData_texcoord.vkBuffer, &vkMemoryRequirements);
+    vkGetBufferMemoryRequirements(vkDevice, vertexData_position.vkBuffer, &vkMemoryRequirements);
 
     //* Step - 8
     memset((void*)&vkMemoryAllocateInfo, 0, sizeof(VkMemoryAllocateInfo));
@@ -3102,7 +3014,7 @@ VkResult createVertexBuffer(void)
         if ((vkMemoryRequirements.memoryTypeBits & 1) == 1)
         {
             //* Step - 8.3
-            if (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+            if (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & (VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
             {
                 //* Step - 8.4
                 vkMemoryAllocateInfo.memoryTypeIndex = i;
@@ -3115,34 +3027,219 @@ VkResult createVertexBuffer(void)
     }
 
     //* Step - 9
-    vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo, NULL, &vertexData_texcoord.vkDeviceMemory);
+    vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo, NULL, &vertexData_position.vkDeviceMemory);
     if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => vkAllocateMemory() Failed For Vertex Texture Buffer : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkAllocateMemory() Failed For Vertex Position Device-Local Buffer : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkAllocateMemory() Succeeded For Vertex Texture Buffer\n", __func__);
+        fprintf(gpFile, "%s() => vkAllocateMemory() Succeeded For Vertex Position Device-Local Buffer\n", __func__);
 
     //* Step - 10
     //! Binds Vulkan Device Memory Object Handle with the Vulkan Buffer Object Handle
-    vkResult = vkBindBufferMemory(vkDevice, vertexData_texcoord.vkBuffer, vertexData_texcoord.vkDeviceMemory, 0);
+    vkResult = vkBindBufferMemory(vkDevice, vertexData_position.vkBuffer, vertexData_position.vkDeviceMemory, 0);
     if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => vkBindBufferMemory() Failed For Vertex Texture Buffer : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkBindBufferMemory() Failed For Vertex Position Device-Local Buffer : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Vertex Texture Buffer\n", __func__);
+        fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Vertex Position Device-Local Buffer\n", __func__);
+    //------------------------------------------------------------------------------------------------------------------------------
 
-    //* Step - 11
-    data = NULL;
-    vkResult = vkMapMemory(vkDevice, vertexData_texcoord.vkDeviceMemory, 0, vkMemoryAllocateInfo.allocationSize, 0, &data);
+    //! Command Buffer
+    //*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    VkCommandBufferAllocateInfo vkCommandBufferAllocateInfo;
+    memset((void*)&vkCommandBufferAllocateInfo, 0, sizeof(VkCommandBufferAllocateInfo));
+    vkCommandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO; 
+    vkCommandBufferAllocateInfo.pNext = NULL;
+    vkCommandBufferAllocateInfo.commandPool = vkCommandPool;
+    vkCommandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    vkCommandBufferAllocateInfo.commandBufferCount = 1;
+    
+    VkCommandBuffer vkCommandBuffer = VK_NULL_HANDLE;
+    vkResult = vkAllocateCommandBuffers(vkDevice, &vkCommandBufferAllocateInfo, &vkCommandBuffer);
     if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => vkMapMemory() Failed For Vertex Texture Buffer : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkAllocateCommandBuffers() Failed To Allocate Command Buffer For Buffer-Copy: %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkMapMemory() Succeeded For Vertex Texture Buffer\n", __func__);
+        fprintf(gpFile, "%s() => vkAllocateCommandBuffers() Succeeded In Allocating Command Buffer For Buffer-Copy\n", __func__);
+    //*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    
+    //! Step - 4 (Build Command Buffer)
+    //*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    VkCommandBufferBeginInfo vkCommandBufferBeginInfo;
+    memset((void*)&vkCommandBufferBeginInfo, 0, sizeof(VkCommandBufferBeginInfo));
+    vkCommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    vkCommandBufferBeginInfo.pNext = NULL;
+    vkCommandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-    //* Step - 12
-    memcpy(data, cube_texcoords, sizeof(cube_texcoords));
+    vkResult = vkBeginCommandBuffer(vkCommandBuffer, &vkCommandBufferBeginInfo);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkBeginCommandBuffer() Failed For Buffer-Copy: %d\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        
+        //* Cleanup Code
+        if (vkCommandBuffer)
+        {
+            vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer);
+            vkCommandBuffer = VK_NULL_HANDLE;
+            fprintf(gpFile, "%s() => vkFreeCommandBuffers() Succeeded For Buffer-Copy\n", __func__);
+        }
+        if (vertexData_stagingBuffer.vkDeviceMemory)
+        {
+            vkFreeMemory(vkDevice, vertexData_stagingBuffer.vkDeviceMemory, NULL);
+            vertexData_stagingBuffer.vkDeviceMemory = VK_NULL_HANDLE;
+            fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vertexData_stagingBuffer.vkDeviceMemory\n", __func__);
+        }
+        if (vertexData_stagingBuffer.vkBuffer)
+        {
+            vkDestroyBuffer(vkDevice, vertexData_stagingBuffer.vkBuffer, NULL);
+            vertexData_stagingBuffer.vkBuffer = VK_NULL_HANDLE;
+            fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vertexData_stagingBuffer.vkBuffer\n", __func__);
+        }
 
-    //* Step - 13
-    vkUnmapMemory(vkDevice, vertexData_texcoord.vkDeviceMemory);
-    //! ---------------------------------------------------------------------------------------------------------------------------------
+        return vkResult;
+    }
+    else
+        fprintf(gpFile, "%s() => vkBeginCommandBuffer() Succeeded For Buffer-Copy\n", __func__);
+    
+    VkBufferCopy vkBufferCopy;
+    memset((void*)&vkBufferCopy, 0, sizeof(VkBufferCopy));
+    vkBufferCopy.srcOffset = 0; //? SRC = 0, DST = 0 => Entire buffer
+    vkBufferCopy.dstOffset = 0;
+    vkBufferCopy.size = grassPosition.size() * sizeof(glm::vec3);
+
+    vkCmdCopyBuffer(
+        vkCommandBuffer,
+        vertexData_stagingBuffer.vkBuffer,
+        vertexData_position.vkBuffer,
+        1,                   //* Count of regions
+        &vkBufferCopy        //* Array of VkBufferCopy structure instances
+    );
+    
+    vkResult = vkEndCommandBuffer(vkCommandBuffer);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkEndCommandBuffer() Failed For Buffer-Copy: %d\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        
+        //* Cleanup Code
+        if (vkCommandBuffer)
+        {
+            vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer);
+            vkCommandBuffer = VK_NULL_HANDLE;
+            fprintf(gpFile, "%s() => vkFreeCommandBuffers() Succeeded For Buffer-Copy\n", __func__);
+        }
+        if (vertexData_stagingBuffer.vkDeviceMemory)
+        {
+            vkFreeMemory(vkDevice, vertexData_stagingBuffer.vkDeviceMemory, NULL);
+            vertexData_stagingBuffer.vkDeviceMemory = VK_NULL_HANDLE;
+            fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vertexData_stagingBuffer.vkDeviceMemory\n", __func__);
+        }
+        if (vertexData_stagingBuffer.vkBuffer)
+        {
+            vkDestroyBuffer(vkDevice, vertexData_stagingBuffer.vkBuffer, NULL);
+            vertexData_stagingBuffer.vkBuffer = VK_NULL_HANDLE;
+            fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vertexData_stagingBuffer.vkBuffer\n", __func__);
+        }
+
+        return vkResult;
+    }
+    else
+        fprintf(gpFile, "%s() => vkEndCommandBuffer() Succeeded For Buffer-Copy\n", __func__);
+
+    //* Submit above command buffer to queue
+    VkSubmitInfo vkSubmitInfo;
+    memset((void*)&vkSubmitInfo, 0, sizeof(VkSubmitInfo));
+    vkSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    vkSubmitInfo.pNext = NULL;
+    vkSubmitInfo.commandBufferCount = 1;
+    vkSubmitInfo.pCommandBuffers = &vkCommandBuffer;
+
+    vkResult = vkQueueSubmit(vkQueue, 1, &vkSubmitInfo, VK_NULL_HANDLE);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkQueueSubmit() Failed For Buffer-Copy : %d\n", __func__, vkResult);
+
+        //* Cleanup Code
+        if (vkCommandBuffer)
+        {
+            vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer);
+            vkCommandBuffer = VK_NULL_HANDLE;
+            fprintf(gpFile, "%s() => vkFreeCommandBuffers() Succeeded For Buffer-Copy\n", __func__);
+        }
+        if (vertexData_stagingBuffer.vkDeviceMemory)
+        {
+            vkFreeMemory(vkDevice, vertexData_stagingBuffer.vkDeviceMemory, NULL);
+            vertexData_stagingBuffer.vkDeviceMemory = VK_NULL_HANDLE;
+            fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vertexData_stagingBuffer.vkDeviceMemory\n", __func__);
+        }
+        if (vertexData_stagingBuffer.vkBuffer)
+        {
+            vkDestroyBuffer(vkDevice, vertexData_stagingBuffer.vkBuffer, NULL);
+            vertexData_stagingBuffer.vkBuffer = VK_NULL_HANDLE;
+            fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vertexData_stagingBuffer.vkBuffer\n", __func__);
+        }
+
+        return vkResult;
+    }
+    else
+        fprintf(gpFile, "%s() => vkQueueSubmit() Succeeded For Buffer-Copy\n", __func__);
+
+    vkResult = vkQueueWaitIdle(vkQueue);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkQueueWaitIdle() Failed For Buffer-Copy : %d\n", __func__, vkResult);
+        
+        //* Cleanup Code
+        if (vkCommandBuffer)
+        {
+            vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer);
+            vkCommandBuffer = VK_NULL_HANDLE;
+            fprintf(gpFile, "%s() => vkFreeCommandBuffers() Succeeded For Buffer-Copy\n", __func__);
+        }
+        if (vertexData_stagingBuffer.vkDeviceMemory)
+        {
+            vkFreeMemory(vkDevice, vertexData_stagingBuffer.vkDeviceMemory, NULL);
+            vertexData_stagingBuffer.vkDeviceMemory = VK_NULL_HANDLE;
+            fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vertexData_stagingBuffer.vkDeviceMemory\n", __func__);
+        }
+        if (vertexData_stagingBuffer.vkBuffer)
+        {
+            vkDestroyBuffer(vkDevice, vertexData_stagingBuffer.vkBuffer, NULL);
+            vertexData_stagingBuffer.vkBuffer = VK_NULL_HANDLE;
+            fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vertexData_stagingBuffer.vkBuffer\n", __func__);
+        }
+
+        return vkResult;
+    }
+    else
+        fprintf(gpFile, "%s() => vkQueueWaitIdle() Succeeded For Buffer-Copy\n", __func__);
+    //*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    //! Step - 5
+    //*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    if (vkCommandBuffer)
+    {
+        vkFreeCommandBuffers(vkDevice, vkCommandPool, 1, &vkCommandBuffer);
+        vkCommandBuffer = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkFreeCommandBuffers() Succeeded For Buffer-Copy\n", __func__);
+    }
+    //*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    //! Step - 6
+    //*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+    if (vertexData_stagingBuffer.vkDeviceMemory)
+    {
+        vkFreeMemory(vkDevice, vertexData_stagingBuffer.vkDeviceMemory, NULL);
+        vertexData_stagingBuffer.vkDeviceMemory = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vertexData_stagingBuffer.vkDeviceMemory\n", __func__);
+    }
+
+    if (vertexData_stagingBuffer.vkBuffer)
+    {
+        vkDestroyBuffer(vkDevice, vertexData_stagingBuffer.vkBuffer, NULL);
+        vertexData_stagingBuffer.vkBuffer = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vertexData_stagingBuffer.vkBuffer\n", __func__);
+    }
+    //*-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 
     return vkResult;
 }
@@ -4286,7 +4383,7 @@ VkResult createUniformBuffer(void)
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.flags = 0;
     vkBufferCreateInfo.pNext = NULL;
-    vkBufferCreateInfo.size = sizeof(Host_UniformData);
+    vkBufferCreateInfo.size = sizeof(GrassUBO);
     vkBufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
     memset((void*)&uniformData, 0, sizeof(UniformData));
@@ -4315,7 +4412,7 @@ VkResult createUniformBuffer(void)
     {
         if ((vkMemoryRequirements.memoryTypeBits & 1) == 1)
         {
-            if (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+            if (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
             {
                 vkMemoryAllocateInfo.memoryTypeIndex = i;
                 break;
@@ -4362,15 +4459,16 @@ VkResult updateUniformBuffer(void)
     VkResult vkResult = VK_SUCCESS;
 
     // Code
-    Host_UniformData Host_UniformData;
-    memset((void*)&Host_UniformData, 0, sizeof(Host_UniformData));
+    GrassUBO grassUBO;
+    memset((void*)&grassUBO, 0, sizeof(GrassUBO));
 
     float elapsedTime = sdkGetTimerValue(&timer) / 1000.0f;
 
     //! Update Matrices
-    Host_UniformData.viewMatrix = glm::lookAt(cameraPosition, cameraPosition + cameraEye, cameraUp);
-    Host_UniformData.cameraPosition = glm::vec4(cameraPosition, 0.0);
-    Host_UniformData.time = elapsedTime;
+    grassUBO.viewMatrix = glm::lookAt(cameraPosition, cameraPosition + cameraEye, cameraUp);
+    grassUBO.cameraPosition = glm::vec4(cameraPosition, 0.0);
+    grassUBO.time = elapsedTime;
+    grassUBO.windStrength = windStrength;
 
     glm::mat4 perspectiveProjectionMatrix = glm::mat4(1.0f);
     perspectiveProjectionMatrix = glm::perspective(
@@ -4381,11 +4479,11 @@ VkResult updateUniformBuffer(void)
     );
     //! 2D Matrix with Column Major (Like OpenGL)
     perspectiveProjectionMatrix[1][1] = perspectiveProjectionMatrix[1][1] * (-1.0f);
-    Host_UniformData.projectionMatrix = perspectiveProjectionMatrix;
+    grassUBO.projectionMatrix = perspectiveProjectionMatrix;
 
     //! Map Uniform Buffer
     void* data = NULL;
-    vkResult = vkMapMemory(vkDevice, uniformData.vkDeviceMemory, 0, sizeof(Host_UniformData), 0, &data);
+    vkResult = vkMapMemory(vkDevice, uniformData.vkDeviceMemory, 0, sizeof(GrassUBO), 0, &data);
     if (vkResult != VK_SUCCESS)
     {
         fprintf(gpFile, "%s() => vkMapMemory() Failed For Uniform Buffer : %d !!!\n", __func__, vkResult);
@@ -4393,7 +4491,7 @@ VkResult updateUniformBuffer(void)
     }
 
     //! Copy the data to the mapped buffer (present on device memory)
-    memcpy(data, &Host_UniformData, sizeof(Host_UniformData));
+    memcpy(data, &grassUBO, sizeof(GrassUBO));
 
     //! Unmap memory
     vkUnmapMemory(vkDevice, uniformData.vkDeviceMemory);
@@ -4786,7 +4884,7 @@ VkResult createDescriptorSet(void)
     memset((void*)&vkDescriptorBufferInfo, 0, sizeof(VkDescriptorBufferInfo));
     vkDescriptorBufferInfo.buffer = uniformData.vkBuffer;
     vkDescriptorBufferInfo.offset = 0;
-    vkDescriptorBufferInfo.range = sizeof(Host_UniformData);
+    vkDescriptorBufferInfo.range = sizeof(GrassUBO);
 
     //! Descriptor Image Info
     VkDescriptorImageInfo vkDescriptorImageInfo_array[2];
@@ -4940,20 +5038,15 @@ VkResult createPipeline(void)
     //* Code
 
     //! Vertex Input State
-    VkVertexInputBindingDescription vkVertexInputBindingDescription_array[2];
+    VkVertexInputBindingDescription vkVertexInputBindingDescription_array[1];
     memset((void*)vkVertexInputBindingDescription_array, 0, sizeof(VkVertexInputBindingDescription) * _ARRAYSIZE(vkVertexInputBindingDescription_array));
 
     //! Position
     vkVertexInputBindingDescription_array[0].binding = 0;
     vkVertexInputBindingDescription_array[0].stride = sizeof(float) * 3;
-    vkVertexInputBindingDescription_array[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+    vkVertexInputBindingDescription_array[0].inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
 
-    //! Texture
-    vkVertexInputBindingDescription_array[1].binding = 1;
-    vkVertexInputBindingDescription_array[1].stride = sizeof(float) * 2;
-    vkVertexInputBindingDescription_array[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-    VkVertexInputAttributeDescription vkVertexInputAttributeDescription_array[2];
+    VkVertexInputAttributeDescription vkVertexInputAttributeDescription_array[1];
     memset((void*)vkVertexInputAttributeDescription_array, 0, sizeof(VkVertexInputAttributeDescription) * _ARRAYSIZE(vkVertexInputAttributeDescription_array));
 
     //! Position
@@ -4961,12 +5054,6 @@ VkResult createPipeline(void)
     vkVertexInputAttributeDescription_array[0].location = 0;
     vkVertexInputAttributeDescription_array[0].format = VK_FORMAT_R32G32B32_SFLOAT;
     vkVertexInputAttributeDescription_array[0].offset = 0;
-
-    //! Texture
-    vkVertexInputAttributeDescription_array[1].binding = 1;
-    vkVertexInputAttributeDescription_array[1].location = 1;
-    vkVertexInputAttributeDescription_array[1].format = VK_FORMAT_R32G32_SFLOAT;
-    vkVertexInputAttributeDescription_array[1].offset = 0;
 
     VkPipelineVertexInputStateCreateInfo vkPipelineVertexInputStateCreateInfo;
     memset((void*)&vkPipelineVertexInputStateCreateInfo, 0, sizeof(VkPipelineVertexInputStateCreateInfo));
@@ -5358,19 +5445,8 @@ VkResult buildCommandBuffers(void)
                 vkDeviceSize_offset_position
             );
 
-            //! Bind with Vertex Texture Buffer
-            VkDeviceSize vkDeviceSize_offset_texture[1];
-            memset((void*)vkDeviceSize_offset_texture, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_texture));
-            vkCmdBindVertexBuffers(
-                vkCommandBuffer_array[i],
-                1,
-                1,
-                &vertexData_texcoord.vkBuffer,
-                vkDeviceSize_offset_texture
-            );
-
-            //! Vulkan Drawing Function
-            vkCmdDraw(vkCommandBuffer_array[i], grassPosition.size(), 1, 0, 0);
+            //! Vulkan Drawing Function (Instanced Drawing)
+            vkCmdDraw(vkCommandBuffer_array[i], 1, grassPosition.size(), 0, 0);
         }
         //* Step - 7
         vkCmdEndRenderPass(vkCommandBuffer_array[i]);
@@ -5472,28 +5548,17 @@ VkResult recordCommandBufferForImage(uint32_t imageIndex)
             vkDeviceSize_offset_position
         );
 
-        //! Bind with Vertex Texture Buffer
-        VkDeviceSize vkDeviceSize_offset_texture[1];
-        memset((void*)vkDeviceSize_offset_texture, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_texture));
-        vkCmdBindVertexBuffers(
-            commandBuffer,
-            1,
-            1,
-            &vertexData_texcoord.vkBuffer,
-            vkDeviceSize_offset_texture
-        );
-
-        //! Vulkan Drawing Function
-        vkCmdDraw(commandBuffer, grassPosition.size(), 1, 0, 0);
+        //! Vulkan Drawing Function (Instanced Drawing)
+        vkCmdDraw(commandBuffer, 1, grassPosition.size(), 0, 0);
 
         //! ImGui Render Draw Data
         ImDrawData* imDrawData = ImGui::GetDrawData();
         if (imDrawData != nullptr && imDrawData->TotalVtxCount > 0)
         {
-            vkClearColorValue.float32[0] = clear_color.x * clear_color.w;    //* R
-            vkClearColorValue.float32[1] = clear_color.y * clear_color.w;    //* G
-            vkClearColorValue.float32[2] = clear_color.z * clear_color.w;    //* B
-            vkClearColorValue.float32[3] = clear_color.w;                   //* A
+            vkClearColorValue.float32[0] = clearColor.x * clearColor.w;    //* R
+            vkClearColorValue.float32[1] = clearColor.y * clearColor.w;    //* G
+            vkClearColorValue.float32[2] = clearColor.z * clearColor.w;    //* B
+            vkClearColorValue.float32[3] = clearColor.w;                   //* A
             ImGui_ImplVulkan_RenderDrawData(imDrawData, commandBuffer);
         }   
 
@@ -5582,12 +5647,12 @@ void renderImGui(void)
     ImGui::Begin("Vulkan : Grass Rendering");
     ImGui::PushFont(font);
     {
-        ImGui::Text("Wind Speed");
-        ImGui::SliderFloat("##", (float*)&fAnimationSpeed, 0.001f, 0.1f);
+        ImGui::Text("Wind Strength");
+        ImGui::SliderFloat("##", (float*)&windStrength, 0.005f, 0.5f);
 
         ImGui::Spacing();
         ImGui::Spacing();
-        ImGui::ColorEdit3("VkClearColor", (float*)&clear_color);
+        ImGui::ColorEdit3("VkClearColor", (float*)&clearColor);
     }
     ImGui::PopFont();
     ImGui::End();

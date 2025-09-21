@@ -9,7 +9,8 @@ layout(set = 0, binding = 0) uniform UBO
     mat4 viewMatrix;
     mat4 projectionMatrix;
     vec4 cameraPosition;
-    float time;
+    float time;	
+	float windStrength;
 } ubo;
 
 layout(set = 0, binding = 2) uniform sampler2D uGrassTextureSampler;

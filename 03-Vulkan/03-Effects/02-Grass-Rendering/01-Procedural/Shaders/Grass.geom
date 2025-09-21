@@ -12,7 +12,8 @@ layout(set = 0, binding = 0) uniform UBO
     mat4 viewMatrix;
     mat4 projectionMatrix;
     vec4 cameraPosition;
-    float time;
+    float time;	
+	float windStrength;
 } ubo;
 
 layout(set = 0, binding = 1) uniform sampler2D uWindSampler;
@@ -106,7 +107,7 @@ void createQuad(vec3 basePosition, mat4 crossModel)
 	vec4 vertices[4];
 	vec2 texcoords[4];
 	vec2 windDirection = vec2(1.0, 1.0);
-	float windStrength = 0.15f;
+	float windStrength = ubo.windStrength;
 	mat4 modelWindMatrix = mat4(1);
 
 	// Code

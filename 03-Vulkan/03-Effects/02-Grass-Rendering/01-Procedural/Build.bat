@@ -16,7 +16,7 @@ set IMAGES_PATH=Assets\Images
 
 set BIN_DIR=Bin
 
-set SPV=0
+set SPV=1
 set DEBUG=1
 
 if not exist %BIN_DIR% mkdir %BIN_DIR%
