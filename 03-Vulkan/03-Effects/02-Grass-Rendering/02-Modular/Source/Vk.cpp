@@ -1858,10 +1858,7 @@ VkResult getPhysicalDevice(void)
         fprintf(gpFile, "%s() => Selected Physical Device Does Not Support Tessellation Shader !!!\n", __func__);
 
     if (vkPhysicalDeviceFeatures_array.geometryShader == VK_TRUE)
-    {
         fprintf(gpFile, "%s() => Selected Physical Device Supports Geometry Shader\n", __func__);
-        vkPhysicalDeviceFeatures_array.geometryShader = VK_TRUE;
-    }
     else
         fprintf(gpFile, "%s() => Selected Physical Device Does Not Support Geometry Shader !!!\n", __func__);
 
