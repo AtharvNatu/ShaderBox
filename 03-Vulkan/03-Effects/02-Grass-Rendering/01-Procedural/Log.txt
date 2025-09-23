@@ -464,8 +464,12 @@ createTexture() => vkFreeMemory() Succeeded For vkDeviceMemory_stagingBuffer
 createTexture() => vkCreateImageView() Succeeded For Texture : Assets/Images/Flowmap.png
 createTexture() => vkCreateSampler() Succeeded For Texture : Assets/Images/Flowmap.png
 initialize() => createTexture() Succeeded For Flowmap.png
+sizeof(GrassUBO) = 152
+nonCoherentAtomSize = 64
+alignedUBOSize = 192
 createUniformBuffer() => vkCreateBuffer() Succeeded For Uniform Data
 createUniformBuffer() => vkAllocateMemory() Succeeded For Uniform Data
+Uniform Data Memory Handle : 908683000000001D
 createUniformBuffer() => vkBindBufferMemory() Succeeded For Uniform Data
 createUniformBuffer() => updateUniformBuffer() Succeeded
 initialize() => createUniformBuffer() Succeeded
@@ -547,12 +551,6 @@ buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
 buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
 buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
 buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
-ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-VkMappedMemoryRange-size-01390 ] Object 0: handle = 0x5c59a0000000056, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0xdd4e6d8b | vkFlushMappedMemoryRanges(): pMemoryRanges[0].size (1064) is not a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize (64) and offset + size (0 + 1064 = 1064) not equal to the memory size (1072).
-The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must either be a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize, or offset plus size must equal the size of memory (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-VkMappedMemoryRange-size-01390)
-ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-VkMappedMemoryRange-size-01390 ] Object 0: handle = 0x625f640000000058, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0xdd4e6d8b | vkFlushMappedMemoryRanges(): pMemoryRanges[0].size (936) is not a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize (64) and offset + size (0 + 936 = 936) not equal to the memory size (944).
-The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must either be a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize, or offset plus size must equal the size of memory (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-VkMappedMemoryRange-size-01390)
-ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-VkMappedMemoryRange-size-01390 ] Object 0: handle = 0x4868e6000000005a, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0xdd4e6d8b | vkFlushMappedMemoryRanges(): pMemoryRanges[0].size (1064) is not a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize (64) and offset + size (0 + 1064 = 1064) not equal to the memory size (1072).
-The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must either be a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize, or offset plus size must equal the size of memory (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-VkMappedMemoryRange-size-01390)
 uninitialize() => vkDeviceWaitIdle() Succeeded
 uninitialize() => vkDestroyFence() Succeeded For Index : 0
 uninitialize() => vkDestroyFence() Succeeded For Index : 1
