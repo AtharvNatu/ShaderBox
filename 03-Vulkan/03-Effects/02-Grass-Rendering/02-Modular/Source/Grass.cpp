@@ -581,13 +581,13 @@ VkResult Grass::createDescriptorSetLayout(void)
     vkDescriptorSetLayoutBinding_array[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     vkDescriptorSetLayoutBinding_array[0].binding = 0;   //! Mapped with layout(binding = 0) in vertex shader
     vkDescriptorSetLayoutBinding_array[0].descriptorCount = 1;
-    vkDescriptorSetLayoutBinding_array[0].stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    vkDescriptorSetLayoutBinding_array[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT;
     vkDescriptorSetLayoutBinding_array[0].pImmutableSamplers = NULL;
 
     vkDescriptorSetLayoutBinding_array[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     vkDescriptorSetLayoutBinding_array[1].binding = 1;   //! Mapped with layout(binding = 1) in geometry shader
     vkDescriptorSetLayoutBinding_array[1].descriptorCount = 1;
-    vkDescriptorSetLayoutBinding_array[1].stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT;
+    vkDescriptorSetLayoutBinding_array[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     vkDescriptorSetLayoutBinding_array[1].pImmutableSamplers = NULL;
 
     vkDescriptorSetLayoutBinding_array[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1001,11 +1001,6 @@ VkResult Grass::updateUniformBuffer(void)
     float elapsedTime = sdkGetTimerValue(&timer) / 1000.0f;
 
     //! Update Matrices
-    grassUBO.viewMatrix = glm::lookAt(cameraPosition, cameraPosition + cameraEye, cameraUp);
-    grassUBO.cameraPosition = glm::vec4(cameraPosition, 0.0);
-    grassUBO.time = elapsedTime;
-    grassUBO.windStrength = windStrength;
-
     glm::mat4 perspectiveProjectionMatrix = glm::mat4(1.0f);
     perspectiveProjectionMatrix = glm::perspective(
         glm::radians(45.0f),
@@ -1015,6 +1010,13 @@ VkResult Grass::updateUniformBuffer(void)
     );
     //! 2D Matrix with Column Major (Like OpenGL)
     perspectiveProjectionMatrix[1][1] = perspectiveProjectionMatrix[1][1] * (-1.0f);
+
+    glm::mat4 translationMatrix = glm::mat4(1.0f);
+    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, -6.0f));
+
+    grassUBO.modelMatrix = translationMatrix;
+    grassUBO.time = elapsedTime;
+    grassUBO.windStrength = windStrength;
     grassUBO.projectionMatrix = perspectiveProjectionMatrix;
 
     //! Map Uniform Buffer

@@ -54,9 +54,8 @@ class Grass
         //* Uniform Related Variables
         typedef struct
         {
-            glm::mat4 viewMatrix;
+            glm::mat4 modelMatrix;
             glm::mat4 projectionMatrix;
-            glm::vec4 cameraPosition;
             float time;
             float windStrength;
         } GrassUBO;
@@ -71,12 +70,7 @@ class Grass
 
         std::vector<glm::vec3> grassPosition;
 
-        glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0f, 3.0f);
-        glm::vec3 cameraEye = glm::vec3(0.0f, 0.0f, -1.0f);
-        glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-        float cameraSpeed = 0.0f;
-        float deltaTime = 0.0f;
-        float windStrength = 0.1f;
+        const float windStrength = 0.1f;
 
         StopWatchInterface* timer = nullptr;
 
