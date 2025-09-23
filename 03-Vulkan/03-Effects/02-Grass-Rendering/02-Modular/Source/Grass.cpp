@@ -581,13 +581,13 @@ VkResult Grass::createDescriptorSetLayout(void)
     vkDescriptorSetLayoutBinding_array[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     vkDescriptorSetLayoutBinding_array[0].binding = 0;   //! Mapped with layout(binding = 0) in vertex shader
     vkDescriptorSetLayoutBinding_array[0].descriptorCount = 1;
-    vkDescriptorSetLayoutBinding_array[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT;
+    vkDescriptorSetLayoutBinding_array[0].stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT;
     vkDescriptorSetLayoutBinding_array[0].pImmutableSamplers = NULL;
 
     vkDescriptorSetLayoutBinding_array[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     vkDescriptorSetLayoutBinding_array[1].binding = 1;   //! Mapped with layout(binding = 1) in geometry shader
     vkDescriptorSetLayoutBinding_array[1].descriptorCount = 1;
-    vkDescriptorSetLayoutBinding_array[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    vkDescriptorSetLayoutBinding_array[1].stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT;
     vkDescriptorSetLayoutBinding_array[1].pImmutableSamplers = NULL;
 
     vkDescriptorSetLayoutBinding_array[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
