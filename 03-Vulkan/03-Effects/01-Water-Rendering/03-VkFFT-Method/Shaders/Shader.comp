@@ -1,0 +1,81 @@
+#version 450
+
+// // Workgroup size tuned for typical GPUs
+// layout(local_size_x = 16, local_size_y = 16) in;
+
+// // Storage layout for FFT data (packed float2 = complex(re,im))
+// layout(std430, binding = 0) readonly buffer FFTBuf {
+//     vec2 data[]; // 5 planes packed: plane0[0..N*N-1], plane1[offset..], ...
+// };
+
+// // Storage layout for Vertex buffer — matches the C++ Vertex above (vec4 x3, vec2, padding)
+// layout(std430, binding = 1) writeonly buffer VertBuf {
+//     // each entry is 64 bytes; using explicit members for clarity
+//     struct GVertex {
+//         vec4 position;   // xyz, w
+//         vec4 color;      // rgb, a
+//         vec4 normal;     // nx, ny, nz, pad
+//         vec2 texcoords;  // u, v
+//         vec2 _pad;       // padding to 16-byte alignment
+//     };
+//     GVertex verts[];
+// };
+
+struct GVertex {
+    vec4 position;
+    vec4 color;
+    vec4 normal;
+    vec2 texcoords;
+    vec2 _pad;
+};
+
+layout(std430, binding = 0) readonly buffer FFTBuf {
+    vec2 data[];
+};
+
+layout(std430, binding = 1) writeonly buffer VertBuf {
+    GVertex verts[];
+};
+
+layout(push_constant) uniform PushConsts {
+    int N;
+    float vertexDistance;
+    float choppiness;
+    float normalRoughness;
+    float halfN; // optional
+} pc;
+
+void main() {
+    uint gx = gl_GlobalInvocationID.x;
+    uint gy = gl_GlobalInvocationID.y;
+    if (gx >= uint(pc.N) || gy >= uint(pc.N)) return;
+
+    uint idx = gy * uint(pc.N) + gx;
+    uint planeSize = uint(pc.N) * uint(pc.N);
+
+    // read real parts of inverse FFT outputs (we assume real values stored in .x)
+    float hy = data[idx + 0u * planeSize].x;
+    float hx = data[idx + 1u * planeSize].x;
+    float hz = data[idx + 2u * planeSize].x;
+    float ex = data[idx + 3u * planeSize].x;
+    float ez = data[idx + 4u * planeSize].x;
+
+    // Map to (N+1)x(N+1) vertex grid: we'll write the N x N internal vertices.
+    uint Nplus1 = uint(pc.N + 1);
+    uint v_x = gx;
+    uint v_z = gy;
+    uint v_idx = v_z * Nplus1 + v_x;
+
+    float vx = -0.5 + float(v_x) * pc.vertexDistance / float(pc.N);
+    float vz = -0.5 + float(v_z) * pc.vertexDistance / float(pc.N);
+
+    vec3 pos3 = vec3(vx + pc.choppiness * hx, hy, vz + pc.choppiness * hz);
+    vec3 n3 = normalize(vec3(-ex * pc.normalRoughness, 1.0, -ez * pc.normalRoughness));
+
+    // write out packed vec4 fields to match host layout
+    verts[v_idx].position = vec4(pos3, 1.0);      // w = 1.0
+    verts[v_idx].color = vec4(29.0/255.0, 162.0/255.0, 216.0/255.0, 1.0);
+    verts[v_idx].normal = vec4(n3, 0.0);          // pad = 0.0
+    verts[v_idx].texcoords = vec2(float(v_x) / float(pc.N), float(v_z) / float(pc.N));
+    verts[v_idx]._pad = vec2(0.0, 0.0);           // keep alignment tidy
+}
