@@ -15,9 +15,16 @@ Ocean::Ocean(OceanSettings settings) : oceanSettings(settings)
     VkDeviceSize complexSize = sizeof(float) * 2;
     VkDeviceSize planeSize = tileSize * tileSize * complexSize;
 
+    memset((void*)&vertexData, 0, sizeof(BufferData));
+    memset((void*)&indexData, 0, sizeof(BufferData));
+    memset((void*)&fftData, 0, sizeof(BufferData));
+
     vertexData.vkDeviceSize = vertexCount * sizeof(Vertex);
     indexData.vkDeviceSize = indexCount * sizeof(uint32_t);
     fftData.vkDeviceSize = planeSize * 5; // For 5 buffers (Displacement - x,y,z | Gradient - x,y)
+    fprintf(gpFile, "vertexData.vkDeviceSize = %lld\n", vertexData.vkDeviceSize);
+    fprintf(gpFile, "indexData.vkDeviceSize = %lld\n", indexData.vkDeviceSize);
+    fprintf(gpFile, "fftData.vkDeviceSize = %lld\n", fftData.vkDeviceSize);
     
     pushData.tileSize = settings.tileSize;
     pushData.vertexDistance = vertexDistance;
@@ -90,7 +97,7 @@ Ocean::Ocean(OceanSettings settings) : oceanSettings(settings)
     else
         fprintf(gpFile, "%s() => createComputePipeline() Succeeded For Water\n", __func__);
 
-    reloadSettings(settings);
+    // reloadSettings(settings);
 }
 
 VkResult Ocean::createBuffers()
@@ -102,8 +109,6 @@ VkResult Ocean::createBuffers()
 
     //! VERTEX BUFFER
     //! ---------------------------------------------------------------------------------------------------------------------------------
-    memset((void*)&vertexData, 0, sizeof(BufferData));
-
     //* Step - 5
     VkBufferCreateInfo vkBufferCreateInfo;
     memset((void*)&vkBufferCreateInfo, 0, sizeof(VkBufferCreateInfo));
@@ -175,8 +180,6 @@ VkResult Ocean::createBuffers()
     
     //! INDEX BUFFER
     //! ---------------------------------------------------------------------------------------------------------------------------------
-    memset((void*)&indexData, 0, sizeof(BufferData));
-
     //* Step - 5
     memset((void*)&vkBufferCreateInfo, 0, sizeof(VkBufferCreateInfo));
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -245,8 +248,6 @@ VkResult Ocean::createBuffers()
 
     //! FFT Displacement Interleaved Buffer
     //! ---------------------------------------------------------------------------------------------------------------------------------
-    memset((void*)&fftData, 0, sizeof(BufferData));
-
     //* Step - 5
     memset((void*)&vkBufferCreateInfo, 0, sizeof(VkBufferCreateInfo));
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -301,7 +302,7 @@ VkResult Ocean::createBuffers()
 
     //* Step - 10
     //! Binds Vulkan Device Memory Object Handle with the Vulkan Buffer Object Handle
-    vkResult = vkBindBufferMemory(vkDevice, fftData.vkBuffer, indexData.vkDeviceMemory, 0);
+    vkResult = vkBindBufferMemory(vkDevice, fftData.vkBuffer, fftData.vkDeviceMemory, 0);
     if (vkResult != VK_SUCCESS)
         fprintf(gpFile, "%s() => vkBindBufferMemory() Failed For FFT Buffer : %d !!!\n", __func__, vkResult);
     else

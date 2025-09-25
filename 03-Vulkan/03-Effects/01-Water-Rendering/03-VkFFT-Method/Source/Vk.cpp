@@ -612,8 +612,6 @@ VkResult initialize(void)
     }
     else
         fprintf(gpFile, "%s() => createCommandBuffers() Succeeded\n", __func__);
-
-    ocean = new Ocean(oceanSettings);    
     
     //! Create Uniform Buffer
     vkResult = createUniformBuffer();
@@ -636,6 +634,7 @@ VkResult initialize(void)
     }
     else
         fprintf(gpFile, "%s() => createShaders() Succeeded\n", __func__);
+
 
     //! Create DescriptorSetLayout
     vkResult = createDescriptorSetLayout();
@@ -747,6 +746,8 @@ VkResult initialize(void)
     memset((void*)&vkClearDepthStencilValue, 0, sizeof(VkClearDepthStencilValue));
     vkClearDepthStencilValue.depth = 1.0f;
     vkClearDepthStencilValue.stencil = 0;
+
+    ocean = new Ocean(oceanSettings);    
 
     //! Initialize ImGui
     initializeImGui("ImGui\\Poppins-Regular.ttf", 24.0f);

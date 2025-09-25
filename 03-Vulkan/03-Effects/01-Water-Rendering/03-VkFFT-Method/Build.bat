@@ -35,6 +35,7 @@ echo ---------------------------------------------------------------------------
 echo Compiling %API% and Win32 Source Code ...
 echo ----------------------------------------------------------------------------------------------------------------
 cl.exe  /c ^
+        /MD ^
         /EHsc ^
         /std:c++17 ^
         /Fo%BIN_DIR%\ ^
@@ -108,9 +109,10 @@ link.exe ^
         /LIBPATH:%VULKAN_LIB_PATH% ^
         user32.lib gdi32.lib ^
         glslang.lib ^
-        OSDependent.lib ^
-        SPIRV.lib ^
-        MachineIndependent.lib ^
+        SPIRV-Tools.lib ^
+        SPIRV-Tools-opt.lib ^
+        SPIRV-Tools-reduce.lib ^
+        SPIRV-Tools-shared.lib ^
         /SUBSYSTEM:WINDOWS
 
 if errorlevel 1 (
