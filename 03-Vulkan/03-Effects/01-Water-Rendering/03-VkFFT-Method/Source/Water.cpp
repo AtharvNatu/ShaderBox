@@ -1,16 +1,14 @@
-#include "Water.hpp"
+﻿#include "Water.hpp"
 
-static std::default_random_engine generator;
-static std::normal_distribution<double> distribution(0.0, 1.0);
-static auto lastFrame = std::chrono::high_resolution_clock::now();
-
+static std::default_random_engine rng;
+static std::normal_distribution<double> gaussianDistribution(0.0, 1.0);
 
 Ocean::Ocean(OceanSettings settings) : oceanSettings(settings)
 {
     const uint32_t tileSize = settings.tileSize;
-    int nPlus1 = tileSize + 1;
-    const uint32_t vertexCount = (tileSize + 1) * (tileSize + 1);
-    const uint32_t indexCount = tileSize * tileSize * 6;
+
+    this->vertexCount = (tileSize + 1) * (tileSize + 1);
+    this->indexCount = tileSize * tileSize * 6;
 
     VkDeviceSize complexSize = sizeof(float) * 2;
     VkDeviceSize planeSize = tileSize * tileSize * complexSize;
@@ -22,43 +20,26 @@ Ocean::Ocean(OceanSettings settings) : oceanSettings(settings)
     vertexData.vkDeviceSize = vertexCount * sizeof(Vertex);
     indexData.vkDeviceSize = indexCount * sizeof(uint32_t);
     fftData.vkDeviceSize = planeSize * 5; // For 5 buffers (Displacement - x,y,z | Gradient - x,y)
-    fprintf(gpFile, "vertexData.vkDeviceSize = %lld\n", vertexData.vkDeviceSize);
-    fprintf(gpFile, "indexData.vkDeviceSize = %lld\n", indexData.vkDeviceSize);
-    fprintf(gpFile, "fftData.vkDeviceSize = %lld\n", fftData.vkDeviceSize);
-    
+
     pushData.tileSize = settings.tileSize;
     pushData.vertexDistance = vertexDistance;
     pushData.choppiness = choppiness;
     pushData.normalRoughness = normalRoughness;
     pushData.half = float(tileSize) * 0.5f;
 
-    vertices.resize(vertexCount);
-    indices.resize(indexCount);
+    init();
+    reloadSettings(settings);
+    
+}
 
-    for (int z = 0; z < nPlus1; z++)
+void Ocean::init()
+{
+    // Code
+    bool status = initializeFFT();
+    if (!status)
     {
-        for (int x = 0; x < nPlus1; x++)
-        {
-            int i0 = z * nPlus1 + x;
-
-            Vertex vertex;
-            vertex.color = glm::normalize(glm::vec3(29, 162, 216));
-            vertices[i0] = vertex;
-
-            if (x < settings.tileSize && z < settings.tileSize)
-            {
-                int i1 = (z + 1) * nPlus1 + x;
-                int i2 = (z + 1) * nPlus1 + (x + 1);
-                int i3 = z * nPlus1 + (x + 1);
-
-                indices.push_back(i3);
-                indices.push_back(i0);
-                indices.push_back(i1);
-                indices.push_back(i1);
-                indices.push_back(i2);
-                indices.push_back(i3);
-            }
-        }
+        fprintf(gpFile, "%s() => initializeFFT() Failed : %d\n", __func__, vkResult);
+        return;
     }
 
     vkResult = createBuffers();
@@ -72,32 +53,101 @@ Ocean::Ocean(OceanSettings settings) : oceanSettings(settings)
         fprintf(gpFile, "%s() => createComputeDescriptorSetLayout() Failed For Water : %d !!!\n", __func__, vkResult);
     else
         fprintf(gpFile, "%s() => createComputeDescriptorSetLayout() Succeeded For Water\n", __func__);
-    
+
     vkResult = createComputePipelineLayout();
     if (vkResult != VK_SUCCESS)
         fprintf(gpFile, "%s() => createComputePipelineLayout() Failed For Water : %d !!!\n", __func__, vkResult);
     else
         fprintf(gpFile, "%s() => createComputePipelineLayout() Succeeded For Water\n", __func__);
-    
+
     vkResult = createComputeDescriptorPool();
     if (vkResult != VK_SUCCESS)
         fprintf(gpFile, "%s() => createComputeDescriptorPool() Failed For Water : %d !!!\n", __func__, vkResult);
     else
         fprintf(gpFile, "%s() => createComputeDescriptorPool() Succeeded For Water\n", __func__);
-    
+
     vkResult = createComputeDescriptorSet();
     if (vkResult != VK_SUCCESS)
         fprintf(gpFile, "%s() => createComputeDescriptorSet() Failed For Water : %d !!!\n", __func__, vkResult);
     else
         fprintf(gpFile, "%s() => createComputeDescriptorSet() Succeeded For Water\n", __func__);
-    
+
     vkResult = createComputePipeline();
     if (vkResult != VK_SUCCESS)
         fprintf(gpFile, "%s() => createComputePipeline() Failed For Water : %d !!!\n", __func__, vkResult);
     else
         fprintf(gpFile, "%s() => createComputePipeline() Succeeded For Water\n", __func__);
 
-    // reloadSettings(settings);
+}
+
+void Ocean::createGrid()
+{
+    // Code
+
+    // VERTEX DATA
+    vertices.resize(vertexCount);
+
+    int N = oceanSettings.tileSize;
+
+    for (int z = 0; z <= N; z++)
+    {
+        for (int x = 0; x <= N; x++)
+        {
+            int idx = z * (N + 1) + x;
+
+            // Initial State => X, Z, Y = 0
+            // Compute Shader will overwrite position.y, displacement, normals per frame
+            vertices[idx].position[0] = (float)x / float(N) - 0.5f; // Center Grid
+            vertices[idx].position[1] = 0.0f; // Height = 0
+            vertices[idx].position[2] = (float)z / float(N) - 0.5f;
+            vertices[idx].position[3] = 1.0f;   // Padding
+
+            // Constant Color Values
+            vertices[idx].color[0] = 29.0f / 255.0f;
+            vertices[idx].color[1] = 162.0f / 255.0f;
+            vertices[idx].color[2] = 216.0f / 255.0f;
+            vertices[idx].color[3] = 1.0f;  // Padding
+
+            // Initial State => 0, 1, 0
+            vertices[idx].normal[0] = 0.0f;
+            vertices[idx].normal[1] = 1.0f;
+            vertices[idx].normal[2] = 0.0f;
+            vertices[idx].normal[3] = 0.0f; // Padding
+
+            // U, V
+            vertices[idx].texcoords[0] = (float)x / float(N);
+            vertices[idx].texcoords[1] = (float)z / float(N);
+            vertices[idx].texcoords[2] = 0.0f; // Padding
+            vertices[idx].texcoords[3] = 0.0f; // Padding
+        }
+    }
+
+    // INDEX DATA
+    indices.resize(indexCount);
+
+    for (int z = 0; z <= N; z++)
+    {
+        for (int x = 0; x <= N; x++)
+        {
+            uint32_t topLeft = z * (N + 1) + x;
+            uint32_t topRight = topLeft + 1;
+            uint32_t bottomLeft = (z + 1) * (N + 1) + x;
+            uint32_t bottomRight = bottomLeft + 1;
+
+            // 1st Triangle
+            indices.push_back(topLeft);
+            indices.push_back(bottomLeft);
+            indices.push_back(topRight);
+
+            // 2nd Triangle
+            indices.push_back(topRight);
+            indices.push_back(bottomLeft);
+            indices.push_back(bottomRight);
+        }
+    }
+
+    indexCount = static_cast<uint32_t>(indices.size());
+
 }
 
 VkResult Ocean::createBuffers()
@@ -171,11 +221,13 @@ VkResult Ocean::createBuffers()
     else
         fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Vertex Buffer\n", __func__);
 
-    vkResult = vkMapMemory(vkDevice, vertexData.vkDeviceMemory, 0, vkMemoryAllocateInfo.allocationSize, 0, &vertexMappedData);
+    vkResult = vkMapMemory(vkDevice, vertexData.vkDeviceMemory, 0, vkMemoryAllocateInfo.allocationSize, 0, &vertexMappedPtr);
     if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => vkMapMemory() Failed For vertexMappedData : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkMapMemory() Failed For Vertex Buffer : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkMapMemory() Succeeded For vertexMappedData\n", __func__);
+        fprintf(gpFile, "%s() => vkMapMemory() Succeeded For Vertex Buffer\n", __func__);
+
+    memcpy(vertexMappedPtr, vertices.data(), vertices.size() * sizeof(Vertex));
     //! ---------------------------------------------------------------------------------------------------------------------------------
     
     //! INDEX BUFFER
@@ -239,11 +291,14 @@ VkResult Ocean::createBuffers()
     else
         fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Index Buffer\n", __func__);
 
-    vkResult = vkMapMemory(vkDevice, indexData.vkDeviceMemory, 0, vkMemoryAllocateInfo.allocationSize, 0, &indexMappedData);
+    vkResult = vkMapMemory(vkDevice, indexData.vkDeviceMemory, 0, vkMemoryAllocateInfo.allocationSize, 0, &indexMappedPtr);
     if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => vkMapMemory() Failed For indexMappedData : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkMapMemory() Failed For Index Buffer : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkMapMemory() Succeeded For indexMappedData\n", __func__);
+        fprintf(gpFile, "%s() => vkMapMemory() Succeeded For Index Buffer\n", __func__);
+    
+    memcpy(indexMappedPtr, indices.data(), indices.size() * sizeof(uint32_t));
+
     //! ---------------------------------------------------------------------------------------------------------------------------------
 
     //! FFT Displacement Interleaved Buffer
@@ -307,22 +362,31 @@ VkResult Ocean::createBuffers()
         fprintf(gpFile, "%s() => vkBindBufferMemory() Failed For FFT Buffer : %d !!!\n", __func__, vkResult);
     else
         fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For FFT Buffer\n", __func__);
+
+    vkResult = vkMapMemory(vkDevice, fftData.vkDeviceMemory, 0, vkMemoryAllocateInfo.allocationSize, 0, &fftMappedPtr);
+    if (vkResult != VK_SUCCESS)
+        fprintf(gpFile, "%s() => vkMapMemory() Failed For FFT Displacement Buffer : %d !!!\n", __func__, vkResult);
+    else
+        fprintf(gpFile, "%s() => vkMapMemory() Succeeded For FFT Displacement Buffer\n", __func__);
     //! ---------------------------------------------------------------------------------------------------------------------------------
 
     return vkResult;
 }
 
-bool Ocean::initializeFFT(VkCommandBuffer& commandBuffer)
+bool Ocean::initializeFFT()
 {
     // Code
     memset((void*)&vkFFTConfiguration, 0, sizeof(VkFFTConfiguration));
     vkFFTConfiguration.FFTdim = 2;  // 2D FFT
     vkFFTConfiguration.size[0] = oceanSettings.tileSize;
     vkFFTConfiguration.size[1] = oceanSettings.tileSize;
+
     vkFFTConfiguration.device = &vkDevice;
     vkFFTConfiguration.physicalDevice = &vkPhysicalDevice_selected;
     vkFFTConfiguration.queue = &vkQueue;
-    vkFFTConfiguration.commandBuffer = &commandBuffer;
+    vkFFTConfiguration.commandPool = &vkCommandPool;
+    vkFFTConfiguration.fence = &vkFence_array[0];
+
     vkFFTConfiguration.bufferSize = &fftData.vkDeviceSize;
     vkFFTConfiguration.buffer = &fftData.vkBuffer;
 
@@ -347,11 +411,6 @@ VkResult Ocean::createComputeDescriptorSetLayout(void)
     VkResult vkResult = VK_SUCCESS;
 
     //! Initialize VkDescriptorSetLayoutBinding
-
-    // 0 -> Vertex UBO
-    // 1 -> Water Surface UBO
-    // 2 -> Displacement Map
-    // 3 -> Normal Map
     VkDescriptorSetLayoutBinding vkDescriptorSetLayoutBinding_array[2];
     memset((void*)vkDescriptorSetLayoutBinding_array, 0, sizeof(VkDescriptorSetLayoutBinding) * _ARRAYSIZE(vkDescriptorSetLayoutBinding_array));
 
@@ -575,200 +634,205 @@ VkResult Ocean::createComputePipeline(void)
     return vkResult;
 }
 
-void Ocean::unmapMemory(VkDeviceMemory& vkDeviceMemory)
-{
-    vkUnmapMemory(vkDevice, vkDeviceMemory);
-}
-
-void Ocean::update()
+void Ocean::update(double deltaTime)
 {
     // Code
-    auto now = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = now - lastFrame;
-    lastFrame = now;
+    time += deltaTime * simulationSpeed;
 
-    this->dt = elapsed.count();
-
-    simulationTime += simulationSpeed * dt;
-    float length = oceanSettings.length;
     int N = oceanSettings.tileSize;
 
-    // Setup h_tk + device
-    for (int m = 0; m < N; m++) 
-    {
-        for (int n = 0; n < N; n++) 
-        {
-            int i = m * N + n;
-            float kx = (n - N / 2.f) * twoPi / length;
-            float kz = (m - N / 2.f) * twoPi / length;
-            glm::vec2 K(kx, kz);
+    // Build Fourier Spectrum
+    generateSpectrum(time);
 
-            h_yDisplacement[i] = h_tilde(h0_tk[i], h0_tmk[i], K, simulationTime); // Initial displacement h_tilde(k, x, t)
-            h_xGradient[i] = h_yDisplacement[i] * std::complex<double>(0.0, kx);
-            h_zGradient[i] = h_yDisplacement[i] * std::complex<double>(0.0, kz);
-            
-            double k_length = glm::length(K);
+    // Copy Spectrum into mapped FFT Displacement Buffer
+    memcpy(fftMappedPtr, tildeData.data(), fftData.vkDeviceSize);
 
-            if (k_length > 0.00001) 
-            {
-                h_xDisplacement[i] = h_yDisplacement[i] * std::complex<double>(0.0, -kx / k_length);
-                h_zDisplacement[i] = h_yDisplacement[i] * std::complex<double>(0.0, -kz / k_length);
-            } 
-            else 
-            {
-                h_xDisplacement[i] = h_yDisplacement[i] * std::complex<double>(0.0, 0.0);
-                h_zDisplacement[i] = h_yDisplacement[i] * std::complex<double>(0.0, 0.0);
-            }
-        }
-    }
-}
 
-void Ocean::updateVertices()
-{
-    // Code
-    const uint32_t N = oceanSettings.tileSize;
-    int Nplus1 = N + 1;
-
-    for (int z = 0; z < Nplus1; z++) {
-        for (int x = 0; x < Nplus1; x++) {
-            int i_v = z * Nplus1 + x;
-            int i_d = (z % N) * N + x % N;
-
-            glm::vec3 origin_position = glm::vec3(-0.5 + x * vertexDistance / float(N), 0, -0.5 + z * vertexDistance / float(N));
-            glm::vec3 displacement(
-                choppiness * h_xDisplacement[i_d].real(), 
-                h_yDisplacement[i_d].real(), 
-                choppiness * h_zDisplacement[i_d].real()
-            );
-            vertices[i_v].position = origin_position + displacement;
-        }
-    }
-
-    for (int z = 0; z < Nplus1; z++) {
-        for (int x = 0; x < Nplus1; x++) {
-            int i_v = z * Nplus1 + x;
-            int i_d = (z % N) * N + x % N;
-            double ex = h_xGradient[i_d].real();
-            double ez = h_zGradient[i_d].real();
-            vertices[i_v].normal = glm::vec3(-ex * normalRoughness, 1.0, -ez * normalRoughness);
-        }
-    }
-
-    //! Update Vertex Buffer Data
-    memcpy(vertexMappedData, vertices.data(), vertexData.vkDeviceSize); 
-}
-
-void Ocean::render()
-{
-
+    
 }
 
 void Ocean::reloadSettings(OceanSettings newSettings)
 {
-    if (hostData)
-        delete[] hostData;
-
+    // Code
     oceanSettings = newSettings;
-    int N = newSettings.tileSize;
-    float length = newSettings.length;
-    
-    hostData = new std::complex<double>[7 * N * N];
-    h0_tk = hostData + 0 * N * N; // h0_tilde(k)
-    h0_tmk = hostData + 1 * N * N; // h0_tilde(-k)
 
-    for (int m = 0; m < N; m++) {
-        for (int n = 0; n < N; n++) {
-            int i = m * N + n;
-            float kx = (n - N / 2.f) * twoPi / length;
-            float kz = (m - N / 2.f) * twoPi / length;
-            glm::vec2 k(kx, kz);
-            h0_tk[i] = h0_tilde(k);
-            h0_tmk[i] = h0_tilde(-k);
-        }
-    }
+    int N = oceanSettings.tileSize;
 
-    h_yDisplacement = hostData + 2 * N * N; // h(k, x, t)
-    h_xDisplacement = hostData + 3 * N * N; // x-displacement of h(k, x, t)
-    h_zDisplacement = hostData + 4 * N * N; // z-displacement of h(k, x, t)
-    h_xGradient = hostData + 5 * N * N; // x-gradient of h(k, x, t)
-    h_zGradient = hostData + 6 * N * N; // z-gradient of h(k, x, t)
+    h0_k.resize(N * N);
+    tildeData.resize(5 * N * N * 2);
 
-    std::vector<uint32_t> indices;
-    indices.reserve(N * N * 6);
-    int Nplus1 = N + 1;
-    for (int z = 0; z < Nplus1; z++) {
-        for (int x = 0; x < Nplus1; x++) {
-            if (x < N && z < N) {
-                int i0 = z * Nplus1 + x;
-                int i1 = (z + 1) * Nplus1 + x;
-                int i2 = (z + 1) * Nplus1 + (x + 1);
-                int i3 = z * Nplus1 + (x + 1);
-                indices.push_back(i3);
-                indices.push_back(i0);
-                indices.push_back(i1);
-                indices.push_back(i1);
-                indices.push_back(i2);
-                indices.push_back(i3);
-            }
-        }
-    }
+    //vkResult = vkMapMemory(vkDevice, fftData.vkDeviceMemory, 0, fftData.vkDeviceSize, 0, &fftMappedPtr);
+    //if (vkResult != VK_SUCCESS)
+    //    fprintf(gpFile, "%s() => vkMapMemory() Failed For FFT Displacement Buffer : %d !!!\n", __func__, vkResult);
+    //vkResult = vkMapMemory(vkDevice, vertexData.vkDeviceMemory, 0, VK_WHOLE_SIZE, 0, &vertexMappedPtr);
+    //if (vkResult != VK_SUCCESS)
+    //    fprintf(gpFile, "%s() => vkMapMemory() Failed For Vertex Buffer : %d !!!\n", __func__, vkResult);
+    //vkResult = vkMapMemory(vkDevice, indexData.vkDeviceMemory, 0, VK_WHOLE_SIZE, 0, &indexMappedPtr);
+    //if (vkResult != VK_SUCCESS)
+    //    fprintf(gpFile, "%s() => vkMapMemory() Failed For Index Buffer : %d !!!\n", __func__, vkResult);
 
-    //! Update Index Buffer Data
-    memcpy(indexMappedData, indices.data(), indexData.vkDeviceSize); 
+    createGrid();
 
-    indexCount = static_cast<uint32_t>(indices.size());
+    generateH0();
 }
 
+// Helper to map (m,n) to linear index
+inline static int idx2(int m, int n, int N)
+{
+    return m * N + n;
+}
 
-/**
-* "A useful model for wind-driven waves larger than
-* capillary waves in a fully developed sea is the Phillips spectrum"
-*
-* Equation 40 in Tessendorf (2001)
-*/
-double Ocean::phillips(const glm::vec2& k) {
-    double L = oceanSettings.windSpeed * oceanSettings.windSpeed / Ocean::g;
-    double k_len = glm::length(k);
-    k_len = (k_len < 0.0001) ? 0.0001 : k_len; // to avoid divide by 0
-    double k2 = k_len * k_len;
+// Phillips spectrum
+double Ocean::phillipsSpectrum(const glm::vec2& K) const
+{
+    // Code
+    double kLength = glm::length(K);
+    if (kLength < 1e-6)
+        return 0.0;
+
+    double k2 = kLength * kLength;
     double k4 = k2 * k2;
 
-    double kw = 0.0;
-    if (k.x || k.y) {
-        kw = glm::dot(glm::normalize(k), glm::normalize(oceanSettings.windDirection));
+    double kw = glm::dot(glm::normalize(K), glm::normalize(oceanSettings.windDirection));
+    double lw = oceanSettings.windSpeed * oceanSettings.windSpeed / Ocean::G;
+    double kw2 = kw * kw;
+    double result = oceanSettings.amplitude * kw2 * std::exp(-1.0f / (k2 * lw * lw)) / k4;
+
+    double damp = 0.001;
+    result = result * std::exp(-k2 * damp * damp);
+
+    return result;
+}
+
+// Dispersion Relation (Deep Water)
+double Ocean::dispersion(const glm::vec2& K)
+{
+    return std::sqrt(glm::length(K) * Ocean::G);
+}
+
+void Ocean::generateH0()
+{
+    // Code
+    int N = oceanSettings.tileSize;
+    double L = float(N) * 1.0;
+
+    for (int m = 0; m < N; m++)
+    {
+        for (int n = 0; n < N; n++)
+        {
+            // Wave vector => kx, kz 
+            double kx = (n - N / 2.0) * (2.0 * M_PI / L);
+            double kz = (m - N / 2.0) * (2.0 * M_PI / L);
+            glm::vec2 K(kx, kz);
+
+            double p = phillipsSpectrum(K);
+
+            // Gaussian Noise
+            double er = gaussianDistribution(rng);
+            double ei = gaussianDistribution(rng);
+
+            // Scale by sqrt(p / 2)
+            double scale = std::sqrt(p * 0.5);
+            std::complex<double> h0 = std::complex<double>(er * scale, ei * scale);
+            h0_k[idx2(m, n, N)] = h0;
+        }
     }
-
-    double res = oceanSettings.amplitude * kw * kw * exp(-1 / (k2 * L * L)) / k4;
-
-    return res;
 }
 
-/**
-* Dispersion relation suggested with regard to depth d: 
-*   sqrt(k * g * tanh(k * d))
-* Notice: for large d, tanh = 1, so formula equals.
-*   sqrt(k * g)
-*/
-double Ocean::dispersion(const glm::vec2& K) {
-    return sqrt(glm::length(K) * Ocean::g);
+void Ocean::generateSpectrum(double deltaTime)
+{
+    // Code
+    int N = oceanSettings.tileSize;
+
+    // Domain Length
+    double L = float(N) * 1.0;
+
+    for (int m = 0; m < N; m++)
+    {
+        for (int n = 0; n < N; n++)
+        {
+            int i = idx2(m, n, N);
+
+            // Wave vector => kx, kz 
+            double kx = (n - N / 2.0) * (2.0 * M_PI / L);
+            double kz = (m - N / 2.0) * (2.0 * M_PI / L);
+            glm::vec2 K(kx, kz);
+
+            double kLength = glm::length(K);
+            if (kLength < 1e-6)
+                kLength = 1e-6;
+
+            // Angular Frequency
+            double omega = dispersion(K);
+
+            // Index of -k => map (m,n) => (-m % N, -n % N)
+            int negM = (N - m) % N;
+            int negN = (N - n) % N;
+            int negI = idx2(negM, negN, N);
+
+            std::complex<double> h0 = h0_k[i];
+            std::complex<double> h0_neg = h0_k[negI];
+
+            // h(k,t) = h0(k) e^{i ω t} + conj(h0(-k)) e^{-i ω t}
+            std::complex<double> posExp = std::exp(std::complex<double>(0.0, omega * deltaTime));
+            std::complex<double> negExp = std::exp(std::complex<double>(0.0, -omega * deltaTime));
+            std::complex<double> h = h0 * posExp + std::conj(h0_neg) * negExp;
+
+            // Height => h
+            // Gradients => h_xGradient = i * kx * h
+            // Displacements => h_xDisplacement = i * (-kx / k_len) * h  (if k_len == 0 -> 0)
+            std::complex<double> I(0.0, 1.0);
+
+            std::complex<double> h_y = h;
+            std::complex<double> h_xGradient = I * kx * h;
+            std::complex<double> h_zGradient = I * kz * h;
+
+            std::complex<double> h_xDisplacement, h_zDisplacement;
+            if (kLength > 1e-6)
+            {
+                h_xDisplacement = I * (-kx / kLength) * h;
+                h_zDisplacement = I * (-kz / kLength) * h;
+            }
+            else
+            {
+                h_xDisplacement = std::complex<double>(0.0, 0.0);
+                h_zDisplacement = std::complex<double>(0.0, 0.0);
+            }
+
+            size_t planeSize = size_t(N) * size_t(N) * 2;
+
+            // Plane 0 : h_y
+            size_t base0 = size_t(0) * planeSize + size_t(i) * 2;
+            tildeData[base0 + 0] = h_y.real();
+            tildeData[base0 + 1] = h_y.imag();
+
+            // Plane 1 : h_xDisplacement
+            size_t base1 = size_t(1) * planeSize + size_t(i) * 2;
+            tildeData[base1 + 0] = h_xDisplacement.real();
+            tildeData[base1 + 1] = h_xDisplacement.imag();
+
+            // Plane 2 : h_zDisplacement
+            size_t base2 = size_t(2) * planeSize + size_t(i) * 2;
+            tildeData[base2 + 0] = h_zDisplacement.real();
+            tildeData[base2 + 1] = h_zDisplacement.imag();
+
+            // Plane 3 : h_xGradient
+            size_t base3 = size_t(3) * planeSize + size_t(i) * 2;
+            tildeData[base3 + 0] = h_xGradient.real();
+            tildeData[base3 + 1] = h_xGradient.imag();
+
+            // Plane 4 : h_zGradient
+            size_t base4 = size_t(4) * planeSize + size_t(i) * 2;
+            tildeData[base4 + 0] = h_zGradient.real();
+            tildeData[base4 + 1] = h_zGradient.imag();
+
+        }
+    }
 }
 
-/**
-* Equation 42 in Tessendorf (2001)
-*/
-std::complex<double> Ocean::h0_tilde(const glm::vec2& K) {
-    double er = distribution(generator);
-    double ei = distribution(generator);
-
-    return sqrt(phillips(K)) * (std::complex(er, ei)) / sqrt(2.0);
-}
-
-/**
-* Equation 43 in Tessendorf (2001)
-*/
-std::complex<double> Ocean::h_tilde(const std::complex<double>& h0_tk, const std::complex<double>& h0_tmk, const glm::vec2& K, double t) {
-    double wkt = dispersion(K) * t;
-    return h0_tk * exp(std::complex(0.0, wkt)) + std::conj(h0_tmk) * exp(std::complex(0.0, -wkt));
+void Ocean::unmapMemory(VkDeviceMemory& vkDeviceMemory)
+{
+    vkUnmapMemory(vkDevice, vkDeviceMemory);
 }
 
 Ocean::~Ocean()
@@ -801,8 +865,16 @@ Ocean::~Ocean()
         vkDescriptorSetLayout_compute = VK_NULL_HANDLE;
     }
 
+    deleteVkFFT(&vkFFTApplication);
+
     if (fftData.vkDeviceMemory)
     {
+        if (fftMappedPtr)
+        {
+            unmapMemory(fftData.vkDeviceMemory);
+            fftMappedPtr = NULL;
+        }
+        
         vkFreeMemory(vkDevice, fftData.vkDeviceMemory, NULL);
         fftData.vkDeviceMemory = VK_NULL_HANDLE;
         fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For fftData.vkDeviceMemory\n", __func__);
@@ -817,7 +889,12 @@ Ocean::~Ocean()
     
     if (indexData.vkDeviceMemory)
     {
-        unmapMemory(indexData.vkDeviceMemory);
+        if (indexMappedPtr)
+        {
+            unmapMemory(indexData.vkDeviceMemory);
+            indexMappedPtr = NULL;
+        }
+
         vkFreeMemory(vkDevice, indexData.vkDeviceMemory, NULL);
         indexData.vkDeviceMemory = VK_NULL_HANDLE;
         fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For indexData.vkDeviceMemory\n", __func__);
@@ -827,13 +904,17 @@ Ocean::~Ocean()
     {
         vkDestroyBuffer(vkDevice, indexData.vkBuffer, NULL);
         indexData.vkBuffer = VK_NULL_HANDLE;
-        indexMappedData = NULL;
         fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For indexData.vkBuffer\n", __func__);
     }
 
     if (vertexData.vkDeviceMemory)
     {
-        unmapMemory(vertexData.vkDeviceMemory);
+        if (vertexMappedPtr)
+        {
+            unmapMemory(vertexData.vkDeviceMemory);
+            vertexMappedPtr = NULL;
+        }
+
         vkFreeMemory(vkDevice, vertexData.vkDeviceMemory, NULL);
         vertexData.vkDeviceMemory = VK_NULL_HANDLE;
         fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vertexData.vkDeviceMemory\n", __func__);
@@ -843,13 +924,7 @@ Ocean::~Ocean()
     {
         vkDestroyBuffer(vkDevice, vertexData.vkBuffer, NULL);
         vertexData.vkBuffer = VK_NULL_HANDLE;
-        vertexMappedData = NULL;
+        
         fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vertexData.vkBuffer\n", __func__);
-    }
-
-    if (hostData)
-    {
-        delete[] hostData;
-        hostData = nullptr;
     }
 }

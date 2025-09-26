@@ -97,37 +97,37 @@ if %SPV% == 1 (
     )
 )
 
-@echo:
-echo ----------------------------------------------------------------------------------------------------------------
-echo Linking Libraries and Resources...
-echo Creating Executable...
-echo ----------------------------------------------------------------------------------------------------------------
-link.exe ^
-        /OUT:%BIN_DIR%\Vk.exe ^
-        %BIN_DIR%\*.obj ^
-        %BIN_DIR%\Vk.res ^
-        /LIBPATH:%VULKAN_LIB_PATH% ^
-        user32.lib gdi32.lib ^
-        glslang.lib ^
-        SPIRV-Tools.lib ^
-        SPIRV-Tools-opt.lib ^
-        SPIRV-Tools-reduce.lib ^
-        SPIRV-Tools-shared.lib ^
-        /SUBSYSTEM:WINDOWS
+@REM @echo:
+@REM echo ----------------------------------------------------------------------------------------------------------------
+@REM echo Linking Libraries and Resources...
+@REM echo Creating Executable...
+@REM echo ----------------------------------------------------------------------------------------------------------------
+@REM link.exe ^
+@REM         /OUT:%BIN_DIR%\Vk.exe ^
+@REM         %BIN_DIR%\*.obj ^
+@REM         %BIN_DIR%\Vk.res ^
+@REM         /LIBPATH:%VULKAN_LIB_PATH% ^
+@REM         user32.lib gdi32.lib ^
+@REM         glslang.lib ^
+@REM         SPIRV-Tools.lib ^
+@REM         SPIRV-Tools-opt.lib ^
+@REM         SPIRV-Tools-reduce.lib ^
+@REM         SPIRV-Tools-shared.lib ^
+@REM         /SUBSYSTEM:WINDOWS
 
-if errorlevel 1 (
-        @echo:
-        echo Linking Failed !!!
-        exit /b 1
-)
+@REM if errorlevel 1 (
+@REM         @echo:
+@REM         echo Linking Failed !!!
+@REM         exit /b 1
+@REM )
 
-move /Y %BIN_DIR%\Vk.exe . >nul 2>&1
+@REM move /Y %BIN_DIR%\Vk.exe . >nul 2>&1
 
-@echo:
-echo ----------------------------------------------------------------------------------------------------------------
-echo Launching Application ...
-echo ----------------------------------------------------------------------------------------------------------------
-Vk.exe
+@REM @echo:
+@REM echo ----------------------------------------------------------------------------------------------------------------
+@REM echo Launching Application ...
+@REM echo ----------------------------------------------------------------------------------------------------------------
+@REM Vk.exe
 
 )
 

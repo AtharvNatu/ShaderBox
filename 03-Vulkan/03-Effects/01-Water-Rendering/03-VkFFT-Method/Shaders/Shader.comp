@@ -25,8 +25,7 @@ struct GVertex {
     vec4 position;
     vec4 color;
     vec4 normal;
-    vec2 texcoords;
-    vec2 _pad;
+    vec4 texcoords;
 };
 
 layout(std430, binding = 0) readonly buffer FFTBuf {
@@ -76,6 +75,5 @@ void main() {
     verts[v_idx].position = vec4(pos3, 1.0);      // w = 1.0
     verts[v_idx].color = vec4(29.0/255.0, 162.0/255.0, 216.0/255.0, 1.0);
     verts[v_idx].normal = vec4(n3, 0.0);          // pad = 0.0
-    verts[v_idx].texcoords = vec2(float(v_x) / float(pc.N), float(v_z) / float(pc.N));
-    verts[v_idx]._pad = vec2(0.0, 0.0);           // keep alignment tidy
+    verts[v_idx].texcoords = vec4(float(v_x) / float(pc.N), float(v_z) / float(pc.N), 0.0, 0.0);
 }

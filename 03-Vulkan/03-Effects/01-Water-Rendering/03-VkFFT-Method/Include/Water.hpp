@@ -11,6 +11,8 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
 
+#define _USE_MATH_DEFINES 1
+
 //! C++ Headers
 #include <vector>
 #include <complex>
@@ -28,6 +30,8 @@ extern VkPhysicalDeviceMemoryProperties vkPhysicalDeviceMemoryProperties;
 extern VkPhysicalDevice vkPhysicalDevice_selected;
 extern VkQueue vkQueue;
 extern VkShaderModule vkShaderModule_compute_shader;
+extern VkCommandPool vkCommandPool;
+extern VkFence* vkFence_array;
 
 struct OceanSettings
 {
@@ -38,72 +42,63 @@ struct OceanSettings
     glm::vec2 windDirection = glm::vec2(1.0, 0.0);
 };
 
-struct Vertex
+typedef struct 
 {
-    glm::vec3 position;
-    glm::vec3 color;
-    glm::vec3 normal;
-    glm::vec2 texcoords;
-};
+    glm::vec4 position;
+    glm::vec4 color;
+    glm::vec4 normal;
+    glm::vec4 texcoords;
+
+} Vertex;
 
 //? Vertex Buffer Related Variables
-struct BufferData
+typedef struct 
 {
     VkBuffer vkBuffer;
     VkDeviceMemory vkDeviceMemory;
     VkDeviceSize vkDeviceSize;
-};
+}BufferData;
 
-struct PushData
+typedef struct 
 {
     int tileSize;
     float vertexDistance;
     float choppiness;
     float normalRoughness;
     float half;
-};
+} PushData;
+
 
 class Ocean
 {
     private:
         OceanSettings oceanSettings;
-        
         VkResult vkResult;
-
-        static constexpr double g = 9.82;
-        const double twoPi = glm::two_pi<double>();
-        double simulationTime = 0.0;
-        double period = 4.0f;
-        double rippleLength = 30;
 
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
 
-        void* vertexMappedData = nullptr;
-        void* indexMappedData = nullptr;
+        void* vertexMappedPtr = nullptr;
+        void* indexMappedPtr = nullptr;
+        void* fftMappedPtr = nullptr;
 
-        // Base allocation for host data
-        std::complex<double>* hostData = nullptr;
+        // Ocean Wave Computation Related
+        static constexpr double G = 9.82;
+        std::vector<std::complex<double>> h0_k; // Initial Spectrum
 
-        // Pointers into hostData
-        std::complex<double>* h0_tk;            // h0_tilde(k)
-        std::complex<double>* h0_tmk;           // h0_tilde(-k)
-        std::complex<double>* h_yDisplacement;   // h~(k, x, t) -> h(k, x, t)
-        std::complex<double>* h_xDisplacement;   // x-displacement of h(k, x, t)
-        std::complex<double>* h_zDisplacement;   // z-displacement of h(k, x, t)
-        std::complex<double>* h_xGradient;       // x-gradient of h(k, x, t)
-        std::complex<double>* h_zGradient;       // z-gradient of h(k, x, t)
+        // Spectrum CPU Buffer
+        std::vector<float> tildeData;
         
     public:
         int numTiles = 1;
-        float vertexDistance = 5.0f;
+        float vertexDistance = 1.0f;
         float simulationSpeed = 1.0f;
         float normalRoughness = 5.0f;
         float choppiness = -1.0f;
-        double dt;
+        double time;
 
         BufferData vertexData, indexData, fftData;
-        uint32_t indexCount;
+        uint32_t vertexCount, indexCount;
         PushData pushData;
 
         //! COMPUTE PIPELINE
@@ -112,10 +107,14 @@ class Ocean
         VkDescriptorSet vkDescriptorSet_compute;
         VkPipelineLayout vkPipelineLayout_compute;
         VkPipeline vkPipeline_compute;
+
+        //! FFT
         VkFFTConfiguration vkFFTConfiguration;
         VkFFTApplication vkFFTApplication;
 
     private:
+
+        // Vulkan Related
         VkResult createBuffers();
         VkResult createComputeDescriptorSetLayout();
         VkResult createComputePipelineLayout();
@@ -123,21 +122,26 @@ class Ocean
         VkResult createComputeDescriptorSet();
         VkResult createComputePipeline();
 
+        bool initializeFFT();
+
+        void createGrid();
+
         void unmapMemory(VkDeviceMemory& vkDeviceMemory);
 
-        void updateVertices();
 
-        double phillips(const glm::vec2& K);
+        // Ocean Wave Related
+        double phillipsSpectrum(const glm::vec2& K) const;
         double dispersion(const glm::vec2& K);
-        std::complex<double> h0_tilde(const glm::vec2& K);
-        std::complex<double> h_tilde(const std::complex<double>& h0_tk, const std::complex<double>& h0_tmk, const glm::vec2& K, double t);
+        void generateH0();
+        void generateSpectrum(double deltaTime);
+
 
     public:
         Ocean(OceanSettings settings);
         ~Ocean();
-        bool initializeFFT(VkCommandBuffer& commandBuffer);
-        void render();
-        void update();
+
+        void init();
+        void update(double deltaTime);
         void reloadSettings(OceanSettings newSettings);
 
 };

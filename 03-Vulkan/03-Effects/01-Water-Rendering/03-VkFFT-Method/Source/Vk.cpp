@@ -1,5 +1,3 @@
-// #define _CRT_SECURE_NO_WARNINGS
-
 #include <Windows.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -204,6 +202,7 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 int numFrames = 0;
 
+VkCommandBuffer commandBuffer;
 
 StopWatchInterface* frameTimer = nullptr;
 StopWatchInterface* appTimer = nullptr;
@@ -288,7 +287,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     else
         fprintf(gpFile, "%s() => initialize() Succeeded\n", __func__);
 
-    ToggleFullScreen();
+    //ToggleFullScreen();
 
     // Show and Update Window
     ShowWindow(hwnd, iCmdShow);
@@ -385,17 +384,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
                 break;
 
             case VK_LEFT:
-                camera.rotateYaw(ocean->dt);
+                camera.rotateYaw(ocean->time);
             break;
             case VK_RIGHT:
-                camera.rotateYaw(-ocean->dt);
+                camera.rotateYaw(-ocean->time);
             break;
 
             case VK_UP:
-                camera.roatatePitch(ocean->dt);
+                camera.roatatePitch(ocean->time);
             break;
             case VK_DOWN:
-                camera.roatatePitch(-ocean->dt);
+                camera.roatatePitch(-ocean->time);
             break;
 
         default:
@@ -410,19 +409,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
         {
             case 'W':
             case 'w':
-                camera.move(ocean->dt, FORWARD);
+                camera.move(ocean->time, FORWARD);
             break;
             case 'S':
             case 's':
-                camera.move(ocean->dt, BACKWARD);
+                camera.move(ocean->time, BACKWARD);
             break;
             case 'D':
             case 'd':
-                camera.move(ocean->dt, RIGHT);
+                camera.move(ocean->time, RIGHT);
             break;
             case 'A':
             case 'a':
-                camera.move(ocean->dt, LEFT);
+                camera.move(ocean->time, LEFT);
             break;
 
             case 'F':
@@ -1103,7 +1102,8 @@ VkResult display(void)
 void update(void)
 {
     // Code
-    ocean->update();
+    double dt = appTimer->getAverageTime() / 1000.0;
+    ocean->update(dt);
 }
 
 void uninitialize(void)
@@ -4034,7 +4034,7 @@ VkResult createShaders(void)
     //! Vertex Shader
     //! ---------------------------------------------------------------------------------------------------------------------------
     //* Step - 6
-    const char* szFileName = "Bin/Shader.vert.spv";
+    const char* szFileName = "Shader.vert.spv";
     FILE* fp = NULL;
     size_t size;
 
@@ -4111,7 +4111,7 @@ VkResult createShaders(void)
 
     //! Fragment Shader
     //! ---------------------------------------------------------------------------------------------------------------------------
-    szFileName = "Bin/Shader.frag.spv";
+    szFileName = "Shader.frag.spv";
 
     fp = fopen(szFileName, "rb");
     if (fp == NULL)
@@ -4185,7 +4185,7 @@ VkResult createShaders(void)
 
     //! Compute Shader
     //! ---------------------------------------------------------------------------------------------------------------------------
-    szFileName = "Bin/Shader.comp.spv";
+    szFileName = "Shader.comp.spv";
 
     fp = fopen(szFileName, "rb");
     if (fp == NULL)
@@ -4458,42 +4458,6 @@ VkResult createDescriptorSet(void)
     vkWriteDescriptorSet_array[0].pBufferInfo = &vkDescriptorBufferInfo_array[0];
     vkWriteDescriptorSet_array[0].pImageInfo = NULL;
     vkWriteDescriptorSet_array[0].pTexelBufferView = NULL;
-
-    // //! Water Surface UBO
-    // vkWriteDescriptorSet_array[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    // vkWriteDescriptorSet_array[1].pNext = NULL;
-    // vkWriteDescriptorSet_array[1].dstSet = vkDescriptorSet;
-    // vkWriteDescriptorSet_array[1].dstArrayElement = 0;
-    // vkWriteDescriptorSet_array[1].dstBinding = 1;
-    // vkWriteDescriptorSet_array[1].descriptorCount = 1;
-    // vkWriteDescriptorSet_array[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    // vkWriteDescriptorSet_array[1].pBufferInfo = &vkDescriptorBufferInfo_array[1];
-    // vkWriteDescriptorSet_array[1].pImageInfo = NULL;
-    // vkWriteDescriptorSet_array[1].pTexelBufferView = NULL;
-
-    // //! Displacement Map
-    // vkWriteDescriptorSet_array[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    // vkWriteDescriptorSet_array[2].pNext = NULL;
-    // vkWriteDescriptorSet_array[2].dstSet = vkDescriptorSet;
-    // vkWriteDescriptorSet_array[2].dstArrayElement = 0;
-    // vkWriteDescriptorSet_array[2].descriptorCount = 1;
-    // vkWriteDescriptorSet_array[2].dstBinding = 2;
-    // vkWriteDescriptorSet_array[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    // vkWriteDescriptorSet_array[2].pBufferInfo = NULL;
-    // vkWriteDescriptorSet_array[2].pImageInfo = &vkDescriptorImageInfo_array[0];
-    // vkWriteDescriptorSet_array[2].pTexelBufferView = NULL;
-
-    // //! Normal Map
-    // vkWriteDescriptorSet_array[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    // vkWriteDescriptorSet_array[3].pNext = NULL;
-    // vkWriteDescriptorSet_array[3].dstSet = vkDescriptorSet;
-    // vkWriteDescriptorSet_array[3].dstArrayElement = 0;
-    // vkWriteDescriptorSet_array[3].descriptorCount = 1;
-    // vkWriteDescriptorSet_array[3].dstBinding = 3;
-    // vkWriteDescriptorSet_array[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    // vkWriteDescriptorSet_array[3].pBufferInfo = NULL;
-    // vkWriteDescriptorSet_array[3].pImageInfo = &vkDescriptorImageInfo_array[1];
-    // vkWriteDescriptorSet_array[3].pTexelBufferView = NULL;
 
     vkUpdateDescriptorSets(vkDevice, _ARRAYSIZE(vkWriteDescriptorSet_array), vkWriteDescriptorSet_array, 0, NULL);
 
@@ -5038,7 +5002,7 @@ VkResult recordCommandBufferForImage(uint32_t imageIndex)
     VkResult vkResult = VK_SUCCESS;
 
     // Code
-    VkCommandBuffer commandBuffer = vkCommandBuffer_array[imageIndex];
+    commandBuffer = vkCommandBuffer_array[imageIndex];
 
     //* Step - 1 => Reset Command Buffer
     vkResult = vkResetCommandBuffer(commandBuffer, 0);   //! 0 specifies not to release the resources
@@ -5066,14 +5030,6 @@ VkResult recordCommandBufferForImage(uint32_t imageIndex)
     }
 
     //! COMPUTE DATA
-    bool status = ocean->initializeFFT(commandBuffer);
-    if (!status)
-    {
-        fprintf(gpFile, "%s() => initializeFFT() Failed : %d\n", __func__, vkResult);
-        vkResult = VK_ERROR_INITIALIZATION_FAILED;
-        return vkResult;
-    }
-
     VkFFTLaunchParams vkFFTLaunchParams;
     memset(&vkFFTLaunchParams, 0, sizeof(vkFFTLaunchParams));
     vkFFTLaunchParams.commandBuffer = &commandBuffer;
