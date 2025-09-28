@@ -18,15 +18,8 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-//! ImGui Related
-#include "imgui.h"
-#include "imgui_impl_vulkan.h"
-#include "imgui_impl_win32.h"
-
 //! C++ Headers
 #include <vector>
-
-#pragma comment(lib, "libfftw3f-3.lib")
 
 #include "Vk.h"
 #include "helper_timer.h"
@@ -34,7 +27,7 @@
 
 //! Vulkan Related Libraries
 #pragma comment(lib, "vulkan-1.lib")
-
+#pragma comment(lib, "libfftw3f-3.lib")
 
 #define WIN_WIDTH   800
 #define WIN_HEIGHT  600
@@ -148,8 +141,6 @@ typedef struct
     glm::vec2 uv;
 } Vertex;
 
-struct TestVertex { float px, py, pz; float u, v; };
-
 //? Vertex Buffer Related Variables
 typedef struct
 {
@@ -160,7 +151,6 @@ typedef struct
 //? Position Related Variables
 VertexData vertexData;
 VertexData indexData;
-
 
 //? Uniform Related Variables
 struct alignas(16) VertexUBO
@@ -231,7 +221,8 @@ const uint32_t maxTileSize = 1024;
 const float waterCoefficient[] = { 0.420, 0.063, 0.019 };
 float scatterCoefficientLambda0[] = { 0.037, 0.219, 1.824 };
 float backScatterCoefficient[3];
-const float terrainColor[] = { 0.964, 1.0, 0.824 };
+// const float terrainColor[] = { 0.964, 1.0, 0.824 };
+const float terrainColor[] = { 0.129, 0.792, 1.0 };
 
 uint32_t tileSize = WSTessendorf::s_kDefaultTileSize;
 float vertexDistance = WSTessendorf::s_kDefaultTileLength / static_cast<float>(WSTessendorf::s_kDefaultTileSize);
@@ -648,53 +639,53 @@ VkResult initialize(void)
     createTessendorfModel();
 
     //! Create Texture
-    vkResult = createTexture1(1, &vkImage_texture_displacement_map, &vkDeviceMemory_texture_displacement_map, &vkImageView_texture_displacement_map, &vkSampler_texture_displacement_map);
-    if (vkResult != VK_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => createTexture() Failed For Displacement Map : %d !!!\n", __func__, vkResult);
-        return vkResult;
-    }
-    else
-        fprintf(gpFile, "%s() => createTexture() Succeeded For Displacement Map\n", __func__);
-
-    vkResult = createTexture1(2, &vkImage_texture_normal_map, &vkDeviceMemory_texture_normal_map, &vkImageView_texture_normal_map, &vkSampler_texture_normal_map);
-    if (vkResult != VK_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => createTexture() Failed For Normals Map : %d !!!\n", __func__, vkResult);
-        return vkResult;
-    }
-    else
-        fprintf(gpFile, "%s() => createTexture() Succeeded For Normals Map\n", __func__);
-
-    // vkResult = createTexture(
-    //     "Assets/Images/DUDVMap.png", 
-    //     &vkImage_texture_displacement_map, 
-    //     &vkDeviceMemory_texture_displacement_map, 
-    //     &vkImageView_texture_displacement_map, 
-    //     &vkSampler_texture_displacement_map
-    // );
+    // vkResult = createTexture1(1, &vkImage_texture_displacement_map, &vkDeviceMemory_texture_displacement_map, &vkImageView_texture_displacement_map, &vkSampler_texture_displacement_map);
     // if (vkResult != VK_SUCCESS)
     // {
-    //     fprintf(gpFile, "%s() => createTexture() Failed For DUDVMap.png : %d !!!\n", __func__, vkResult);
+    //     fprintf(gpFile, "%s() => createTexture() Failed For Displacement Map : %d !!!\n", __func__, vkResult);
     //     return vkResult;
     // }
     // else
-    //     fprintf(gpFile, "%s() => createTexture() Succeeded For DUDVMap.png\n", __func__);
+    //     fprintf(gpFile, "%s() => createTexture() Succeeded For Displacement Map\n", __func__);
 
-    // vkResult = createTexture(
-    //     "Assets/Images/NormalMap.png", 
-    //     &vkImage_texture_normal_map, 
-    //     &vkDeviceMemory_texture_normal_map, 
-    //     &vkImageView_texture_normal_map, 
-    //     &vkSampler_texture_normal_map
-    // );
+    // vkResult = createTexture1(2, &vkImage_texture_normal_map, &vkDeviceMemory_texture_normal_map, &vkImageView_texture_normal_map, &vkSampler_texture_normal_map);
     // if (vkResult != VK_SUCCESS)
     // {
-    //     fprintf(gpFile, "%s() => createTexture() Failed For NormalMap.png : %d !!!\n", __func__, vkResult);
+    //     fprintf(gpFile, "%s() => createTexture() Failed For Normals Map : %d !!!\n", __func__, vkResult);
     //     return vkResult;
     // }
     // else
-    //     fprintf(gpFile, "%s() => createTexture() Succeeded For NormalMap.png\n", __func__);
+    //     fprintf(gpFile, "%s() => createTexture() Succeeded For Normals Map\n", __func__);
+
+    vkResult = createTexture(
+        "Assets/Images/DUDVMap.png", 
+        &vkImage_texture_displacement_map, 
+        &vkDeviceMemory_texture_displacement_map, 
+        &vkImageView_texture_displacement_map, 
+        &vkSampler_texture_displacement_map
+    );
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => createTexture() Failed For DUDVMap.png : %d !!!\n", __func__, vkResult);
+        return vkResult;
+    }
+    else
+        fprintf(gpFile, "%s() => createTexture() Succeeded For DUDVMap.png\n", __func__);
+
+    vkResult = createTexture(
+        "Assets/Images/NormalMap.png", 
+        &vkImage_texture_normal_map, 
+        &vkDeviceMemory_texture_normal_map, 
+        &vkImageView_texture_normal_map, 
+        &vkSampler_texture_normal_map
+    );
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => createTexture() Failed For NormalMap.png : %d !!!\n", __func__, vkResult);
+        return vkResult;
+    }
+    else
+        fprintf(gpFile, "%s() => createTexture() Succeeded For NormalMap.png\n", __func__);
 
     //! Create Uniform Buffer
     vkResult = createUniformBuffer();
@@ -3287,7 +3278,6 @@ VkResult createTexture1(int mapNumber, VkImage* vkImage_texture, VkDeviceMemory*
     VkDeviceSize imageSize;
 
     // Code
-    tessendorfModel->Prepare();
     if (mapNumber == 1)
     {
         imageSize = sizeof(WSTessendorf::Displacement) * tessendorfModel->GetDisplacementCount();
@@ -5675,7 +5665,7 @@ VkResult updateUniformBuffer(void)
     glm::vec3 extents = maxPt - minPt;
     float radius = glm::length(extents) * 0.5f;
 
-    float scale = 1.0f /  (float)tileSize; // or whatever visually fits
+    float scale = 2.0f /  (float)tileSize; // or whatever visually fits
     glm::mat4 model = glm::translate(glm::mat4(1.0f), -center); // center the mesh
     model = glm::scale(model, glm::vec3(scale));
     model = glm::translate(model, glm::vec3(0.0f, 0.0f, -2.0f)); // move toward camera
@@ -5707,23 +5697,8 @@ VkResult updateUniformBuffer(void)
         tessendorfModel->ComputeWaves(timeCtr),
         tessendorfModel->GetDisplacementLambda(),
         1.0f,
-        0.0f
+        timeCtr
     );
-
-    //! Map Uniform Buffer
-    void* data = NULL;
-    vkResult = vkMapMemory(vkDevice, uniformData_vertex.vkDeviceMemory, 0, sizeof(VertexUBO), 0, &data);
-    if (vkResult != VK_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => vkMapMemory() Failed For Uniform Buffer (Vertex UBO) : %d !!!\n", __func__, vkResult);
-        return vkResult;
-    }
-
-    //! Copy the data to the mapped buffer (present on device memory)
-    memcpy(data, &vertexUBO, sizeof(VertexUBO));
-
-    //! Unmap memory
-    vkUnmapMemory(vkDevice, uniformData_vertex.vkDeviceMemory);
 
     WaterSurfaceUBO waterSurfaceUBO;
     memset((void*)&waterSurfaceUBO, 0, sizeof(WaterSurfaceUBO));
@@ -5740,8 +5715,23 @@ VkResult updateUniformBuffer(void)
     waterSurfaceUBO.terrainColor = glm::vec4(terrainColor[0], terrainColor[1], terrainColor[2], 0.0f);
     waterSurfaceUBO.surfaceParameters = glm::vec4(50.0f, 1.0f, 1.0f, 32.0f);
 
-    glm::mat4 viewMatrix = glm::lookAt(cameraPosition, cameraPosition + cameraEye, cameraUp);
-    waterSurfaceUBO.cameraPosition = glm::vec4(cameraPosition, 0.0);
+    glm::mat4 viewMatrix = glm::lookAt(camPos, camTarget, camUp);
+    waterSurfaceUBO.cameraPosition = glm::vec4(camPos, 0.0);
+
+    //! Map Uniform Buffer
+    void* data = NULL;
+    vkResult = vkMapMemory(vkDevice, uniformData_vertex.vkDeviceMemory, 0, sizeof(VertexUBO), 0, &data);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkMapMemory() Failed For Uniform Buffer (Vertex UBO) : %d !!!\n", __func__, vkResult);
+        return vkResult;
+    }
+
+    //! Copy the data to the mapped buffer (present on device memory)
+    memcpy(data, &vertexUBO, sizeof(VertexUBO));
+
+    //! Unmap memory
+    vkUnmapMemory(vkDevice, uniformData_vertex.vkDeviceMemory);
 
     //! Map Uniform Buffer
     data = NULL;
@@ -6034,7 +6024,7 @@ VkResult createDescriptorPool(void)
     vkDescriptorPoolCreateInfo.flags = 0;
     vkDescriptorPoolCreateInfo.poolSizeCount = _ARRAYSIZE(vkDescriptorPoolSize_array);
     vkDescriptorPoolCreateInfo.pPoolSizes = vkDescriptorPoolSize_array;
-    vkDescriptorPoolCreateInfo.maxSets = 1;
+    vkDescriptorPoolCreateInfo.maxSets = 2;
 
     vkResult = vkCreateDescriptorPool(vkDevice, &vkDescriptorPoolCreateInfo, NULL, &vkDescriptorPool);
     if (vkResult != VK_SUCCESS)
@@ -6911,6 +6901,7 @@ void createTessendorfModel(void)
     const uint32_t waveLength = tessendorfModel->s_kDefaultTileLength;
 
     tessendorfModel = new WSTessendorf(sampleCount, waveLength);
+    tessendorfModel->Prepare();
 }
 
 void deleteTessendorfModel(void)

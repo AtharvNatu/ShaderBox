@@ -7,9 +7,6 @@ set VULKAN_INCLUDE_PATH=C:\VulkanSDK\Vulkan\Include
 set VULKAN_LIB_PATH=C:\VulkanSDK\Vulkan\Lib
 set VULKAN_BIN_PATH=C:\VulkanSDK\Vulkan\Bin
 
-set IMGUI_PATH=ImGui
-set IMGUI_BACKENDS=%IMGUI_PATH%\backends
-
 set SOURCE_PATH=Source
 set INCLUDE_PATH=Include
 set IMAGES_PATH=Assets\Images
@@ -39,16 +36,8 @@ cl.exe  /c ^
         /Fo%BIN_DIR%\ ^
         /I %VULKAN_INCLUDE_PATH% ^
         /I %VULKAN_INCLUDE_PATH%\glm ^
-        /I %IMGUI_PATH% ^
-        /I %IMGUI_BACKENDS% ^
         /I %INCLUDE_PATH% ^
-        %SOURCE_PATH%\*.cpp ^
-        %IMGUI_PATH%\imgui.cpp ^
-        %IMGUI_PATH%\imgui_draw.cpp ^
-        %IMGUI_PATH%\imgui_widgets.cpp ^
-        %IMGUI_PATH%\imgui_tables.cpp ^
-        %IMGUI_BACKENDS%\imgui_impl_win32.cpp ^
-        %IMGUI_BACKENDS%\imgui_impl_vulkan.cpp
+        %SOURCE_PATH%\*.cpp
 
 if errorlevel 1 (
         @echo:

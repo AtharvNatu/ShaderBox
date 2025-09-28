@@ -235,8 +235,6 @@ void main(void)
 
     FragColor = vec4(color, 1.0);
 
-    // // Tone mapping
+    /// Tone mapping
     FragColor = vec4(1.0) - exp(-FragColor * 2.0f);
-
-    // FragColor = vec4(1.0, 1.0, 1.0, 1.0);
 }
