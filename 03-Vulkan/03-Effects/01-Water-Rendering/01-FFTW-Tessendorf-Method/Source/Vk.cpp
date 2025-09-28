@@ -191,18 +191,6 @@ typedef struct
 
 Texture displacementMap, normalMap;
 
-// VkImage vkImage_texture_displacement_map = VK_NULL_HANDLE;
-// VkImage vkImage_texture_normal_map = VK_NULL_HANDLE;
-
-// VkDeviceMemory vkDeviceMemory_texture_displacement_map = VK_NULL_HANDLE;
-// VkDeviceMemory vkDeviceMemory_texture_normal_map = VK_NULL_HANDLE;
-
-// VkImageView vkImageView_texture_displacement_map = VK_NULL_HANDLE;
-// VkImageView vkImageView_texture_normal_map = VK_NULL_HANDLE;
-
-// VkSampler vkSampler_texture_displacement_map = VK_NULL_HANDLE;
-// VkSampler vkSampler_texture_normal_map = VK_NULL_HANDLE;
-
 //? Shader Related Variables
 VkShaderModule vkShaderModule_vertex_shader = VK_NULL_HANDLE;
 VkShaderModule vkShaderModule_fragment_shader = VK_NULL_HANDLE;
@@ -386,8 +374,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
 
 }
 
-// extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
 // Callback Function
 LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -397,9 +383,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
     void uninitialize(void);
 
     // Code
-    // if (ImGui_ImplWin32_WndProcHandler(hwnd, iMsg, wParam, lParam))
-    //     return true;
-
     switch (iMsg)
     {
     case WM_CREATE:
@@ -534,8 +517,6 @@ VkResult initialize(void)
     VkResult createCommandBuffers(void);
     VkResult createVertexBuffer(void);
     VkResult createTextureImage(uint32_t width, uint32_t height, Texture& texture);
-    VkResult createTexture1(int, VkImage*, VkDeviceMemory*, VkImageView*, VkSampler*);
-    VkResult createTexture(const char*, VkImage*, VkDeviceMemory*, VkImageView*, VkSampler*);
     VkResult createUniformBuffer(void);
     VkResult createShaders();
     VkResult createDescriptorSetLayout(void);
@@ -667,25 +648,6 @@ VkResult initialize(void)
     }
     else
         fprintf(gpFile, "%s() => createTextureImage() Succeeded For Normal Map\n", __func__);
-
-
-    // vkResult = createTexture1(1, &vkImage_texture_displacement_map, &vkDeviceMemory_texture_displacement_map, &vkImageView_texture_displacement_map, &vkSampler_texture_displacement_map);
-    // if (vkResult != VK_SUCCESS)
-    // {
-    //     fprintf(gpFile, "%s() => createTexture() Failed For Displacement Map : %d !!!\n", __func__, vkResult);
-    //     return vkResult;
-    // }
-    // else
-    //     fprintf(gpFile, "%s() => createTexture() Succeeded For Displacement Map\n", __func__);
-
-    // vkResult = createTexture1(2, &vkImage_texture_normal_map, &vkDeviceMemory_texture_normal_map, &vkImageView_texture_normal_map, &vkSampler_texture_normal_map);
-    // if (vkResult != VK_SUCCESS)
-    // {
-    //     fprintf(gpFile, "%s() => createTexture() Failed For Normals Map : %d !!!\n", __func__, vkResult);
-    //     return vkResult;
-    // }
-    // else
-    //     fprintf(gpFile, "%s() => createTexture() Succeeded For Normals Map\n", __func__);
 
     // vkResult = createTexture(
     //     "Assets/Images/DUDVMap.png", 
@@ -849,9 +811,6 @@ VkResult initialize(void)
     memset((void*)&vkClearDepthStencilValue, 0, sizeof(VkClearDepthStencilValue));
     vkClearDepthStencilValue.depth = 1.0f;
     vkClearDepthStencilValue.stencil = 0;
-
-    //! Initialize ImGui
-    // initializeImGui("ImGui\\Poppins-Regular.ttf", 24.0f);
 
     sdkCreateTimer(&timer);
     sdkStartTimer(&timer);
@@ -1087,8 +1046,6 @@ VkResult display(void)
 {
     // Function Declarations
     VkResult resize(int, int);
-    // void renderImGui(void);
-    // VkResult recordCommandBufferForImage(uint32_t imageIndex);
     VkResult updateUniformBuffer(void);
 
     // Variable Declarations
@@ -1129,17 +1086,6 @@ VkResult display(void)
         fprintf(gpFile, "%s() => vkResetFences() Failed : %d\n", __func__, vkResult);
         return vkResult;
     }
-
-    // //!!! ImGui Render
-    // renderImGui();
-
-    // //!!! RECORD COMMANDS FOR CURRENT IMAGE
-    // vkResult = recordCommandBufferForImage(currentImageIndex);
-    // if (vkResult != VK_SUCCESS)
-    // {
-    //     fprintf(gpFile, "%s() => recordCommandBufferForImage() Failed : %d\n", __func__, vkResult);
-    //     return vkResult;
-    // }
 
     //! Render color attachment
     const VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -1198,95 +1144,22 @@ VkResult display(void)
     return vkResult;
 }
 
-void updateTexture()
-{
-
-    /* 
-
-    3. Upload New Data (every frame)
-void updateTexture(VkImage image, const void* pixels,
-                   uint32_t width, uint32_t height, size_t dataSize,
-                   VkCommandBuffer cmd) {
-    // Create staging buffer
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingMemory;
-    createBuffer(dataSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                 VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                 stagingBuffer, stagingMemory);
-
-    // Copy CPU data
-    void* mapped;
-    vkMapMemory(vkDevice, stagingMemory, 0, dataSize, 0, &mapped);
-    memcpy(mapped, pixels, dataSize);
-    vkUnmapMemory(vkDevice, stagingMemory);
-
-    // Transition image to TRANSFER_DST_OPTIMAL
-    transitionImageLayout(cmd, image,
-                          VK_FORMAT_R32G32B32A32_SFLOAT,
-                          VK_IMAGE_LAYOUT_UNDEFINED,
-                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-    // Copy buffer → image
-    VkBufferImageCopy region{};
-    region.bufferOffset = 0;
-    region.bufferRowLength   = 0;
-    region.bufferImageHeight = 0;
-    region.imageSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.imageSubresource.mipLevel       = 0;
-    region.imageSubresource.baseArrayLayer = 0;
-    region.imageSubresource.layerCount     = 1;
-    region.imageOffset = {0, 0, 0};
-    region.imageExtent = {width, height, 1};
-
-    vkCmdCopyBufferToImage(cmd, stagingBuffer, image,
-                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                           1, &region);
-
-    // Transition to SHADER_READ_ONLY_OPTIMAL
-    transitionImageLayout(cmd, image,
-                          VK_FORMAT_R32G32B32A32_SFLOAT,
-                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    // Cleanup staging
-    vkDestroyBuffer(vkDevice, stagingBuffer, nullptr);
-    vkFreeMemory(vkDevice, stagingMemory, nullptr);
-}
-
-4. Hook Into Your Flow
-
-In your render loop:
-
-auto& displacements = tessendorfModel->GetDisplacements();
-updateTexture(vkImage_texture_displacement_map,
-              displacements.data(),
-              dispWidth, dispHeight,
-              displacements.size() * sizeof(WSTessendorf::Displacement),
-              commandBuffer);
-
-
-Same idea for normal map.
-    
-    */
-
-}
-
 void update(void)
 {
     // Code
     timeCtr = sdkGetTimerValue(&timer) / 1000.0f;
 
+    timeCtr *= animationSpeed;
+
     cameraSpeed = 0.5 * deltaTime;
 
     cameraPosition = cameraPosition + cameraSpeed * cameraEye;
-
 }
 
 void uninitialize(void)
 {
     // Function Declarations
     void ToggleFullScreen(void);
-    // void uninitializeImGui(void);
     void deleteTessendorfModel(void);
 
     // Code
@@ -1315,8 +1188,6 @@ void uninitialize(void)
     }
 
     deleteTessendorfModel();
-
-    // uninitializeImGui();
 
     //* Step - 7 of Fences and Semaphores
     for (uint32_t i = 0; i < swapchainImageCount; i++)
@@ -3110,18 +2981,6 @@ VkResult createVertexBuffer(void)
             indices.emplace_back(vertexIndex + vertexCount + 1);
         }
     }
-
-    // const std::vector<TestVertex> testVertices = {
-    // // a small quad around origin
-    // { -0.5f, -0.5f, 0.0f, 0.0f, 0.0f }, // 0
-    // {  0.5f, -0.5f, 0.0f, 1.0f, 0.0f }, // 1
-    // {  0.5f,  0.5f, 0.0f, 1.0f, 1.0f }, // 2
-    // { -0.5f,  0.5f, 0.0f, 0.0f, 1.0f }  // 3
-    // };
-
-    // const std::vector<uint32_t> testIndices = {
-    //     0,1,2,  2,3,0
-    // };
 
     const VkDeviceSize verticesSize = sizeof(vertices[0]) * vertices.size();
     const VkDeviceSize indicesSize = sizeof(indices[0]) * indices.size();
@@ -6453,25 +6312,16 @@ VkResult createUniformBuffer(void)
 
     for (uint32_t i = 0; i < vkPhysicalDeviceMemoryProperties.memoryTypeCount; i++)
     {
-        // if ((vkMemoryRequirements.memoryTypeBits & 1) == 1)
-        // {
-        //     if (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-        //     {
-        //         vkMemoryAllocateInfo.memoryTypeIndex = i;
-        //         break;
-        //     }
-        // }
-
-        // vkMemoryRequirements.memoryTypeBits >>= 1;
-
-        if ((vkMemoryRequirements.memoryTypeBits & 1) == 1) {
-            if ((vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & 
-                (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) == 
-                (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+        if ((vkMemoryRequirements.memoryTypeBits & 1) == 1)
+        {
+            if (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+            {
                 vkMemoryAllocateInfo.memoryTypeIndex = i;
                 break;
             }
         }
+
+        vkMemoryRequirements.memoryTypeBits >>= 1;
     }
 
     vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo, NULL, &uniformData_vertex.vkDeviceMemory);
@@ -6519,25 +6369,16 @@ VkResult createUniformBuffer(void)
 
     for (uint32_t i = 0; i < vkPhysicalDeviceMemoryProperties.memoryTypeCount; i++)
     {
-        // if ((vkMemoryRequirements.memoryTypeBits & 1) == 1)
-        // {
-        //     if (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-        //     {
-        //         vkMemoryAllocateInfo.memoryTypeIndex = i;
-        //         break;
-        //     }
-        // }
-
-        // vkMemoryRequirements.memoryTypeBits >>= 1;
-
-        if ((vkMemoryRequirements.memoryTypeBits & 1) == 1) {
-            if ((vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & 
-                (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) == 
-                (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+        if ((vkMemoryRequirements.memoryTypeBits & 1) == 1)
+        {
+            if (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+            {
                 vkMemoryAllocateInfo.memoryTypeIndex = i;
                 break;
             }
         }
+
+        vkMemoryRequirements.memoryTypeBits >>= 1;
     }
 
     vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo, NULL, &uniformData_water_surface.vkDeviceMemory);
