@@ -3162,6 +3162,8 @@ VkResult createTextureImage(uint32_t width, uint32_t height, Texture& texture)
     texture.width = width;
     texture.height = height;
 
+    VkFormat vkFormat = VK_FORMAT_R32G32B32A32_SFLOAT;
+
     //! Step - 1 => Create VkImage
     VkImageCreateInfo vkImageCreateInfo;
     memset((void*)&vkImageCreateInfo, 0, sizeof(VkImageCreateInfo));
@@ -3169,7 +3171,7 @@ VkResult createTextureImage(uint32_t width, uint32_t height, Texture& texture)
     vkImageCreateInfo.flags = 0;
     vkImageCreateInfo.pNext = NULL;
     vkImageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-    vkImageCreateInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    vkImageCreateInfo.format = vkFormat;
     vkImageCreateInfo.extent.width = width;
     vkImageCreateInfo.extent.height = height;
     vkImageCreateInfo.extent.depth = 1;
@@ -3239,7 +3241,7 @@ VkResult createTextureImage(uint32_t width, uint32_t height, Texture& texture)
     vkImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     vkImageViewCreateInfo.pNext = NULL;
     vkImageViewCreateInfo.flags = 0;
-    vkImageViewCreateInfo.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    vkImageViewCreateInfo.format = vkFormat;
     vkImageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_R;
     vkImageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_G;
     vkImageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_B;
@@ -4056,6 +4058,7 @@ VkResult updateTexture(const Texture& texture, const void* imageData, size_t ima
         vkDeviceMemory_stagingBuffer = VK_NULL_HANDLE;
     }
 
+    return vkResult;
 }
 
 VkResult createTexture1(int mapNumber, VkImage* vkImage_texture, VkDeviceMemory* vkDeviceMemory_texture, VkImageView* vkImageView_texture, VkSampler* vkSampler_texture)

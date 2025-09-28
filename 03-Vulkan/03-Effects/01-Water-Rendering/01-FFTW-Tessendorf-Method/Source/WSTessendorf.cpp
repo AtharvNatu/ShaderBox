@@ -110,11 +110,11 @@ std::vector<WSTessendorf::BaseWaveHeight>
     // VKP_ASSERT(baseWaveHeights.size() == gaussRandomArray.size());
 
     #pragma omp parallel for collapse(2) schedule(guided)
-    for (uint32_t m = 0; m < kSize; ++m)
+    for (int m = 0; m < kSize; ++m)
     {
-        for (uint32_t n = 0; n < kSize; ++n)
+        for (int n = 0; n < kSize; ++n)
         {
-            const uint32_t kIndex = m * kSize + n;
+            const int kIndex = m * kSize + n;
             const auto& kWaveVec = m_WaveVectors[kIndex];
             const float k = glm::length(kWaveVec.vec);
 
@@ -285,8 +285,8 @@ float WSTessendorf::ComputeWaves(float t)
     #pragma omp parallel shared(masterMaxHeight, masterMinHeight)
     {
         #pragma omp for collapse(2) schedule(static)
-        for (uint32_t m = 0; m < kTileSize; ++m)
-            for (uint32_t n = 0; n < kTileSize; ++n)
+        for (int m = 0; m < kTileSize; ++m)
+            for (int n = 0; n < kTileSize; ++n)
             {
                 m_Height[m * kTileSize + n] =
                     WaveHeightFT(m_BaseWaveHeights[m * kTileSize + n], t);
@@ -294,10 +294,10 @@ float WSTessendorf::ComputeWaves(float t)
 
         // Slopes for normals computation
         #pragma omp for collapse(2) schedule(static) nowait
-        for (uint32_t m = 0; m < kTileSize; ++m)
-            for (uint32_t n = 0; n < kTileSize; ++n)
+        for (int m = 0; m < kTileSize; ++m)
+            for (int n = 0; n < kTileSize; ++n)
             {
-                const uint32_t kIndex = m * kTileSize + n;
+                const int kIndex = m * kTileSize + n;
 
                 const auto& kWaveVec = m_WaveVectors[kIndex].vec;
                 m_SlopeX[kIndex] = Complex(0, kWaveVec.x) * m_Height[kIndex];
@@ -306,10 +306,10 @@ float WSTessendorf::ComputeWaves(float t)
 
         // Displacement vectors
         #pragma omp for collapse(2) schedule(static)
-        for (uint32_t m = 0; m < kTileSize; ++m)
-            for (uint32_t n = 0; n < kTileSize; ++n)
+        for (int m = 0; m < kTileSize; ++m)
+            for (int n = 0; n < kTileSize; ++n)
             {
-                const uint32_t kIndex = m * kTileSize + n;
+                const int kIndex = m * kTileSize + n;
 
                 const auto& kWaveVec = m_WaveVectors[kIndex];
                 m_DisplacementX[kIndex] = Complex(0, -kWaveVec.unit.x) *
@@ -378,11 +378,11 @@ float WSTessendorf::ComputeWaves(float t)
         const float kSigns[] = { 1.0f, -1.0f };
 
         #pragma omp for collapse(2) schedule(static) nowait
-        for (uint32_t m = 0; m < kTileSize; ++m)
+        for (int m = 0; m < kTileSize; ++m)
         {
-            for (uint32_t n = 0; n < kTileSize; ++n)
+            for (int n = 0; n < kTileSize; ++n)
             {
-                const uint32_t kIndex = m * kTileSize + n;
+                const int kIndex = m * kTileSize + n;
                 const int sign = kSigns[(n + m) & 1];
                 const auto h_FT = m_Height[kIndex].real() * static_cast<float>(sign);
                 maxHeight = glm::max(h_FT, maxHeight);
@@ -405,11 +405,11 @@ float WSTessendorf::ComputeWaves(float t)
         }
 
         #pragma omp for collapse(2) schedule(static) nowait
-        for (uint32_t m = 0; m < kTileSize; ++m)
+        for (int m = 0; m < kTileSize; ++m)
         {
-            for (uint32_t n = 0; n < kTileSize; ++n)
+            for (int n = 0; n < kTileSize; ++n)
             {
-                const uint32_t kIndex = m * kTileSize + n;
+                const int kIndex = m * kTileSize + n;
                 const int sign = kSigns[(n + m) & 1];
             #ifdef COMPUTE_JACOBIAN
                 const float jacobian =

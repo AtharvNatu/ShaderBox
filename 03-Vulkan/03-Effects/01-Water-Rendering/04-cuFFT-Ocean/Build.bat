@@ -3,9 +3,12 @@
 
 set API=Vulkan
 
-set VULKAN_INCLUDE_PATH=C:\VulkanSDK\Vulkan\Include
-set VULKAN_LIB_PATH=C:\VulkanSDK\Vulkan\Lib
-set VULKAN_BIN_PATH=C:\VulkanSDK\Vulkan\Bin
+set VULKAN_INCLUDE_PATH="C:\\VulkanSDK\\Vulkan\\Include"
+set VULKAN_LIB_PATH="C:\\VulkanSDK\Vulkan\\Lib"
+set VULKAN_BIN_PATH="C:\\VulkanSDK\\Vulkan\\Bin"
+
+set CUDA_INCLUDE_PATH="C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.8\\include"
+set CUDA_LIB_PATH="C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.8\\lib\\x64"
 
 set SOURCE_PATH=Source
 set INCLUDE_PATH=Include
@@ -30,15 +33,18 @@ echo ***** DEBUG MODE *****
 echo ----------------------------------------------------------------------------------------------------------------
 echo Compiling %API% and Win32 Source Code ...
 echo ----------------------------------------------------------------------------------------------------------------
-cl.exe  /c ^
-        /openmp ^
-        /EHsc ^
-        /std:c++17 ^
-        /Fo%BIN_DIR%\ ^
-        /I %VULKAN_INCLUDE_PATH% ^
-        /I %VULKAN_INCLUDE_PATH%\glm ^
-        /I %INCLUDE_PATH% ^
-        %SOURCE_PATH%\*.cpp
+        nvcc ^
+        -std=c++17 ^
+        -c ^
+        -I%CUDA_INCLUDE_PATH% ^
+        -I%VULKAN_INCLUDE_PATH% ^
+        -I%VULKAN_INCLUDE_PATH%\glm ^
+        -I%INCLUDE_PATH% ^
+        -Xcompiler="/EHsc" ^
+        -Wno-deprecated-gpu-targets ^
+        %SOURCE_PATH%\Camera.cpp ^
+        %SOURCE_PATH%\Ocean.cpp ^
+        %SOURCE_PATH%\Vk.cpp
 
 if errorlevel 1 (
         @echo:
@@ -46,6 +52,7 @@ if errorlevel 1 (
         exit /b 1
 )
 
+move *.obj %BIN_DIR% >nul 2>&1
 
 @echo:
 echo ----------------------------------------------------------------------------------------------------------------
@@ -90,7 +97,10 @@ link.exe ^
         /OUT:%BIN_DIR%\Vk.exe ^
         %BIN_DIR%\*.obj ^
         %BIN_DIR%\Vk.res ^
-        /LIBPATH:%VULKAN_LIB_PATH% user32.lib gdi32.lib libfftw3f-3.lib vcompd.lib /SUBSYSTEM:WINDOWS
+        /LIBPATH:%VULKAN_LIB_PATH% ^
+        /LIBPATH:%CUDA_LIB_PATH% ^
+        user32.lib gdi32.lib cufft.lib cudart.lib ^
+        /SUBSYSTEM:WINDOWS
 
 if errorlevel 1 (
         @echo:
