@@ -19,6 +19,7 @@ layout(set = 0, binding = 1) uniform sampler2D uWindSampler;
 
 // Variable Declarations
 float grassSize;
+int drawRandomGrass = 0;
 
 // Constants
 #define c_min_size 0.4f
@@ -101,6 +102,7 @@ void createQuad(vec3 basePosition, mat4 crossModel)
 	// Variable Declarations
 	vec4 vertices[4];
 	vec2 texcoords[4];
+	vec4 vertexOffset = vec4(0.0);
 
 	// Code
 	vertices[0] = vec4(-0.25, 0.0, 0.0, 0.0);	// Bottom Left
@@ -133,7 +135,15 @@ void createQuad(vec3 basePosition, mat4 crossModel)
 	// Billboard Creation Loop
 	for (int i = 0; i < 4; i++)
 	{
-		vec4 vertexOffset = modelWindMatrix * modelRandomYRotation * crossModel * (vertices[i] * grassSize);
+		if (drawRandomGrass == 1)
+		{
+			vertexOffset = modelWindMatrix * modelRandomYRotation * crossModel * (vertices[i] * grassSize);
+		}
+		else if (drawRandomGrass == 0)
+		{
+			vertexOffset = modelWindMatrix * modelRandomYRotation * crossModel * vertices[i];
+		}
+
 		vec4 worldPosition = worldSpacePosition + vertexOffset;
 		gl_Position = ubo.projectionMatrix * worldPosition;
 		out_texcoord = texcoords[i];
@@ -162,7 +172,8 @@ void main(void)
 	int details = 3;
 
 	// Random Grass Size
-	grassSize = random(gl_in[0].gl_Position.xz) * (1.0 - c_min_size) + c_min_size;
+	if (drawRandomGrass == 1)
+		grassSize = random(gl_in[0].gl_Position.xz) * (1.0 - c_min_size) + c_min_size;
 	
 	// Grass Creation
 	createGrass(details);

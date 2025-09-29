@@ -616,9 +616,10 @@ VkResult initialize(void)
     vkClearDepthStencilValue.stencil = 0;
           
     grass = new Grass();
-    // grass->addVertexPosition(glm::vec3(0.0, 0.0, 0.0));
-    // grass->addVertexPosition(glm::vec3(1.0, 0.0, 0.0));
-    grass->populateData();
+    grass->addVertexPosition(glm::vec3(0.0, 0.0, 0.0));
+    grass->addVertexPosition(glm::vec3(1.0, 0.0, 0.0));
+    grass->addVertexPosition(glm::vec3(-1.0, 0.0, 0.0));
+    // grass->populateData();
     grass->initialize();
 
     vkResult = buildCommandBuffers();
