@@ -530,7 +530,7 @@ VkResult initialize(void)
         fprintf(gpFile, "%s() => createCommandBuffers() Succeeded\n", __func__);
 
     //! Create Texture
-    vkResult = createTexture("Assets/Images/Grass.png", &vkImage_texture_grass, &vkDeviceMemory_texture_grass, &vkImageView_texture_grass, &vkSampler_texture_grass);
+    vkResult = createTexture("Assets/Images/Grass-2.png", &vkImage_texture_grass, &vkDeviceMemory_texture_grass, &vkImageView_texture_grass, &vkSampler_texture_grass);
     if (vkResult != VK_SUCCESS)
     {
         fprintf(gpFile, "%s() => createTexture() Failed For Grass.png : %d !!!\n", __func__, vkResult);

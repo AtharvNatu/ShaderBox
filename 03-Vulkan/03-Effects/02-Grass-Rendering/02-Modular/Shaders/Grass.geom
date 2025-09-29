@@ -143,8 +143,9 @@ void createQuad(vec3 basePosition, mat4 crossModel)
 		{
 			vertexOffset = modelWindMatrix * modelRandomYRotation * crossModel * vertices[i];
 		}
-
-		vec4 worldPosition = worldSpacePosition + vertexOffset;
+		
+		// Apply model matrix after all local transformations
+    	vec4 worldPosition = ubo.modelMatrix * (vec4(basePosition, 1.0) + vertexOffset);
 		gl_Position = ubo.projectionMatrix * worldPosition;
 		out_texcoord = texcoords[i];
         colorVariation = fbm(gl_in[0].gl_Position.xz);

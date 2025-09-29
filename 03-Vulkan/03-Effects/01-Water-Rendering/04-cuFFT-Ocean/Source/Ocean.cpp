@@ -865,8 +865,7 @@ VkResult Ocean::updateUniformBuffer(void)
     //! Update Matrices
     glm::mat4 waveViewProjectionMatrix = camera->getViewProjection(true);
     glm::mat4 waterMatrix = glm::mat4(1.0f);
-    // waterMatrix = glm::rotate(waterMatrix, glm::radians(-90.0f), glm::vec3(1.0, 0.0, 0.0));
-    waterMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 2.0f, -6.0f));
+    waterMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -6.0f));
 
     ubo.viewProjectionMatrix = waveViewProjectionMatrix;
     ubo.modelMatrix = waterMatrix;
@@ -1362,8 +1361,6 @@ std::complex<double> Ocean::h_tilde(const std::complex<double>& h0_tk, const std
     double wkt = dispersion(K) * t;
     return h0_tk * exp(std::complex(0.0, wkt)) + std::conj(h0_tmk) * exp(std::complex(0.0, -wkt));
 }
-
-
 
 Ocean::~Ocean()
 {
