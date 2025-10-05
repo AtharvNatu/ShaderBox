@@ -399,6 +399,8 @@ createBuffers() => vkAllocateMemory() Succeeded For Index Buffer
 createBuffers() => vkBindBufferMemory() Succeeded For Index Buffer
 createBuffers() => vkMapMemory() Succeeded For indexMappedData
 initialize() => createBuffers() Succeeded For Ocean
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkMapMemory-size-00681 ] Object 0: handle = 0x2cfba2000000001c, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x8003606b | vkMapMemory(): offset 0x0 plus size 0x58 (total 0x58) oversteps total array size 0x40.
+The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must be less than or equal to the size of the memory minus offset (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkMapMemory-size-00681)
 createUniformBuffer() => updateUniformBuffer() Succeeded
 initialize() => createUniformBuffer() Succeeded For Ocean
 initialize() => createDescriptorSetLayout() Succeeded For Ocean
@@ -451,6 +453,24 @@ buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
 buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
 buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
 buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkMapMemory-size-00681 ] Object 0: handle = 0x2cfba2000000001c, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x8003606b | vkMapMemory(): offset 0x0 plus size 0x58 (total 0x58) oversteps total array size 0x40.
+The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must be less than or equal to the size of the memory minus offset (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkMapMemory-size-00681)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkMapMemory-size-00681 ] Object 0: handle = 0x2cfba2000000001c, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x8003606b | vkMapMemory(): offset 0x0 plus size 0x58 (total 0x58) oversteps total array size 0x40.
+The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must be less than or equal to the size of the memory minus offset (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkMapMemory-size-00681)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkMapMemory-size-00681 ] Object 0: handle = 0x2cfba2000000001c, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x8003606b | vkMapMemory(): offset 0x0 plus size 0x58 (total 0x58) oversteps total array size 0x40.
+The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must be less than or equal to the size of the memory minus offset (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkMapMemory-size-00681)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkMapMemory-size-00681 ] Object 0: handle = 0x2cfba2000000001c, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x8003606b | vkMapMemory(): offset 0x0 plus size 0x58 (total 0x58) oversteps total array size 0x40.
+The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must be less than or equal to the size of the memory minus offset (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkMapMemory-size-00681)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkMapMemory-size-00681 ] Object 0: handle = 0x2cfba2000000001c, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x8003606b | vkMapMemory(): offset 0x0 plus size 0x58 (total 0x58) oversteps total array size 0x40.
+The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must be less than or equal to the size of the memory minus offset (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkMapMemory-size-00681)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkMapMemory-size-00681 ] Object 0: handle = 0x2cfba2000000001c, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x8003606b | vkMapMemory(): offset 0x0 plus size 0x58 (total 0x58) oversteps total array size 0x40.
+The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must be less than or equal to the size of the memory minus offset (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkMapMemory-size-00681)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkMapMemory-size-00681 ] Object 0: handle = 0x2cfba2000000001c, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x8003606b | vkMapMemory(): offset 0x0 plus size 0x58 (total 0x58) oversteps total array size 0x40.
+The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must be less than or equal to the size of the memory minus offset (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkMapMemory-size-00681)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkMapMemory-size-00681 ] Object 0: handle = 0x2cfba2000000001c, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x8003606b | vkMapMemory(): offset 0x0 plus size 0x58 (total 0x58) oversteps total array size 0x40.
+The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must be less than or equal to the size of the memory minus offset (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkMapMemory-size-00681)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkMapMemory-size-00681 ] Object 0: handle = 0x2cfba2000000001c, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0x8003606b | vkMapMemory(): offset 0x0 plus size 0x58 (total 0x58) oversteps total array size 0x40.
+The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must be less than or equal to the size of the memory minus offset (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkMapMemory-size-00681)
 uninitialize() => vkDeviceWaitIdle() Succeeded
 uninitialize() => vkDestroyFence() Succeeded For Index : 0
 uninitialize() => vkDestroyFence() Succeeded For Index : 1

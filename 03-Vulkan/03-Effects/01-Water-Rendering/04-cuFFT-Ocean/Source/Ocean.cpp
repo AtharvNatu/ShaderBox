@@ -467,13 +467,13 @@ VkResult Ocean::createDescriptorSetLayout(void)
     vkDescriptorSetLayoutBinding_array[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     vkDescriptorSetLayoutBinding_array[1].binding = 1;   //! Mapped with layout(binding = 1) in fragment shader
     vkDescriptorSetLayoutBinding_array[1].descriptorCount = 1;
-    vkDescriptorSetLayoutBinding_array[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    vkDescriptorSetLayoutBinding_array[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     vkDescriptorSetLayoutBinding_array[1].pImmutableSamplers = NULL;
 
     vkDescriptorSetLayoutBinding_array[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     vkDescriptorSetLayoutBinding_array[2].binding = 2;   //! Mapped with layout(binding = 2) in vertex shader
     vkDescriptorSetLayoutBinding_array[2].descriptorCount = 1;
-    vkDescriptorSetLayoutBinding_array[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    vkDescriptorSetLayoutBinding_array[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     vkDescriptorSetLayoutBinding_array[2].pImmutableSamplers = NULL;
 
     //* Step - 3
@@ -863,12 +863,27 @@ VkResult Ocean::updateUniformBuffer(void)
     memset((void*)&ubo, 0, sizeof(UBO));
 
     //! Update Matrices
-    glm::mat4 waveViewProjectionMatrix = camera->getViewProjection(true);
-    glm::mat4 waterMatrix = glm::mat4(1.0f);
-    waterMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -6.0f));
+    glm::mat4 perspectiveProjectionMatrix = glm::mat4(1.0f);
+    perspectiveProjectionMatrix = glm::perspective(
+        glm::radians(45.0f),
+        (float)winWidth / (float)winHeight,
+        0.1f,
+        100.0f
+    );
+    //! 2D Matrix with Column Major (Like OpenGL)
+    perspectiveProjectionMatrix[1][1] = perspectiveProjectionMatrix[1][1] * (-1.0f);
 
-    ubo.viewProjectionMatrix = waveViewProjectionMatrix;
-    ubo.modelMatrix = waterMatrix;
+    // glm::mat4 waveViewProjectionMatrix = camera->getViewProjection(true);
+    glm::mat4 translationMatrix = glm::mat4(1.0f);
+    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -6.0f));
+
+    ubo.modelMatrix = translationMatrix;
+    ubo.viewMatrix = glm::lookAt(
+        camera->getPosition(), 
+        camera->getPosition() + glm::vec3(0.0f, 0.0f, -1.0f),
+        glm::vec3(0, 1, 0)
+    );
+    ubo.projectionMatrix = perspectiveProjectionMatrix;
     ubo.cameraPosition = glm::vec4(camera->getPosition(), 1.0f);
 
     //! Map Uniform Buffer
@@ -917,11 +932,19 @@ VkResult Ocean::updateUniformBuffer(void)
     LightingUBO lightingUBO;
     memset((void*)&lightingUBO, 0, sizeof(LightingUBO));
 
-    glm::vec3 sunData = glm::normalize(glm::vec3(-0.3f, -1.0f, -0.2f));
-    lightingUBO.sunDirection = glm::vec4(sunData, 1.0f);
-    lightingUBO.sunColor = glm::vec4(1.0f, 0.95f, 0.8f, 1.0f);
-    lightingUBO.horizonColor = glm::vec4(0.2f, 0.4f, 0.7f, 1.0f);
-    lightingUBO.deepColor = glm::vec4(0.0f, 0.05f, 0.15f, 1.0f);
+    // glm::vec3 sunData = glm::normalize(glm::vec3(-0.3f, -1.0f, -0.2f));
+    // lightingUBO.sunDirection = glm::vec4(sunData, 1.0f);
+    // lightingUBO.sunColor = glm::vec4(1.0f, 0.95f, 0.8f, 1.0f);
+    // lightingUBO.horizonColor = glm::vec4(0.2f, 0.4f, 0.7f, 1.0f);
+    // lightingUBO.deepColor = glm::vec4(0.0f, 0.05f, 0.15f, 1.0f);
+
+    lightingUBO.cameraPosition = glm::vec4(camera->getPosition(), 1.0f);
+    lightingUBO.lightPosition = glm::vec4(0.0f, 50.0f, 0.0f, 1.0f);
+    lightingUBO.ambient = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
+    lightingUBO.diffuse = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
+    lightingUBO.specular = glm::vec4(1.0f, 0.9f, 0.7f, 0.0f);
+    lightingUBO.heightMin = heightMin;
+    lightingUBO.heightMax = heightMax;
 
     //! Map Uniform Buffer
     data = NULL;
@@ -1119,6 +1142,9 @@ void Ocean::updateVertices()
     const uint32_t N = oceanSettings.tileSize;
     int Nplus1 = N + 1;
 
+    heightMin =  1e9f;
+    heightMax = -1e9f;
+
     for (int z = 0; z < Nplus1; z++)
     {
         for (int x = 0; x < Nplus1; x++)
@@ -1138,16 +1164,23 @@ void Ocean::updateVertices()
                 choppiness * h_zDisplacement[iD].real()
             );
 
-            vertices[iV].position = originPosition + displacementData;
+            glm::vec3 displacedPosition = originPosition + displacementData;
+            vertices[iV].position = displacedPosition;
+
+            if (displacedPosition.y > heightMax)
+                heightMax = displacedPosition.y;
+            
+            if (displacedPosition.y < heightMin)
+                heightMin = displacedPosition.y;
 
             double ex = h_xGradient[iD].real();
             double ez = h_zGradient[iD].real();
 
-            vertices[iV].normal = glm::vec3(
+            vertices[iV].normal = glm::normalize(glm::vec3(
                 -ex * normalRoughness,
                 1.0,
                 -ez * normalRoughness
-            );
+            ));
         }
     }
 

@@ -33,7 +33,7 @@ extern VkRenderPass vkRenderPass;
 extern VkViewport vkViewport;
 extern VkRect2D vkRect2D_scissor;
 extern VkExtent2D vkExtent2D_swapchain;
-
+extern int winWidth, winHeight;
 
 class Ocean
 {
@@ -66,7 +66,8 @@ class Ocean
         typedef struct
         {
             glm::mat4 modelMatrix;
-            glm::mat4 viewProjectionMatrix;
+            glm::mat4 viewMatrix;
+            glm::mat4 projectionMatrix;
             glm::vec4 cameraPosition;
         } UBO;
 
@@ -82,10 +83,18 @@ class Ocean
 
         typedef struct
         {
-            glm::vec4 sunDirection;
-            glm::vec4 sunColor;
-            glm::vec4 horizonColor;
-            glm::vec4 deepColor;
+            // glm::vec4 sunDirection;
+            // glm::vec4 sunColor;
+            // glm::vec4 horizonColor;
+            // glm::vec4 deepColor;
+
+            glm::vec4 lightPosition;
+            glm::vec4 cameraPosition;
+            glm::vec4 ambient;
+            glm::vec4 diffuse;
+            glm::vec4 specular;
+            float heightMin;
+            float heightMax;
         } LightingUBO;
 
 
@@ -159,18 +168,13 @@ class Ocean
         float choppiness = -1.0f;
         double dt;
 
-        // Camera camera(
-        //     glm::vec3(0.0, 1.0, 1.0),
-        //     0.0, 0.0, 45.0f, 1260.0f / 1080.0f, 0.01, 1000.0, 
-        //     rotationSpeed, movementSpeed
-        // );
-
         Camera* camera = nullptr;
 
         glm::vec3 cameraPosition = glm::vec3(0.0f, 1.0f, 3.0f);
         glm::vec3 cameraEye = glm::vec3(0.0f, 0.0f, -1.0f);
         glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
         float cameraSpeed = 0.0f;
+        float heightMin, heightMax;
 
     private:
         // Vulkan Related
