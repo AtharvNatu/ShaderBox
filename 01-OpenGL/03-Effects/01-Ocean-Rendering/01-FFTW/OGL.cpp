@@ -805,7 +805,7 @@ void display(void)
         vmath::mat4 modelMatrix = vmath::mat4::identity();
         vmath::mat4 viewMatrix = vmath::mat4::identity();
 
-        translationMatrix = vmath::translate(0.0f, -10.0f, -50.0f);
+        translationMatrix = vmath::translate(0.0f, -2.0f, -50.0f);
         scaleMatrix = vmath::scale(0.05f, 0.05f, 0.05f);
         modelMatrix = translationMatrix * scaleMatrix;
 
