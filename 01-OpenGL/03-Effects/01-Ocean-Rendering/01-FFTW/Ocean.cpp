@@ -121,12 +121,6 @@ void Ocean::generate_fft_data(float time)
     std::complex<float>* displacement_x_term = new std::complex<float>[kNum];
     std::complex<float>* displacement_z_term = new std::complex<float>[kNum];
 
-//     for (int n = 0; n < 4; ++n)
-//   for (int m = 0; m < 4; ++m) {
-//     auto v = func_h_twiddle(n, m, 0.0f);
-//     fprintf(gpFile, "[%d,%d] %f %f\n", n, m, v.real(), v.imag());
-//   }
-
     for (int n = 0; n < N; n++)
     {
         for (int m = 0; m < M; m++)

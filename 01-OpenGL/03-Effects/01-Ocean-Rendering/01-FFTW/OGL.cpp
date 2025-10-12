@@ -6,6 +6,8 @@
 #include "OGL.h"
 #include "vmath.h"
 #include "Ocean.hpp"
+        vmath::mat4 viewMatrix = vmath::mat4::identity();
+#include "Camera.hpp"
 
 //! ImGui Related
 #include "imgui.h"
@@ -116,6 +118,12 @@ vmath::vec3 lightPosition(0.0f, 50, 0.0);
 vmath::vec3 lightDirection(vmath::normalize(vmath::vec3(0, 1, -2)));
 
 bool bWireFrame = FALSE;
+
+//! Camera
+Camera camera(vmath::vec3(0.0f, 0.0f, 3.0f), vmath::vec3(0.0f, 1.0f, 0.0f));
+float lastX = WIN_WIDTH / 2.0f;
+float lastY = WIN_HEIGHT / 2.0f;
+bool firstMouse = true;
 
 //? -----------------------------------------------------------------------
 
@@ -335,6 +343,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
                 case 'F':
                 case 'f':
                     ToggleFullScreen();
+                break;
+                
+                case 'W':
+                case 'w':
+                    camera.processKeyboard(FORWARD, fTime);
+                break;
+                
+                case 'S':
+                case 's':
+                    camera.processKeyboard(BACKWARD, fTime);
+                break;
+                
+                case 'A':
+                case 'a':
+                    camera.processKeyboard(LEFT, fTime);
+                break;
+                
+                case 'D':
+                case 'd':
+                    camera.processKeyboard(RIGHT, fTime);
                 break;
 
                 default:
@@ -810,7 +838,7 @@ void display(void)
         modelMatrix = translationMatrix * scaleMatrix;
 
         glUniformMatrix4fv(modelMatrixUniform, 1, GL_FALSE, modelMatrix);
-        glUniformMatrix4fv(viewMatrixUniform, 1, GL_FALSE, viewMatrix);
+        glUniformMatrix4fv(viewMatrixUniform, 1, GL_FALSE, camera.getViewMatrix());
         glUniformMatrix4fv(projectionMatrixUniform, 1, GL_FALSE, perspectiveProjectionMatrix);
         
         glUniform3f(lightPositionUniform, lightPosition[0], lightPosition[1], lightPosition[2]);
