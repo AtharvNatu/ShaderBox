@@ -1,0 +1,34 @@
+#version 460 core
+
+#define COMPUTE_WORK_GROUP_DIMENSION    32
+
+const float PI = 3.14159265359;
+const float g = 9.81;
+const float KM = 370.0;
+const float CM = 0.23;
+
+layout(local_size_x = COMPUTE_WORK_GROUP_DIMENSION, local_size_y = COMPUTE_WORK_GROUP_DIMENSION) in;
+
+layout(binding = 0, r32f) writeonly uniform image2D u_initial_spectrum;
+
+uniform int u_resolution;
+uniform int u_ocean_size;
+uniform vec2 u_wind;
+
+float omega(float k)
+{
+	return sqrt(g * k * (1.f + ((k * k) / (KM * KM))));
+}
+
+float square(float x)
+{
+	return x * x;
+}
+
+void main(void)
+{
+    float n = 0.0f, m = 0.0f;
+
+    ivec2 pixel_coord = ivec2(gl_GlobalInvocationID.xy);
+
+}

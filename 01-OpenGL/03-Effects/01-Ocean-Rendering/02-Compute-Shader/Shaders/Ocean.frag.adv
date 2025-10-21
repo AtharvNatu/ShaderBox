@@ -1,0 +1,195 @@
+// #version 460 core
+
+// in vec3 out_position;
+// in vec3 out_normal;
+// in vec2 out_texcoord;
+
+// uniform vec3 u_lightPosition;
+// uniform vec3 u_lightAmbient;
+// uniform vec3 u_lightDiffuse;
+// uniform vec3 u_lightSpecular;
+
+// uniform vec3 u_viewPosition;
+// uniform float u_heightMax;
+// uniform float u_heightMin;
+// uniform float u_time;
+
+// uniform float u_foamIntensity;
+// uniform float u_subSurfaceScatteringStrength;
+// uniform float u_underWaterFogDensity;
+
+// // Caustics Texture
+// uniform sampler2D u_causticMap;
+
+// out vec4 FragColor;
+
+// void main(void)
+// { 
+//     vec3 normals = normalize(out_normal);
+//     vec3 light_direction = normalize(u_lightPosition - out_position);
+//     vec3 view_direction = normalize(u_viewPosition - out_position);
+
+//     // For underwater -> Flip normals
+//     if (dot(normals, view_direction) < 0)
+//         normals = -normals;
+
+//     // Height Based Color
+//     vec3 shallowColor = vec3(0.0, 0.64, 0.68);
+//     vec3 deepColor = vec3(0.02, 0.05, 0.10);
+//     float heightRatio = clamp((out_position.y - u_heightMin) / (u_heightMax - u_heightMin), 0.0, 1.0);
+//     vec3 waterColor = mix(deepColor, shallowColor, heightRatio);
+
+//     // Subsurface scattering (Light passing through thin waves)
+//     float subSurfaceScattering = pow(max(dot(-light_direction, normals), 0.0), 4.0) * u_subSurfaceScatteringStrength;
+//     //* Blueish Light Scattering
+//     vec3 subSurfaceScatteringColor = vec3(0.2, 0.5, 0.6) * subSurfaceScattering;
+
+//     //! Foam on peaks (whitecaps on high curvature or steep normals)
+//     // float foamMask = smoothstep(0.85, 1.0, heightRatio);
+//     // // Curvature Based
+//     // foamMask += pow(1.0 - dot(normals, vec3(0.0, 1.0, 0.0)), 6.0);
+//     // foamMask = clamp(foamMask * u_foamIntensity, 0.0, 1.0);
+//     // vec3 foamColor = mix(waterColor, vec3(1.0), foamMask);
+
+//     // --- Foam & curvature-based whitecaps ---
+//     float slope = 1.0 - dot(normals, vec3(0.0, 1.0, 0.0)); // 0=flat, 1=steep
+//     float crest = smoothstep(0.3, 0.8, slope);       // detect steep regions
+//     float peakBoost = smoothstep(0.8, 1.0, heightRatio); // more foam near peaks
+//     float foam = clamp((crest * 0.7 + peakBoost * 0.3) * u_foamIntensity, 0.0, 1.0);
+
+//     // Optional animated foam drift
+//     vec2 foamUV = out_texcoord * 3.0 + vec2(u_time * 0.02, u_time * 0.015);
+//     float foamNoise = texture(u_causticMap, foamUV).r;
+//     foam *= smoothstep(0.4, 0.8, foamNoise);
+
+//     vec3 foamColor = mix(waterColor, vec3(1.0), foam);
+
+//     // Caustics
+//     // float causticMask = clamp(1.0 - heightRatio * 3.0, 0.0, 1.0);
+//     // vec2 causticUV = out_texcoord * 4.0 + vec2(u_time * 0.1, u_time * 0.05);
+//     // float caustic = texture(u_causticMap, causticUV).r * smoothstep(0.0, 0.3, heightRatio);
+//     // vec3 causticColor = vec3(caustic * 0.6);
+
+//     // Reflection Color (Sky Tint)
+//     vec3 skyColor = vec3(0.5, 0.75, 0.95);
+//     float fresnel = pow(1.0 - dot(normals, view_direction), 3.0);
+//     vec3 reflectionColor = skyColor * fresnel;
+
+//     // Underwater Fog Attenuation
+//     float depth = clamp((u_heightMax - out_position.y) * u_underWaterFogDensity, 0.0, 1.0);
+//     vec3 fogColor = mix(vec3(0.0, 0.1, 0.15), waterColor, exp(-depth));
+
+//     // Final Composite
+//     vec3 finalColor = mix(foamColor, fogColor, depth);
+//     finalColor += reflectionColor + subSurfaceScatteringColor;
+
+//     FragColor = vec4(finalColor, 1.0);
+
+// }
+
+
+#version 460 core
+
+in vec3 out_position;
+in vec3 out_normal;
+in vec2 out_texcoord;
+
+uniform vec3 u_lightPosition;
+uniform vec3 u_lightAmbient;
+uniform vec3 u_lightDiffuse;
+uniform vec3 u_lightSpecular;
+
+uniform vec3 u_viewPosition;
+uniform float u_heightMax;
+uniform float u_heightMin;
+uniform float u_time;
+
+// Effects
+uniform float u_foamIntensity;
+uniform float u_sssStrength;
+uniform float u_underwaterFogDensity;
+
+uniform sampler2D u_causticMap; // reused as foam noise map
+
+out vec4 FragColor;
+
+float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+// Temporal noise for foam persistence
+float foamTemporalNoise(vec2 uv, float t) {
+    float n = hash(floor(uv * 50.0));
+    float timeVary = sin(t * 0.5 + n * 6.2831);
+    return 0.5 + 0.5 * timeVary;
+}
+
+void main()
+{
+    vec3 N = normalize(out_normal);
+    vec3 L = normalize(u_lightPosition - out_position);
+    vec3 V = normalize(u_viewPosition - out_position);
+    if (dot(N, V) < 0.0) N = -N;
+
+    // Height-based color
+    vec3 shallowColor = vec3(0.0, 0.64, 0.68);
+    vec3 deepColor    = vec3(0.02, 0.05, 0.10);
+    float heightRatio = clamp((out_position.y - u_heightMin) / (u_heightMax - u_heightMin), 0.0, 1.0);
+    vec3 waterColor = mix(deepColor, shallowColor, heightRatio);
+
+    // --- FOAM SYSTEM ---
+    // 1️⃣ Crest detection via slope
+    float slope = 1.0 - dot(N, vec3(0.0, 1.0, 0.0));
+    float crest = smoothstep(0.3, 0.8, slope);
+
+    // 2️⃣ Height-based peak enhancement
+    float peakBoost = smoothstep(0.8, 1.0, heightRatio);
+
+    // 3️⃣ Combine slope + height
+    float foamBase = clamp(crest * 0.7 + peakBoost * 0.3, 0.0, 1.0);
+
+    // 4️⃣ Foam texture modulation (multi-scale noise)
+    vec2 foamUV = out_texcoord * 3.0 + vec2(u_time * 0.02, u_time * 0.015);
+    float foamTex1 = texture(u_causticMap, foamUV).r;
+    float foamTex2 = texture(u_causticMap, foamUV * 0.5 + vec2(0.1, 0.1)).r;
+    float foamTex = mix(foamTex1, foamTex2, 0.5);
+
+    // 5️⃣ Foam accumulation/dissipation using time + noise
+    float foamLife = foamTemporalNoise(out_texcoord * 5.0, u_time * 0.7);
+    foamLife = smoothstep(0.4, 1.0, foamLife);
+    float foam = foamBase * foamTex * foamLife * u_foamIntensity;
+
+    // 6️⃣ Directional foam streaks (wind/wave drift)
+    vec2 drift = normalize(vec2(L.x, L.z)) * (u_time * 0.02);
+    float streakTex = texture(u_causticMap, out_texcoord * 6.0 + drift).r;
+    foam *= mix(0.7, 1.2, streakTex);
+
+    foam = clamp(foam, 0.0, 1.0);
+    vec3 foamColor = mix(waterColor, vec3(1.0), foam);
+
+    // --- Subsurface Scattering ---
+    float sss = pow(max(dot(-L, N), 0.0), 4.0) * u_sssStrength;
+    vec3 sssColor = sss * vec3(0.3, 0.6, 0.7);
+
+    // --- Reflection (fresnel term) ---
+    vec3 skyColor = vec3(0.6, 0.75, 0.95);
+    float fresnel = pow(1.0 - dot(N, V), 3.0);
+    vec3 reflectionColor = skyColor * fresnel;
+
+    // --- Caustics (only underwater) ---
+    float causticMask = clamp(1.0 - heightRatio * 3.0, 0.0, 1.0);
+    vec2 causticUV = out_texcoord * 4.0 + vec2(u_time * 0.05, u_time * 0.03);
+    float causticValue = texture(u_causticMap, causticUV).r * causticMask;
+    vec3 causticColor = causticValue * vec3(0.5, 0.8, 1.0) * causticMask;
+
+    // --- Underwater Fog ---
+    float depth = clamp((u_heightMax - out_position.y) * u_underwaterFogDensity, 0.0, 1.0);
+    vec3 fogColor = mix(vec3(0.0, 0.1, 0.15), waterColor, exp(-depth));
+
+    // --- Combine All Effects ---
+    vec3 color = foamColor + sssColor + reflectionColor;
+    color += causticColor * depth; // caustics only below water
+    color = mix(color, fogColor, depth);
+
+    FragColor = vec4(color, 1.0);
+}
