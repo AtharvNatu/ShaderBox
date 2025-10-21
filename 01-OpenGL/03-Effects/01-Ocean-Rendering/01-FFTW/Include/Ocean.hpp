@@ -7,10 +7,8 @@
 #define _USE_MATH_DEFINES   1
 #include <cmath>
 
-#include "vmath.h"
+#include "Common.hpp"
 #include "fftw3.h"
-
-extern FILE* gpFile;
 
 class Ocean
 {

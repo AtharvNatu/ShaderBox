@@ -1,9 +1,9 @@
 #include "Camera.hpp"
 
-Camera::Camera(vmath::vec3 _position = vmath::vec3(0.0f, 0.0f, 0.0f), vmath::vec3 up = vmath::vec3(0.0f, 1.0f, 0.0f))
+Camera::Camera(vmath::vec3 _position, vmath::vec3 _up)
 {
     position = _position;
-    worldUp = up;
+    worldUp = _up;
     front = vmath::vec3(0.0f, 0.0f, -1.0f);
     yaw = YAW;
     pitch = PITCH;
@@ -32,7 +32,7 @@ Camera::Camera(
     updateCameraVectors();
 }
 
-vmath::mat4 Camera::getViewMatrix()
+vmath::mat4 Camera::getViewMatrix() const
 {
     return vmath::lookat(position, position + front, up);
 }
@@ -58,10 +58,18 @@ void Camera::processKeyboard(CAMERA_DIRECTION direction, float deltaTime)
         case RIGHT:
             position += right * velocity;
         break;
+
+        case UP:
+            position += worldUp * velocity;
+        break;
+
+        case DOWN:
+            position -= worldUp * velocity;
+        break;
     }
 }
 
-void Camera::processMouseMovement(float xOffset, float yOffset, bool constrainPitch = true)
+void Camera::processMouseMovement(float xOffset, float yOffset, bool constrainPitch)
 {
     xOffset *= mouseSensitivity;
     yOffset *= mouseSensitivity;
@@ -74,7 +82,7 @@ void Camera::processMouseMovement(float xOffset, float yOffset, bool constrainPi
         if (pitch > 89.0f)
             pitch = 89.0f;
         if (pitch < -89.0f)
-            pitch = 89.0f;
+            pitch = -89.0f;
     }
 
     updateCameraVectors();
@@ -91,8 +99,6 @@ void Camera::processMouseScroll(float yOffset)
 
 void Camera::updateCameraVectors()
 {
-    vmath::vec3 front;
-
     front[0] = cos(vmath::radians(yaw)) * cos(vmath::radians(pitch));
     front[1] = sin(vmath::radians(pitch));
     front[2] = sin(vmath::radians(yaw)) * cos(vmath::radians(pitch));

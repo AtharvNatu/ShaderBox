@@ -7,6 +7,9 @@ set IMGUI_PATH=ImGui
 set IMGUI_BACKENDS=%IMGUI_PATH%\backends
 set BIN_DIR=Bin
 
+set SOURCE_PATH=Source
+set INCLUDE_PATH=Include
+
 if not exist %BIN_DIR% mkdir %BIN_DIR%
 
 cls
@@ -25,7 +28,8 @@ cl.exe  /c ^
         /I %GLEW_INCLUDE_PATH% ^
         /I %IMGUI_PATH% ^
         /I %IMGUI_BACKENDS% ^
-        *.cpp ^
+        /I %INCLUDE_PATH% ^
+        %SOURCE_PATH%\*.cpp ^
         %IMGUI_PATH%\imgui.cpp ^
         %IMGUI_PATH%\imgui_draw.cpp ^
         %IMGUI_PATH%\imgui_widgets.cpp ^
@@ -44,7 +48,7 @@ if errorlevel 1 (
 echo ----------------------------------------------------------------------------------------------------------------
 echo Compiling Resource Files ...
 echo ----------------------------------------------------------------------------------------------------------------
-rc.exe /fo %BIN_DIR%\OGL.res OGL.rc
+rc.exe /fo %BIN_DIR%\OGL.res /I %INCLUDE_PATH% Assets\OGL.rc
 
 if errorlevel 1 (
         @echo:

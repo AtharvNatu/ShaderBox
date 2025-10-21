@@ -1,18 +1,16 @@
 #ifndef CAMERA_HPP
 #define CAMERA_HPP
 
-//! OpenGL Header Files
-#include <GL/glew.h>
-#include <GL/gl.h>
-
-#include "vmath.h"
+#include "Common.hpp"
 
 enum CAMERA_DIRECTION
 {
     FORWARD,
     BACKWARD,
     LEFT,
-    RIGHT
+    RIGHT,
+    UP,
+    DOWN
 };
 
 const float YAW = -90.0f;
@@ -44,17 +42,17 @@ class Camera
         float mouseSensitivity;
         float zoom;
 
-        Camera(vmath::vec3 position, vmath::vec3 up);
+        Camera(vmath::vec3 position = vmath::vec3(0.0f, 0.0f, 0.0f), vmath::vec3 up = vmath::vec3(0.0f, 1.0f, 0.0f));
         Camera(
             float posX, float posY, float posZ, 
             float upX, float upY, float upZ, 
             float yaw, float pitch
         );
 
-        vmath::mat4 getViewMatrix();
+        vmath::mat4 getViewMatrix() const;
 
         void processKeyboard(CAMERA_DIRECTION direction, float deltaTime);
-        void processMouseMovement(float xOffset, float yOffset, bool constrainPitch);
+        void processMouseMovement(float xOffset, float yOffset, bool constrainPitch = true);
         void processMouseScroll(float yOffset);
 };
 

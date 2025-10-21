@@ -1,22 +1,24 @@
 //* Header Files
 #include <windows.h>
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "OGL.h"
-#include "vmath.h"
-#include "Ocean.hpp"
-        vmath::mat4 viewMatrix = vmath::mat4::identity();
-#include "Camera.hpp"
+#include <windowsx.h>
 
 //! ImGui Related
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
 #include "imgui_impl_win32.h"
 
-//! OpenGL Header Files
-#include <GL/glew.h>
-#include <GL/gl.h>
+//! STB Header For PNG
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#include "OGL.h"
+#include "Common.hpp"
+#include "Logger.hpp"
+#include "Shader.hpp"
+#include "Ocean.hpp"
+#include "Camera.hpp"
+
+#include "helper_timer.h"
 
 #define WIN_WIDTH   800
 #define WIN_HEIGHT  600
@@ -36,37 +38,15 @@ HGLRC ghrc = NULL;
 BOOL gbFullScreen = FALSE;
 BOOL gbActiveWindow = FALSE;
 
-FILE *gpFile = NULL;
-
 WINDOWPLACEMENT wpPrev;
 DWORD dwStyle;
 
-enum INIT_ERRORS
-{
-    CPF_ERROR = -1,
-    SPF_ERROR = -2,
-    WGL_CC_ERROR = -3,
-    WGL_MC_ERROR = -4,
-    GLEW_INIT_ERROR = -5,
-    VS_COMPILE_ERROR = -6,
-    TES_COMPILE_ERROR = -7,
-    TCS_COMPILE_ERROR = -8,
-    GS_COMPILE_ERROR = -9,
-    FS_COMPILE_ERROR = -10,
-    PROGRAM_LINK_ERROR = -11,
-    MEM_ALLOC_FAILED = -12
-};
-
-enum ATTRIBUTES
-{
-    ATTRIBUTE_POSITION = 0,
-    ATTRIBUTE_COLOR,
-    ATTRIBUTE_NORMAL,
-    ATTRIBUTE_TEXTURE0
-};
+Logger* logger = nullptr;
 
 //? Shaders, VAO & VBO
 //? -----------------------------------------------------------------------
+Shader vertexShader, fragmentShader;
+
 GLuint shaderProgramObject = 0;
 
 GLuint vao_ocean = 0;
@@ -88,6 +68,12 @@ GLuint lightSpecularUniform = 0;
 GLuint viewPositionUniform = 0;
 GLuint heightMinUniform = 0;
 GLuint heightMaxUniform = 0;
+
+GLuint foamIntensityUniform = 0;
+GLuint subSurfaceScatteringStrengthUniform = 0;
+GLuint fogDensityUniform = 0;
+GLuint timeUniform = 0;
+GLuint causticSamplerUniform = 0;
 
 //? -----------------------------------------------------------------------
 
@@ -117,13 +103,20 @@ GLuint* indices = nullptr;
 vmath::vec3 lightPosition(0.0f, 50, 0.0);
 vmath::vec3 lightDirection(vmath::normalize(vmath::vec3(0, 1, -2)));
 
-bool bWireFrame = FALSE;
+bool bWireFrame = false;
+bool reloadSettings = false;
 
 //! Camera
 Camera camera(vmath::vec3(0.0f, 0.0f, 3.0f), vmath::vec3(0.0f, 1.0f, 0.0f));
 float lastX = WIN_WIDTH / 2.0f;
 float lastY = WIN_HEIGHT / 2.0f;
 bool firstMouse = true;
+float deltaTime = 0.0f;
+bool mouseInput = false;
+
+GLuint causticTexture;
+
+StopWatchInterface* timer = nullptr;
 
 //? -----------------------------------------------------------------------
 
@@ -148,14 +141,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     int iRetVal = 0;
 
     // Code
-    gpFile = fopen("OGL.log", "w");
-    if (gpFile == NULL)
-    {
-        MessageBox(NULL, TEXT("Failed To Create Log File ... Exiting !!!"), TEXT("File I/O Error"), MB_OK | MB_ICONERROR);
-        exit(EXIT_FAILURE);
-    }
-    else
-        fprintf(gpFile, "%s() => Program Started Successfully\n", __func__);
+    logger = Logger::getInstance("Ocean.log");
     
     // Initialization of WNDCLASSEX Structure
     wndclass.cbSize = sizeof(WNDCLASSEX);
@@ -204,27 +190,27 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     switch(iRetVal)
     {
         case CPF_ERROR:
-            fprintf(gpFile, "ERROR : %s() => ChoosePixelFormat() Failed !!!\n", __func__);
+            logger->printLog("ERROR : %s() => ChoosePixelFormat() Failed !!!\n", __func__);
             uninitialize();
         break;
 
         case SPF_ERROR:
-            fprintf(gpFile, "ERROR : %s() => SetPixelFormat() Failed !!!\n", __func__);
+            logger->printLog("ERROR : %s() => SetPixelFormat() Failed !!!\n", __func__);
             uninitialize();
         break;
 
         case WGL_CC_ERROR:
-            fprintf(gpFile, "ERROR : %s() => Failed to create OpenGL context !!!\n", __func__);
+            logger->printLog("ERROR : %s() => Failed to create OpenGL context !!!\n", __func__);
             uninitialize();
         break;
 
         case WGL_MC_ERROR:
-            fprintf(gpFile, "ERROR : %s() => Failed to make rendering context as current context !!!\n", __func__);
+            logger->printLog("ERROR : %s() => Failed to make rendering context as current context !!!\n", __func__);
             uninitialize();
         break;
 
         case GLEW_INIT_ERROR:
-            fprintf(gpFile, "ERROR : %s() => GLEW Initialization Failed !!!\n", __func__);
+            logger->printLog("ERROR : %s() => GLEW Initialization Failed !!!\n", __func__);
             uninitialize();
         break;
 
@@ -245,7 +231,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
         break;
 
         default:
-            fprintf(gpFile, "%s() => Initialization Completed Successfully\n", __func__);
+            logger->printLog("%s() => Initialization Completed Successfully\n", __func__);
         break;
     }
 
@@ -328,6 +314,42 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
         case WM_KEYDOWN:
             switch(wParam)
             {
+                case 'F':
+                case 'f':
+                    ToggleFullScreen();
+                break;
+                
+                case 'W':
+                case 'w':
+                    camera.processKeyboard(FORWARD, deltaTime);
+                break;
+                
+                case 'S':
+                case 's':
+                    camera.processKeyboard(BACKWARD, deltaTime);
+                break;
+                
+                case 'A':
+                case 'a':
+                    camera.processKeyboard(LEFT, deltaTime);
+                break;
+                
+                case 'D':
+                case 'd':
+                    camera.processKeyboard(RIGHT, deltaTime);
+                break;
+
+                case VK_UP:
+                    camera.processKeyboard(UP, deltaTime);
+                break;
+                case VK_DOWN:
+                    camera.processKeyboard(DOWN, deltaTime);
+                break;
+
+                case VK_SPACE:
+                    mouseInput = !mouseInput;
+                break;
+
                 case 27:
                     DestroyWindow(hwnd);
                 break;
@@ -336,38 +358,40 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
                 break;
             }
         break;
-
-        case WM_CHAR:
-            switch(wParam)
+        
+        case WM_MOUSEWHEEL:
+        {
+            if (mouseInput)
             {
-                case 'F':
-                case 'f':
-                    ToggleFullScreen();
-                break;
-                
-                case 'W':
-                case 'w':
-                    camera.processKeyboard(FORWARD, fTime);
-                break;
-                
-                case 'S':
-                case 's':
-                    camera.processKeyboard(BACKWARD, fTime);
-                break;
-                
-                case 'A':
-                case 'a':
-                    camera.processKeyboard(LEFT, fTime);
-                break;
-                
-                case 'D':
-                case 'd':
-                    camera.processKeyboard(RIGHT, fTime);
-                break;
-
-                default:
-                break;
+                float yOffset = GET_WHEEL_DELTA_WPARAM(wParam) / static_cast<float>(WHEEL_DELTA);
+                camera.processMouseScroll(yOffset);
             }
+        }  
+        break;
+
+        case WM_MOUSEMOVE:
+        {
+            if (mouseInput)
+            {
+                float xPosition = static_cast<float>(GET_X_LPARAM(lParam));
+                float yPosition = static_cast<float>(GET_Y_LPARAM(lParam));
+
+                if (firstMouse)
+                {
+                    lastX = xPosition;
+                    lastY = yPosition;
+                    firstMouse = false;
+                }
+
+                float xOffset = xPosition - lastX;
+                float yOffset = lastY - yPosition;
+
+                lastX = xPosition;
+                lastY = yPosition;
+
+                camera.processMouseMovement(xOffset, yOffset);
+            }
+        }
         break;
 
         case WM_CLOSE:
@@ -438,6 +462,7 @@ int initialize(void)
 {
     // Function Declarations
     void initializeImGui(const char*, float);
+    BOOL LoadPNGTexture(GLuint* texture, const char* imageFile);
     void generateIndices(void);
     void resize(int, int);
     void printGLInfo(void);
@@ -488,176 +513,15 @@ int initialize(void)
     if (initStatus != GLEW_OK)
         return GLEW_INIT_ERROR;
 
-    printGLInfo();
+    // printGLInfo();
 
     initializeImGui("ImGui\\Poppins-Regular.ttf", 20.0f);
 
-    //! Vertex Shader
-    //! ----------------------------------------------------------------------------
-    const GLchar* vertexShaderSourceCode = 
-        "#version 460 core" \
-        "\n" \
-        
-        "in vec3 a_position;" \
-        "in vec3 a_normal;" \
-
-        "uniform mat4 u_modelMatrix;" \
-        "uniform mat4 u_viewMatrix;" \
-        "uniform mat4 u_projectionMatrix;" \
-
-        "out vec3 out_normal;" \
-        "out vec3 out_position;" \
-
-        "void main(void)" \
-        "{" \
-            "gl_Position = u_projectionMatrix * u_viewMatrix * u_modelMatrix * vec4(a_position, 1.0f);" \
-            
-            "out_position = vec3(u_modelMatrix * vec4(a_position, 1.0f));" \
-            "out_normal = mat3(transpose(inverse(u_modelMatrix))) * a_normal;" \
-        "}";
-
-    GLuint vertexShaderObject = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShaderObject, 1, (const GLchar**)&vertexShaderSourceCode, NULL);
-    glCompileShader(vertexShaderObject);
-
-    GLint status = 0;
-    GLint infoLogLength = 0;
-    GLchar* szLog = NULL;
-
-    glGetShaderiv(vertexShaderObject, GL_COMPILE_STATUS, &status);
-    if (status == GL_FALSE)
-    {
-        glGetShaderiv(vertexShaderObject, GL_INFO_LOG_LENGTH, &infoLogLength);
-        if (infoLogLength > 0)
-        {
-            szLog = (GLchar*)malloc(infoLogLength * sizeof(GLchar));
-            if (szLog == NULL)
-            {
-                fprintf(gpFile, "ERROR : %s() => Failed to allocate memory to szLog for Vertex Shader Log !!!\n", __func__);
-                return MEM_ALLOC_FAILED;
-            }
-            else
-            {
-                GLsizei logSize;
-                glGetShaderInfoLog(vertexShaderObject, GL_INFO_LOG_LENGTH, &logSize, szLog);
-                fprintf(gpFile, "ERROR : Vertex Shader Compilation Log : %s\n", szLog);
-                free(szLog);
-                szLog = NULL;
-                return VS_COMPILE_ERROR;
-            }
-        }
-    }
-    //! ----------------------------------------------------------------------------
-
-    //! Fragment Shader
-    //! ----------------------------------------------------------------------------
-    const GLchar* fragmentShaderSourceCode = 
-        "#version 460 core" \
-        "\n" \
-
-        "in vec3 out_position;" \
-        "in vec3 out_normal;" \
-
-        "uniform vec3 u_lightPosition;" \
-        "uniform vec3 u_lightAmbient;" \
-        "uniform vec3 u_lightDiffuse;" \
-        "uniform vec3 u_lightSpecular;" \
-
-        "uniform vec3 u_viewPosition;" \
-        "uniform float u_heightMax = 0;" \
-        "uniform float u_heightMin = 0;" \
-
-        "out vec4 FragColor;" \
-
-        "void main(void)" \
-        "{" \
-            "vec3 normalized_normals = normalize(out_normal);" \
-            "vec3 light_direction = normalize(u_lightPosition - out_position);" \
-            "vec3 view_direction = normalize(u_viewPosition - out_position);" \
-
-            "vec3 ambientFactor = vec3(0.0);" \
-            "vec3 diffuseFactor = vec3(1.0);" \
-            "vec3 skyColor = vec3(0.65, 0.80, 0.95);" \
-
-            "if (dot(normalized_normals, view_direction) < 0)" \
-                "normalized_normals = -normalized_normals;" \
-            
-            // Ambient
-            "vec3 ambient = u_lightAmbient * ambientFactor;" \
-
-            "vec3 shallowColor = vec3(0.0, 0.64, 0.68);" \
-            "vec3 deepColor = vec3(0.02, 0.05, 0.10);" \
-
-            "float relativeHeight = (out_position.y - u_heightMin) / (u_heightMax - u_heightMin);" \
-            "vec3 heightColor = relativeHeight * shallowColor + (1 - relativeHeight) * deepColor;" \
-
-            // Spray
-            "float sprayUpperThreshold = 1.0;" \
-            "float sprayLowerThreshold = 0.9;" \
-            "float sprayRatio = 0;" \
-            "if (relativeHeight > sprayLowerThreshold)" \
-                "sprayRatio = (relativeHeight - sprayLowerThreshold) / (sprayUpperThreshold - sprayLowerThreshold);" \
-            "vec3 sprayBaseColor = vec3(1.0);" \
-            "vec3 sprayColor = sprayRatio * sprayBaseColor;" \
-
-            // Diffuse
-            "float diff = max(dot(normalized_normals, view_direction), 0.0);" \
-            "vec3 diffuse = diffuseFactor * u_lightDiffuse * diff;" \
-            "diffuse = vec3(0.0);" \
-
-            // Pseudo Reflect -> Smaller power will have more concentrated reflect.
-            "float reflectionCoefficient = pow(max(dot(normalized_normals, view_direction), 0.0), 0.3);" \
-            "vec3 reflectColor = (1 - reflectionCoefficient) * skyColor;" \
-
-            // Specular
-            "vec3 reflectionDirection = reflect(-light_direction, normalized_normals);" \
-            "float specularCoefficient = pow(max(dot(view_direction, reflectionDirection), 0.0), 64) * 3;" \
-            "vec3 specular = u_lightSpecular * specularCoefficient;" \
-
-            "vec3 combinedColor = ambient + diffuse + heightColor + reflectColor;" \
-
-            "specularCoefficient = clamp(specularCoefficient, 0, 1);" \
-            "combinedColor *= (1 - specularCoefficient);" \
-            "combinedColor += specular;" \
-
-            "FragColor = vec4(combinedColor, 1.0);" \
-        "}";
-
-    GLuint fragmentShaderObject = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShaderObject, 1, (const GLchar**)&fragmentShaderSourceCode, NULL);
-    glCompileShader(fragmentShaderObject);
-
-    status = 0;
-    infoLogLength = 0;
-    szLog = NULL;
-
-    glGetShaderiv(fragmentShaderObject, GL_COMPILE_STATUS, &status);
-    if (status == GL_FALSE)
-    {
-        glGetShaderiv(fragmentShaderObject, GL_INFO_LOG_LENGTH, &infoLogLength);
-        if (infoLogLength > 0)
-        {
-            szLog = (GLchar*)malloc(infoLogLength * sizeof(GLchar));
-            if (szLog == NULL)
-            {
-                fprintf(gpFile, "ERROR : %s() => Failed to allocate memory to szLog for Fragment Shader Log !!!\n", __func__);
-                return MEM_ALLOC_FAILED;
-            }
-            else
-            {
-                GLsizei logSize;
-                glGetShaderInfoLog(fragmentShaderObject, GL_INFO_LOG_LENGTH, &logSize, szLog);
-                fprintf(gpFile, "ERROR : Fragment Shader Compilation Log : %s\n", szLog);
-                free(szLog);
-                szLog = NULL;
-                return FS_COMPILE_ERROR;
-            }
-        }
-    }
-    //! ----------------------------------------------------------------------------
-    
     //! Shader Program Object
     //! ----------------------------------------------------------------------------
+    GLuint vertexShaderObject = vertexShader.createShaderObject(VERTEX, "Shaders\\Ocean.vert");
+    GLuint fragmentShaderObject = fragmentShader.createShaderObject(FRAGMENT, "Shaders\\Ocean.frag");
+    
     shaderProgramObject = glCreateProgram();
 
     glAttachShader(shaderProgramObject, vertexShaderObject);
@@ -669,9 +533,9 @@ int initialize(void)
 
     glLinkProgram(shaderProgramObject);
 
-    status = 0;
-    infoLogLength = 0;
-    szLog = NULL;
+    GLint status = 0;
+    GLint infoLogLength = 0;
+    GLchar* szLog = NULL;
 
     glGetProgramiv(shaderProgramObject, GL_LINK_STATUS, &status);
     if (status == GL_FALSE)
@@ -682,14 +546,14 @@ int initialize(void)
             szLog = (GLchar*)malloc(infoLogLength);
             if (szLog == NULL)
             {
-                fprintf(gpFile, "ERROR : %s() => Failed to allocate memory to szLog for Shader Program Log !!!\n", __func__);
+                logger->printLog("ERROR : %s() => Failed to allocate memory to szLog for Shader Program Log !!!\n", __func__);
                 return MEM_ALLOC_FAILED;
             }
             else
             {
                 GLsizei logSize;
                 glGetProgramInfoLog(shaderProgramObject, GL_INFO_LOG_LENGTH, &logSize, szLog);
-                fprintf(gpFile, "ERROR : Shader Program Link Log : %s\n", szLog);
+                logger->printLog("ERROR : Shader Program Link Log : %s\n", szLog);
                 free(szLog);
                 szLog = NULL;
                 return PROGRAM_LINK_ERROR;
@@ -714,6 +578,12 @@ int initialize(void)
 
     heightMinUniform = glGetUniformLocation(shaderProgramObject, "u_heightMin");
     heightMaxUniform = glGetUniformLocation(shaderProgramObject, "u_heightMax");
+
+    timeUniform = glGetUniformLocation(shaderProgramObject, "u_time");
+    foamIntensityUniform = glGetUniformLocation(shaderProgramObject, "u_foamIntensity");
+    subSurfaceScatteringStrengthUniform = glGetUniformLocation(shaderProgramObject, "u_subSurfaceScatteringStrength");
+    fogDensityUniform = glGetUniformLocation(shaderProgramObject, "u_underWaterFogDensity");
+    causticSamplerUniform = glGetUniformLocation(shaderProgramObject, "u_causticMap");
 
     lightPosition = lightDirection * 50.0f;
 
@@ -747,16 +617,83 @@ int initialize(void)
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
 
+    sdkCreateTimer(&timer);
+    sdkStartTimer(&timer);
 
     // Clear the screen using black color
     glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 
     perspectiveProjectionMatrix = vmath::mat4::identity();
 
+    //! Load Texture
+    if (LoadPNGTexture(&causticTexture, "Assets\\CausticMap.png") == FALSE)
+        return LOAD_TEXTURE_ERROR;
+
     // Warmup resize call
     resize(WIN_WIDTH, WIN_HEIGHT);
 
     return 0;
+}
+
+BOOL LoadPNGTexture(GLuint* texture, const char* imageFile)
+{
+    // Variable Declarations
+    int width, height;
+    int num_channels;
+    unsigned char* image = NULL;
+
+    // Code
+    image = stbi_load(
+        imageFile,
+        &width,
+        &height,
+        &num_channels,
+        STBI_rgb_alpha
+    );
+    if (image == NULL)
+    {
+        logger->printLog("ERROR : %s() => Failed To Load PNG Texture : %s !!!\n", __func__, imageFile);
+        return FALSE;
+    }
+    
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+    glGenTextures(1, texture);
+    glBindTexture(GL_TEXTURE_2D, *texture);
+    {
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        if (num_channels == 3)
+            glTexImage2D(
+                GL_TEXTURE_2D,
+                0,
+                GL_RGB,
+                width,
+                height,
+                0,
+                GL_RGB,
+                GL_UNSIGNED_BYTE,
+                image
+            );
+        else if (num_channels == 4)
+            glTexImage2D(
+                GL_TEXTURE_2D,
+                0,
+                GL_RGBA,
+                width,
+                height,
+                0,
+                GL_RGBA,
+                GL_UNSIGNED_BYTE,
+                image
+            );
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    stbi_image_free(image);
+    image = NULL;
+
+    return TRUE;
 }
 
 void generateIndices()
@@ -788,21 +725,21 @@ void printGLInfo(void)
     GLint numExtensions = 0;
 
     // Code
-    fprintf(gpFile, "\nOpenGL Information\n");
-    fprintf(gpFile, "------------------------------------------------------\n");
+    logger->printLog("\nOpenGL Information\n");
+    logger->printLog("------------------------------------------------------\n");
     
-    fprintf(gpFile, "OpenGL Vendor : %s\n", glGetString(GL_VENDOR));
-    fprintf(gpFile, "OpenGL Renderer : %s\n", glGetString(GL_RENDERER));
-    fprintf(gpFile, "OpenGL Version : %s\n", glGetString(GL_VERSION));
-    fprintf(gpFile, "GLSL Version : %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
-    fprintf(gpFile, "------------------------------------------------------\n");
+    logger->printLog("OpenGL Vendor : %s\n", glGetString(GL_VENDOR));
+    logger->printLog("OpenGL Renderer : %s\n", glGetString(GL_RENDERER));
+    logger->printLog("OpenGL Version : %s\n", glGetString(GL_VERSION));
+    logger->printLog("GLSL Version : %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
+    logger->printLog("------------------------------------------------------\n");
 
     glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
-    fprintf(gpFile, "\nNumber of Supported Extensions : %d\n", numExtensions);
-    fprintf(gpFile, "------------------------------------------------------\n");
+    logger->printLog("\nNumber of Supported Extensions : %d\n", numExtensions);
+    logger->printLog("------------------------------------------------------\n");
     for (GLint i = 0; i < numExtensions; i++)
-        fprintf(gpFile, "%s\n", glGetStringi(GL_EXTENSIONS, i));
-    fprintf(gpFile, "------------------------------------------------------\n"); 
+        logger->printLog("%s\n", glGetStringi(GL_EXTENSIONS, i));
+    logger->printLog("------------------------------------------------------\n"); 
 }
 
 void resize(int width, int height)
@@ -851,6 +788,16 @@ void display(void)
         glUniform1f(heightMinUniform, heightMin * 0.1);
         glUniform1f(heightMaxUniform, heightMax * 0.1);
 
+        glUniform1f(timeUniform, fTime);
+        glUniform1f(foamIntensityUniform, 1.5f);
+        glUniform1f(subSurfaceScatteringStrengthUniform, 0.6f);
+        glUniform1f(fogDensityUniform, 0.3f);
+
+        //* Bind Caustic Texture
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, causticTexture);
+        glUniform1i(causticSamplerUniform, 0);
+
         glBindVertexArray(vao_ocean);
         {
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_ocean);
@@ -858,6 +805,8 @@ void display(void)
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         }
         glBindVertexArray(0);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
         
     }
     glUseProgram(0);
@@ -875,6 +824,8 @@ void update(void)
 
     // Code
     fTime += 0.05f;
+
+    deltaTime = sdkGetTimerValue(&timer) / 1000.0f;
 
     buildTessendorfMesh(ocean);
 }
@@ -932,10 +883,23 @@ void uninitialize(void)
     if (gbFullScreen)
         ToggleFullScreen();
 
+    if (timer)
+    {
+        sdkStopTimer(&timer);
+        sdkDeleteTimer(&timer);
+        timer = nullptr;
+    }
+
     if (ocean)
     {
         delete ocean;
         ocean = nullptr;
+    }
+
+    if (causticTexture)
+    {
+        glDeleteTextures(1, &causticTexture);
+        causticTexture = 0;
     }
 
     uninitializeImGui();
@@ -969,7 +933,7 @@ void uninitialize(void)
             shaderObjects = (GLuint*)malloc(numAttachedShaders * sizeof(GLuint));
             if (shaderObjects == NULL)
             {
-                fprintf(gpFile, "ERROR : %s() => Failed to allocate memory to shaderObjects for Shader Program Log !!!\n", __func__);
+                logger->printLog("ERROR : %s() => Failed to allocate memory to shaderObjects for Shader Program Log !!!\n", __func__);
                 uninitialize();
             }
 
@@ -1010,14 +974,12 @@ void uninitialize(void)
         ghwnd = NULL;
     }
 
-    if (gpFile)
+    if (logger)
     {
-        fprintf(gpFile, "%s() => Program Terminated Successfully\n", __func__);
-        fclose(gpFile);
-        gpFile = NULL;
+        logger->deleteInstance();
+        logger = nullptr;
     }
 }
-
 
 
 //! ImGui Related Functions
@@ -1043,6 +1005,10 @@ void initializeImGui(const char* fontFile, float fontSize)
 
 void renderImGui(void)
 {
+    static float foamIntensity = 1.5f;
+    static float subSurfaceScatteringStrength = 0.6f;
+    static float fogDensity = 0.3f;
+
     //! Start ImGui Frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -1054,7 +1020,25 @@ void renderImGui(void)
     {
         if (ImGui::Checkbox("Wireframe", &bWireFrame))
             glPolygonMode(GL_FRONT_AND_BACK, bWireFrame ? GL_LINE : GL_FILL);
-        // ImGui::SliderFloat("Cube Rotation Speed", (float*)&animationSpeed, 0.05f, 3.0f);
+
+        ImGui::SliderFloat("Foam Intensity", &foamIntensity, 0.0f, 3.0f);
+        ImGui::SliderFloat("SSS Strength", &subSurfaceScatteringStrength, 0.0f, 2.0f);
+        ImGui::SliderFloat("Fog Density", &fogDensity, 0.0f, 1.0f);
+
+        glUniform1f(foamIntensityUniform, foamIntensity);
+        glUniform1f(subSurfaceScatteringStrengthUniform, subSurfaceScatteringStrength);
+        glUniform1f(fogDensityUniform, fogDensity);
+
+        // ImGui::SliderInt("Tile Size", &N, 64, 1024);
+        // ImGui::SliderInt("Tile Length", &x_length, 100, 1000);
+        ImGui::SliderFloat("Wind Speed", &V, 10, 100);
+        if (ImGui::Checkbox("Reload Settings", &reloadSettings))
+        {
+            delete ocean;
+            M = N;
+            z_length = x_length;
+            ocean = new Ocean(N, M, x_length, z_length, omega, V, A, 1);
+        }
         ImGui::Text("FPS : %.1f", ImGui::GetIO().Framerate);
         ImGui::Text("GPU : %s", glGetString(GL_RENDERER));
     }
