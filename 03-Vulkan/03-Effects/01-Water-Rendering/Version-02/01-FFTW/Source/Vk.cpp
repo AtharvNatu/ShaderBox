@@ -239,7 +239,6 @@ VkDeviceSize meshSize = sizeof(glm::vec3) * N * M;
 
 //? -----------------------------------------------------------------------
 
-
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
 {
