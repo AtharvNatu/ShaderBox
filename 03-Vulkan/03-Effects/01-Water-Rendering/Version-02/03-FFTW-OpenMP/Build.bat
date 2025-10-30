@@ -3,15 +3,9 @@
 
 set API=Vulkan
 
-set VULKAN_INCLUDE_PATH="C:\\VulkanSDK\\Vulkan\\Include"
-set VULKAN_LIB_PATH="C:\\VulkanSDK\Vulkan\\Lib"
-set VULKAN_BIN_PATH="C:\\VulkanSDK\\Vulkan\\Bin"
-
-set CUDA_INCLUDE_PATH="C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.8\\include"
-set CUDA_LIB_PATH="C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.8\\lib\\x64"
-
-set IMGUI_PATH=ImGui
-set IMGUI_BACKENDS=%IMGUI_PATH%\backends
+set VULKAN_INCLUDE_PATH=C:\VulkanSDK\Vulkan\Include
+set VULKAN_LIB_PATH=C:\VulkanSDK\Vulkan\Lib
+set VULKAN_BIN_PATH=C:\VulkanSDK\Vulkan\Bin
 
 set SOURCE_PATH=Source
 set INCLUDE_PATH=Include
@@ -36,26 +30,15 @@ echo ***** DEBUG MODE *****
 echo ----------------------------------------------------------------------------------------------------------------
 echo Compiling %API% and Win32 Source Code ...
 echo ----------------------------------------------------------------------------------------------------------------
-        nvcc ^
-        -std=c++17 ^
-        -c ^
-        -I%CUDA_INCLUDE_PATH% ^
-        -I%VULKAN_INCLUDE_PATH% ^
-        -I%VULKAN_INCLUDE_PATH%\glm ^
-        -I%IMGUI_PATH% ^
-        -I%IMGUI_BACKENDS% ^
-        -I%INCLUDE_PATH% ^
-        -Xcompiler="/EHsc" ^
-        -Wno-deprecated-gpu-targets ^
-        %SOURCE_PATH%\Camera.cpp ^
-        %SOURCE_PATH%\Water.cpp ^
-        %SOURCE_PATH%\Vk.cpp ^
-        %IMGUI_PATH%\imgui.cpp ^
-        %IMGUI_PATH%\imgui_draw.cpp ^
-        %IMGUI_PATH%\imgui_widgets.cpp ^
-        %IMGUI_PATH%\imgui_tables.cpp ^
-        %IMGUI_BACKENDS%\imgui_impl_win32.cpp ^
-        %IMGUI_BACKENDS%\imgui_impl_vulkan.cpp
+cl.exe  /c ^
+        /openmp:llvm ^
+        /EHsc ^
+        /std:c++17 ^
+        /Fo%BIN_DIR%\ ^
+        /I %VULKAN_INCLUDE_PATH% ^
+        /I %VULKAN_INCLUDE_PATH%\glm ^
+        /I %INCLUDE_PATH% ^
+        %SOURCE_PATH%\*.cpp
 
 if errorlevel 1 (
         @echo:
@@ -63,7 +46,6 @@ if errorlevel 1 (
         exit /b 1
 )
 
-move *.obj %BIN_DIR% >nul 2>&1
 
 @echo:
 echo ----------------------------------------------------------------------------------------------------------------
@@ -108,10 +90,7 @@ link.exe ^
         /OUT:%BIN_DIR%\Vk.exe ^
         %BIN_DIR%\*.obj ^
         %BIN_DIR%\Vk.res ^
-        /LIBPATH:%VULKAN_LIB_PATH% ^
-        /LIBPATH:%CUDA_LIB_PATH% ^
-        user32.lib gdi32.lib cufft.lib cudart.lib ^
-        /SUBSYSTEM:WINDOWS
+        /LIBPATH:%VULKAN_LIB_PATH% user32.lib gdi32.lib libfftw3f-3.lib vcompd.lib /SUBSYSTEM:WINDOWS
 
 if errorlevel 1 (
         @echo:

@@ -4034,7 +4034,7 @@ VkResult createShaders(void)
     //! Vertex Shader
     //! ---------------------------------------------------------------------------------------------------------------------------
     //* Step - 6
-    const char* szFileName = "Shader.vert.spv";
+    const char* szFileName = "Bin/Shader.vert.spv";
     FILE* fp = NULL;
     size_t size;
 
@@ -4111,7 +4111,7 @@ VkResult createShaders(void)
 
     //! Fragment Shader
     //! ---------------------------------------------------------------------------------------------------------------------------
-    szFileName = "Shader.frag.spv";
+    szFileName = "Bin/Shader.frag.spv";
 
     fp = fopen(szFileName, "rb");
     if (fp == NULL)
@@ -4185,7 +4185,7 @@ VkResult createShaders(void)
 
     //! Compute Shader
     //! ---------------------------------------------------------------------------------------------------------------------------
-    szFileName = "Shader.comp.spv";
+    szFileName = "Bin/Shader.comp.spv";
 
     fp = fopen(szFileName, "rb");
     if (fp == NULL)
@@ -4268,9 +4268,6 @@ VkResult createDescriptorSetLayout(void)
     //! Initialize VkDescriptorSetLayoutBinding
 
     // 0 -> Vertex UBO
-    // 1 -> Water Surface UBO
-    // 2 -> Displacement Map
-    // 3 -> Normal Map
     VkDescriptorSetLayoutBinding vkDescriptorSetLayoutBinding_array[1];
     memset((void*)vkDescriptorSetLayoutBinding_array, 0, sizeof(VkDescriptorSetLayoutBinding) * _ARRAYSIZE(vkDescriptorSetLayoutBinding_array));
 
@@ -4279,24 +4276,6 @@ VkResult createDescriptorSetLayout(void)
     vkDescriptorSetLayoutBinding_array[0].descriptorCount = 1;
     vkDescriptorSetLayoutBinding_array[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     vkDescriptorSetLayoutBinding_array[0].pImmutableSamplers = NULL;
-
-    // vkDescriptorSetLayoutBinding_array[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    // vkDescriptorSetLayoutBinding_array[1].binding = 1;   //! Mapped with layout(binding = 1) in fragment shader
-    // vkDescriptorSetLayoutBinding_array[1].descriptorCount = 1;
-    // vkDescriptorSetLayoutBinding_array[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-    // vkDescriptorSetLayoutBinding_array[1].pImmutableSamplers = NULL;
-
-    // vkDescriptorSetLayoutBinding_array[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    // vkDescriptorSetLayoutBinding_array[2].binding = 2;   //! Mapped with layout(binding = 2) in vertex shader
-    // vkDescriptorSetLayoutBinding_array[2].descriptorCount = 1;
-    // vkDescriptorSetLayoutBinding_array[2].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    // vkDescriptorSetLayoutBinding_array[2].pImmutableSamplers = NULL;
-
-    // vkDescriptorSetLayoutBinding_array[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    // vkDescriptorSetLayoutBinding_array[3].binding = 3;   //! Mapped with layout(binding = 3) in fragment shader
-    // vkDescriptorSetLayoutBinding_array[3].descriptorCount = 1;
-    // vkDescriptorSetLayoutBinding_array[3].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-    // vkDescriptorSetLayoutBinding_array[3].pImmutableSamplers = NULL;
 
     //* Step - 3
     VkDescriptorSetLayoutCreateInfo vkDescriptorSetLayoutCreateInfo;

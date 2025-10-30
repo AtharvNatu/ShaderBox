@@ -33,7 +33,6 @@ fillValidationLayerNames() => Call 2 : vkEnumerateInstanceLayerProperties() Succ
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_NV_optimus
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_NV_present
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_OBS_HOOK
-fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_RENDERDOC_Capture
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_LUNARG_api_dump
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_LUNARG_gfxreconstruct
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_KHRONOS_synchronization2
@@ -65,11 +64,11 @@ initialize() => getPhysicalDevice() Succeeded
 
 VULKAN INFORMATION
 ------------------------------------------------------------------------------------------------
-Vulkan API Version : 1.4.312
-Device Name : NVIDIA GeForce RTX 3060
+Vulkan API Version : 1.4.303
+Device Name : NVIDIA GeForce RTX 4050 Laptop GPU
 Device Type : Discrete GPU (dGPU)
 Vendor ID : 0x10de
-Device ID : 0x2503
+Device ID : 0x28e1
 ------------------------------------------------------------------------------------------------
 
 printVkInfo() => free() Succeeded For vkPhysicalDevice_array
@@ -88,7 +87,6 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_copy_command
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_create_renderpass2
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_dedicated_allocation
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_deferred_host_operations
-fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_depth_clamp_zero_one
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_depth_stencil_resolve
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_descriptor_update_template
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_device_group
@@ -119,7 +117,6 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance4
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance5
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance6
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance7
-fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance8
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_map_memory2
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_multiview
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_pipeline_binary
@@ -137,7 +134,6 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_sampler_mirr
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_sampler_ycbcr_conversion
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_separate_depth_stencil_layouts
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_atomic_int64
-fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_bfloat16
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_clock
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_draw_parameters
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_expect_assume
@@ -166,7 +162,7 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_decode
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_decode_h264
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_decode_h265
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_decode_queue
-fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_decode_vp9
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_encode_av1
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_encode_h264
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_encode_h265
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_encode_quantization_map
@@ -287,7 +283,6 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_diagno
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_generated_commands
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_generated_commands_compute
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_disk_cache_utils
-fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_compute_queue
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_memory
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_memory_win32
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_fill_rectangle
@@ -329,7 +324,7 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_GOOGLE_hlsl_func
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_GOOGLE_user_type
 
 ------------------------------------------------------------------------------------------------
-fillDeviceExtensionNames() => Vulkan Device Extension Count : 251
+fillDeviceExtensionNames() => Vulkan Device Extension Count : 247
 ------------------------------------------------------------------------------------------------
 
 fillDeviceExtensionNames() => VK_KHR_SWAPCHAIN_EXTENSION_NAME Extension Found
@@ -458,10 +453,6 @@ buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
 buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
 buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
 buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
-ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-VkMappedMemoryRange-size-01390 ] Object 0: handle = 0x40b43c0000000049, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0xdd4e6d8b | vkFlushMappedMemoryRanges(): pMemoryRanges[0].size (4020) is not a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize (64) and offset + size (0 + 4020 = 4020) not equal to the memory size (4032).
-The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must either be a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize, or offset plus size must equal the size of memory (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-VkMappedMemoryRange-size-01390)
-ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-VkMappedMemoryRange-size-01390 ] Object 0: handle = 0x67022e000000004b, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0xdd4e6d8b | vkFlushMappedMemoryRanges(): pMemoryRanges[0].size (1064) is not a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize (64) and offset + size (0 + 1064 = 1064) not equal to the memory size (1072).
-The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must either be a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize, or offset plus size must equal the size of memory (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-VkMappedMemoryRange-size-01390)
 uninitialize() => vkDeviceWaitIdle() Succeeded
 uninitialize() => vkDestroyFence() Succeeded For Index : 0
 uninitialize() => vkDestroyFence() Succeeded For Index : 1

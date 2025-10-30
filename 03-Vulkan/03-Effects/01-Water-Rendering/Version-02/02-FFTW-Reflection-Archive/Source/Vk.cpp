@@ -131,6 +131,7 @@ PFN_vkDestroyDebugReportCallbackEXT vkDestroyDebugReportCallbackEXT_fnptr = NULL
 //? Shader Related Variables
 VkShaderModule vkShaderModule_vertex_shader = VK_NULL_HANDLE;
 VkShaderModule vkShaderModule_fragment_shader = VK_NULL_HANDLE;
+VkShaderModule vkShaderModule_compute_shader = VK_NULL_HANDLE;
 
 //? DescriptorSetLayout Related Variables
 VkDescriptorSetLayout vkDescriptorSetLayout = VK_NULL_HANDLE;
@@ -152,6 +153,12 @@ VkPipeline vkPipeline = VK_NULL_HANDLE;
 //? Ocean Related
 //? -----------------------------------------------------------------------
 Ocean* ocean = nullptr;
+
+VkPipeline vkPipeline_compute = VK_NULL_HANDLE;
+VkPipelineLayout vkPipelineLayout_compute = VK_NULL_HANDLE;
+VkDescriptorSetLayout vkDescriptorSetLayout_compute = VK_NULL_HANDLE;
+VkDescriptorSet vkDescriptorSet_compute = VK_NULL_HANDLE;
+VkDescriptorPool vkDescriptorPool_compute = VK_NULL_HANDLE;
 
 //! Camera
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -946,8 +953,6 @@ VkResult display(void)
         }
     }
 
-    ocean->update(camera.getViewMatrix());
-
     vkDeviceWaitIdle(vkDevice);
 
     return vkResult;
@@ -958,7 +963,7 @@ void update(void)
     // Code
     deltaTime = sdkGetTimerValue(&timer) / 1000.0f;
 
-    
+    ocean->update(camera.getViewMatrix());
 }
 
 void uninitialize(void)
@@ -1078,6 +1083,13 @@ void uninitialize(void)
     }
 
     //* Step - 11 of Shaders
+    if (vkShaderModule_compute_shader)
+    {
+        vkDestroyShaderModule(vkDevice, vkShaderModule_compute_shader, NULL);
+        vkShaderModule_compute_shader = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkDestroyShaderModule() Succeeded For Compute Shader\n", __func__);
+    }
+
     if (vkShaderModule_fragment_shader)
     {
         vkDestroyShaderModule(vkDevice, vkShaderModule_fragment_shader, NULL);
@@ -2774,6 +2786,80 @@ VkResult createShaders(void)
 
     fprintf(gpFile, "%s() => Fragment Shader Module Successfully Created\n", __func__);
     //! ---------------------------------------------------------------------------------------------------------------------------
+    
+    //! Compute Shader
+    //! ---------------------------------------------------------------------------------------------------------------------------
+    szFileName = "Bin/Shader.comp.spv";
+
+    fp = fopen(szFileName, "rb");
+    if (fp == NULL)
+    {
+        fprintf(gpFile, "%s() => Failed To Open SPIR-V Shader File :  %s !!!", __func__, szFileName);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+    else
+        fprintf(gpFile, "%s() => Succeeded In Opening SPIR-V Shader File : %s\n", __func__, szFileName);
+
+    fseek(fp, 0L, SEEK_END);
+    size = ftell(fp);
+    if (size == 0)
+    {
+        fprintf(gpFile, "%s() => Empty SPIR-V Shader File : %s !!!", __func__, szFileName);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+    fseek(fp, 0L, SEEK_SET);
+
+    shaderData = (char*)malloc(size * sizeof(char));
+    if (shaderData == NULL)
+    {
+        fprintf(gpFile, "%s() => malloc() Failed For shaderData !!!\n", __func__);
+        return VK_ERROR_OUT_OF_HOST_MEMORY;
+    }
+
+    retVal = fread(shaderData, size, 1, fp);
+    if (retVal != 1)
+    {
+        fprintf(gpFile, "%s() => Failed To Read From SPIR-V Shader File : %s !!!", __func__, szFileName);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+    else
+        fprintf(gpFile, "%s() => Successfully Read Shader From SPIR-V Shader File : %s\n", __func__, szFileName);
+
+    if (fp)
+    {
+        fclose(fp);
+        fp = NULL;
+        fprintf(gpFile, "%s() => Closed SPIR-V File : %s\n", __func__, szFileName);
+    }
+
+    //* Step - 7
+    memset((void*)&vkShaderModuleCreateInfo, 0, sizeof(VkShaderModuleCreateInfo));
+    vkShaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    vkShaderModuleCreateInfo.pNext = NULL;
+    vkShaderModuleCreateInfo.flags = 0; //! Reserved, must be 0
+    vkShaderModuleCreateInfo.pCode = (uint32_t*)shaderData;
+    vkShaderModuleCreateInfo.codeSize = size;
+
+    //* Step - 8
+    vkResult = vkCreateShaderModule(vkDevice, &vkShaderModuleCreateInfo, NULL, &vkShaderModule_compute_shader);
+    if (vkResult != VK_SUCCESS)
+        fprintf(gpFile, "%s() => vkCreateShaderModule() Failed For Compute Shader : %d !!!\n", __func__, vkResult);
+    else
+        fprintf(gpFile, "%s() => vkCreateShaderModule() Succeeded For Compute Shader\n", __func__);
+
+    //* Step - 9
+    if (shaderData)
+    {
+        free(shaderData);
+        shaderData = NULL;
+        fprintf(gpFile, "%s() => free() Succeeded For shaderData\n", __func__);
+    }
+
+    fprintf(gpFile, "%s() => Compute Shader Module Successfully Created\n", __func__);
+    //! ---------------------------------------------------------------------------------------------------------------------------
 
     return vkResult;
 }
@@ -2978,6 +3064,111 @@ VkResult createFences(void)
 
 VkResult buildCommandBuffers(void)
 {
+    const int M = 128;
+    const int N = 128;
+    VkResult vkResult = VK_SUCCESS;
+
+    for (uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        vkResult = vkResetCommandBuffer(vkCommandBuffer_array[i], 0);
+        if (vkResult != VK_SUCCESS) return vkResult;
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        vkResult = vkBeginCommandBuffer(vkCommandBuffer_array[i], &beginInfo);
+        if (vkResult != VK_SUCCESS) return vkResult;
+
+        VkCommandBuffer cmd = vkCommandBuffer_array[i];
+
+        // -------------------------------
+        // COMPUTE PASS: FFT update
+        // -------------------------------
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, vkPipeline_compute);
+
+        vkCmdBindDescriptorSets(
+            cmd,
+            VK_PIPELINE_BIND_POINT_COMPUTE,
+            vkPipelineLayout_compute,
+            0,
+            1,
+            &vkDescriptorSet_compute,
+            0,
+            nullptr
+        );
+
+        OceanPushConstants push{};
+        push.time = deltaTime;
+        push.waveAmplitude = 0.5f;
+        push.windDir = glm::vec2(1.0f, 0.5f);
+        push.N = 128;
+
+        vkCmdPushConstants(
+            cmd,
+            vkPipelineLayout_compute,
+            VK_SHADER_STAGE_COMPUTE_BIT,
+            0,
+            sizeof(OceanPushConstants),
+            &push
+        );
+
+        vkCmdDispatch(cmd, (uint32_t)ceil(M / 16.0f), (uint32_t)ceil(N / 16.0f), 1);
+
+        // -------------------------------
+        // GPU Memory Barrier (CRITICAL!)
+        // -------------------------------
+        VkMemoryBarrier memoryBarrier{};
+        memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+        memoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        memoryBarrier.dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
+
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0,
+            1,
+            &memoryBarrier,
+            0,
+            nullptr,
+            0,
+            nullptr
+        );
+
+        // -------------------------------
+        // GRAPHICS PASS: Ocean draw
+        // -------------------------------
+        VkClearValue clearValues[2];
+        clearValues[0].color = vkClearColorValue;
+        clearValues[1].depthStencil = vkClearDepthStencilValue;
+
+        VkRenderPassBeginInfo rpBegin{};
+        rpBegin.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        rpBegin.renderPass = vkRenderPass;
+        rpBegin.framebuffer = vkFramebuffer_array[i];
+        rpBegin.renderArea.offset = {0, 0};
+        rpBegin.renderArea.extent = vkExtent2D_swapchain;
+        rpBegin.clearValueCount = 2;
+        rpBegin.pClearValues = clearValues;
+
+        vkCmdBeginRenderPass(cmd, &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+
+        ocean->buildCommandBuffers(cmd);
+
+        vkCmdEndRenderPass(cmd);
+
+        // -------------------------------
+        // END COMMAND BUFFER
+        // -------------------------------
+        vkResult = vkEndCommandBuffer(cmd);
+        if (vkResult != VK_SUCCESS) return vkResult;
+    }
+
+    return vkResult;
+}
+
+
+VkResult buildCommandBuffers1(void)
+{
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
 
@@ -3014,6 +3205,61 @@ VkResult buildCommandBuffers(void)
         }
         else
             fprintf(gpFile, "%s() => vkBeginCommandBuffer() Succeeded For Index : %d\n", __func__, i);
+
+        //! Compute
+        vkCmdBindPipeline(
+            vkCommandBuffer_array[i],
+            VK_PIPELINE_BIND_POINT_COMPUTE,
+            vkPipeline_compute
+        );
+
+        vkCmdBindDescriptorSets(
+            vkCommandBuffer_array[i],
+            VK_PIPELINE_BIND_POINT_COMPUTE,
+            vkPipelineLayout_compute,
+            0,
+            1,
+            &vkDescriptorSet_compute,
+            0,
+            nullptr
+        );
+
+        OceanPushConstants pushConstants{};
+        pushConstants.time = deltaTime;
+        pushConstants.waveAmplitude = 0.5f;
+        pushConstants.windDir = glm::vec2(1.0f, 0.5f);
+
+        vkCmdPushConstants(
+            vkCommandBuffer_array[i],
+            vkPipelineLayout_compute,
+            VK_SHADER_STAGE_COMPUTE_BIT,
+            0,
+            sizeof(OceanPushConstants),
+            &pushConstants
+        );
+
+        // Dispatch (for N x N grid, assuming local_size = 8x8)
+        const uint32_t groupCountX = (128 + 15) / 16;
+        const uint32_t groupCountY = (128 + 15) / 16;
+        vkCmdDispatch(vkCommandBuffer_array[i], groupCountX, groupCountY, 1);
+
+        // Ensure compute writes finish before vertex shader reads
+        VkMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+        barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        vkCmdPipelineBarrier(
+            vkCommandBuffer_array[i],
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0,
+            1, &barrier,
+            0, nullptr,
+            0, nullptr
+        );
+
+        //! Graphics
 
         //* Step - 4 => Set Clear Value
         VkClearValue vkClearValue_array[2];
