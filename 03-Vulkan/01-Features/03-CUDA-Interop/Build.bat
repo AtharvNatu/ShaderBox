@@ -2,9 +2,14 @@
 @echo off
 
 set API=Vulkan
-set VULKAN_INCLUDE_PATH=C:\VulkanSDK\Vulkan\Include
-set VULKAN_LIB_PATH=C:\VulkanSDK\Vulkan\Lib
-set VULKAN_BIN_PATH=C:\VulkanSDK\Vulkan\Bin
+
+set VULKAN_INCLUDE_PATH="C:\\VulkanSDK\\Vulkan\\Include"
+set VULKAN_LIB_PATH="C:\\VulkanSDK\Vulkan\\Lib"
+set VULKAN_BIN_PATH="C:\\VulkanSDK\\Vulkan\\Bin"
+
+set CUDA_INCLUDE_PATH="C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.8\\include"
+set CUDA_LIB_PATH="C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.8\\lib\\x64"
+
 set SPV=1
 
 cls
@@ -16,12 +21,15 @@ if exist *.res del *.res
 echo ----------------------------------------------------------------------------------------------------------------
 echo Compiling %API% and Win32 Source Code ...
 echo ----------------------------------------------------------------------------------------------------------------
-cl.exe  /c ^
-        /EHsc ^
-        /std:c++17 ^
-        /I %VULKAN_INCLUDE_PATH% ^
-        /I %VULKAN_INCLUDE_PATH%\glm ^
-        Vk.cpp
+nvcc.exe ^
+        -std=c++17 ^
+        -c ^
+        -I%CUDA_INCLUDE_PATH% ^
+        -I%VULKAN_INCLUDE_PATH% ^
+        -I%VULKAN_INCLUDE_PATH%\glm ^
+        -Xcompiler="/EHsc" ^
+        -Wno-deprecated-gpu-targets ^
+        Vk.cu
 
 if errorlevel 1 (
         @echo:
@@ -67,7 +75,10 @@ echo ---------------------------------------------------------------------------
 link.exe ^
         Vk.obj ^
         Vk.res ^
-        /LIBPATH:%VULKAN_LIB_PATH% user32.lib gdi32.lib /SUBSYSTEM:WINDOWS
+        /LIBPATH:%VULKAN_LIB_PATH% ^
+        /LIBPATH:%CUDA_LIB_PATH% ^
+        user32.lib gdi32.lib cufft.lib cudart.lib ^
+        /SUBSYSTEM:WINDOWS
 
 if errorlevel 1 (
         @echo:
