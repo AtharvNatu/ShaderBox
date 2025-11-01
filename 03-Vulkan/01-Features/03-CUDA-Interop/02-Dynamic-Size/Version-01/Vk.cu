@@ -9,15 +9,16 @@
 //! GLM Related Macros and Header Files
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_NO_CUDA
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 //! CUDA Header Files
 #include <cuda_runtime.h>
-#include <device_launch_parameters.h>
+
+#include <vector>
 
 #include "Vk.h"
-
 
 //! Vulkan Related Libraries
 #pragma comment(lib, "vulkan-1.lib")
@@ -175,13 +176,21 @@ VkRect2D vkRect2D_scissor;
 VkPipeline vkPipeline = VK_NULL_HANDLE;
 
 //* Sine Wave Related Variables
-const uint32_t mesh_width = 512;
-const uint32_t mesh_height = 512;
+typedef struct
+{
+    unsigned int width;
+    unsigned int height;
+    std::vector<float> position;
+} Mesh;
 
-#define ARR_SIZE    mesh_width * mesh_height * 4
+Mesh mesh64 = { 64, 64, std::vector<float>(64 * 64 * 4) };
+Mesh mesh128 = { 128, 128, std::vector<float>(128 * 128 * 4) };
+Mesh mesh256 = { 256, 256, std::vector<float>(256 * 256 * 4) };
+Mesh mesh512 = { 512, 512, std::vector<float>(512 * 512 * 4) };
+Mesh mesh1024 = { 1024, 1024, std::vector<float>(1024 * 1024 * 4) };
+Mesh mesh2048 = { 2048, 2048, std::vector<float>(2048 * 2048 * 4) };
 
-float position[mesh_width][mesh_height][4];
-
+Mesh *currentMesh = &mesh64;
 
 //* CUDA Related Variables
 VertexData vertexData_gpu;
@@ -190,9 +199,9 @@ cudaExternalMemory_t cudaExternalMemory = NULL;
 void *cudaDevicePtr = NULL;
 PFN_vkGetMemoryWin32HandleKHR vkGetMemoryWin32HandleKHR_fnptr = NULL;
 
-
 float fAnimationSpeed = 0.0f;
 bool useGPU = false;
+int upscaleMesh = 0;
 
 // CUDA Kernel
 __global__ void sineWaveKernel(float4* pos, unsigned int width, unsigned int height, float time)
@@ -379,6 +388,30 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
             {
                 case 27:
                     DestroyWindow(hwnd);
+                break;
+
+                case 49:
+                    currentMesh = &mesh64;
+                break;
+
+                case 50:
+                    currentMesh = &mesh128;
+                break;
+
+                case 51:
+                    currentMesh = &mesh256;
+                break;
+
+                case 52:
+                    currentMesh = &mesh512;
+                break;
+                
+                case 53:
+                    currentMesh = &mesh1024;
+                break;
+                
+                case 54:
+                    currentMesh = &mesh2048;
                 break;
 
                 default:
@@ -1073,24 +1106,29 @@ VkResult display(void)
 
 void update(void)
 {
-    void sineWave(unsigned int, unsigned int, float);
+    // Function Declarations
+    void clearMesh(Mesh& mesh);
+    size_t getMeshSize(Mesh& mesh);
+    void sineWave(Mesh& mesh, float);
 
     // Code
     fAnimationSpeed += 0.02f;
+
+    clearMesh(*currentMesh);
 
     if (useGPU)
     {
         float4* pPosition = (float4*)cudaDevicePtr;
         dim3 block(8, 8, 1);
-        dim3 grid(mesh_width / block.x, mesh_height / block.y, 1);
+        dim3 grid(currentMesh->width / block.x, currentMesh->height / block.y, 1);
 
-        sineWaveKernel<<<grid, block>>>(pPosition, mesh_width, mesh_height, fAnimationSpeed);
+        sineWaveKernel<<<grid, block>>>(pPosition, currentMesh->width, currentMesh->height, fAnimationSpeed);
         cudaDeviceSynchronize();
     }
     else
     {
-        sineWave(mesh_width, mesh_height, fAnimationSpeed);
-        memcpy(mappedPtr, position, ARR_SIZE * sizeof(float));
+        sineWave(*currentMesh, fAnimationSpeed);
+        memcpy(mappedPtr, currentMesh->position.data(), getMeshSize(*currentMesh) * sizeof(float));
     }
     
 }
@@ -2809,20 +2847,11 @@ VkResult createCommandBuffers(void)
 
 VkResult createVertexBuffer(void)
 {
+    // Function Declarations
+    size_t getMaxMeshSize();
+
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
-
-    // Initialization of Position
-    for (unsigned int i = 0; i < mesh_width; i++)
-    {
-        for (unsigned int j = 0; j < mesh_height; j++)
-        {
-            for (unsigned int k = 0; k < 4; k++)
-            {
-                position[i][j][k] = 0.0f;
-            }
-        }
-    }
 
     // Code
     
@@ -2837,7 +2866,7 @@ VkResult createVertexBuffer(void)
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.flags = 0;   //! Valid Flags are used in sparse(scattered) buffers
     vkBufferCreateInfo.pNext = NULL;
-    vkBufferCreateInfo.size = ARR_SIZE * sizeof(float);
+    vkBufferCreateInfo.size = getMaxMeshSize() * sizeof(float);
     vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     
     //* Step - 6
@@ -2908,6 +2937,9 @@ VkResult createVertexBuffer(void)
 
 VkResult createExternalBuffer(void)
 {
+    // Function Declarations
+    size_t getMaxMeshSize();
+
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
 
@@ -2919,12 +2951,10 @@ VkResult createExternalBuffer(void)
     {
         vkResult = VK_ERROR_INITIALIZATION_FAILED;
         fprintf(gpFile, "%s() => vkGetDeviceProcAddr() Failed To Get Function Pointer For vkGetMemoryWin32HandleKHR !!!\n", __func__);
-        fflush(gpFile);
         return vkResult;
     }
     else
         fprintf(gpFile, "%s() => vkGetDeviceProcAddr() Succeeded To Get Function Pointer For vkGetMemoryWin32HandleKHR\n", __func__);
-fflush(gpFile);
 
     //! Vertex Position GPU
     //! -------------------------------------------------------------------------------------------------------------------------------------
@@ -2942,7 +2972,7 @@ fflush(gpFile);
     memset((void*)&vkBufferCreateInfo, 0, sizeof(VkBufferCreateInfo));
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.flags = 0;   //! Valid Flags are used in sparse(scattered) buffers
-    vkBufferCreateInfo.size = ARR_SIZE * sizeof(float);
+    vkBufferCreateInfo.size = getMaxMeshSize() * sizeof(float);
     vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     vkBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     vkBufferCreateInfo.pNext = &vkExternalMemoryBufferCreateInfo;
@@ -3185,38 +3215,6 @@ VkResult updateUniformBuffer(void)
     vkUnmapMemory(vkDevice, uniformData.vkDeviceMemory);
 
     return vkResult;
-}
-
-void sineWave(unsigned int width, unsigned int height, float time)
-{
-    // Code
-    for (unsigned int i = 0; i < width; i++)
-    {
-        for (unsigned int j = 0; j < height; j++)
-        {
-            for (unsigned int k = 0; k < 4; k++)
-            {
-                float u = (float)i / (float)width;
-                float v = (float)j / (float)height;
-
-                u = u * 2.0f - 1.0f;
-                v = v * 2.0f - 1.0f;
-
-                float frequency = 4.0f;
-
-                float w = sinf(u * frequency + time) * cosf(v * frequency + time) * 0.5f;
-                
-                if (k == 0)
-                    position[i][j][k] = u;
-                if (k == 1)
-                    position[i][j][k] = w;
-                if (k == 2)
-                    position[i][j][k] = v;
-                if (k == 3)
-                    position[i][j][k] = 1.0f;
-            }
-        }
-    }
 }
 
 VkResult createShaders(void)
@@ -4028,7 +4026,7 @@ VkResult buildCommandBuffers(void)
             }
 
             //! Vulkan Drawing Function
-            vkCmdDraw(vkCommandBuffer_array[i], mesh_width * mesh_height, 1, 0, 0);
+            vkCmdDraw(vkCommandBuffer_array[i], currentMesh->width * currentMesh->height, 1, 0, 0);
         }
         //* Step - 7
         vkCmdEndRenderPass(vkCommandBuffer_array[i]);
@@ -4065,4 +4063,49 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
     return VK_FALSE;
 }
 
+
+// Sine Wave Mesh Related
+void clearMesh(Mesh& mesh)
+{
+    std::fill(mesh.position.begin(), mesh.position.end(), 0.0f);
+}
+
+size_t getMeshSize(Mesh& mesh)
+{
+    return mesh.width * mesh.height * 4;
+}
+
+size_t getMaxMeshSize()
+{
+    return 2048 * 2048 * 4;
+}
+
+void sineWave(Mesh& mesh, float time)
+{
+    // Code
+    unsigned int width = mesh.width;
+    unsigned int height = mesh.height;
+    float* position = mesh.position.data();
+
+    const float frequency = 4.0f;
+    const float invertedWidth = 1.0f / static_cast<float>(width);
+    const float invertedHeight = 1.0f / static_cast<float>(height);
+
+    for (unsigned int j = 0; j < height; j++)
+    {
+        float v = j * invertedHeight * 2.0f - 1.0f;
+        for (unsigned int i = 0; i < width; i++)
+        {
+            float u = i * invertedWidth * 2.0f - 1.0f;
+            float w = sinf(u * frequency + time) * cosf(v * frequency + time) * 0.5f;
+
+            size_t index = static_cast<size_t>((j * width + i) * 4);
+            
+            position[index + 0] = u;
+            position[index + 1] = w;
+            position[index + 2] = v;
+            position[index + 3] = 1.0f;
+        }
+    }
+}
 

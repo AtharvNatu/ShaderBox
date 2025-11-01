@@ -431,7 +431,7 @@ getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 2 : vkGetPhysicalDeviceSur
 getPhysicalDeviceSurfaceFormatAndColorSpace() => free() Succeeded For vkSurfaceFormatKHR_array
 createSwapchain() => getPhysicalDeviceSurfaceFormatAndColorSpace() Succeeded
 createSwapchain() => vkGetPhysicalDeviceSurfaceCapabilitiesKHR() Succeeded
-createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 1536 x 960
+createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 2048 x 1152
 getPhysicalDevicePresentMode() => Call 1 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
 getPhysicalDevicePresentMode() => Call 2 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
 
@@ -458,6 +458,246 @@ createPipeline() => vkCreateGraphicsPipelines() Succeeded
 createPipeline() => vkDestroyPipelineCache() Succeeded
 createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 0
 createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 1
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 1 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 2 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => free() Succeeded For vkSurfaceFormatKHR_array
+createSwapchain() => getPhysicalDeviceSurfaceFormatAndColorSpace() Succeeded
+createSwapchain() => vkGetPhysicalDeviceSurfaceCapabilitiesKHR() Succeeded
+createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 784 x 561
+getPhysicalDevicePresentMode() => Call 1 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+getPhysicalDevicePresentMode() => Call 2 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+
+------------------------------------------------------------------------------------------------
+Vulkan Physical Device Present Mode : VK_PRESENT_MODE_MAILBOX_KHR
+------------------------------------------------------------------------------------------------
+
+getPhysicalDevicePresentMode() => free() Succeeded For vkPresentModeKHR_array
+createSwapchain() => getPhysicalDevicePresentMode() Succeeded
+createSwapchain() => vkCreateSwapchainKHR() Succeeded
+createImagesAndImageViews() => Call 1 : vkGetSwapchainImagesKHR() => Swapchain Image Count = 2
+createImagesAndImageViews() => Call 2 : vkGetSwapchainImagesKHR() Succeeded
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 0
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 1
+createImagesAndImageViews() => getSupportedDepthFormat() Succeded
+createImagesAndImageViews() => vkCreateImage() Succeeded
+createImagesAndImageViews() => vkAllocateMemory() Succeeded For Depth
+createImagesAndImageViews() => vkBindImageMemory() Succeeded For Depth
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Depth
+createRenderPass() => vkCreateRenderPass() Succeeded
+createPipelineLayout() => vkCreatePipelineLayout() Succeeded
+createPipeline() => vkCreatePipelineCache() Succeeded
+createPipeline() => vkCreateGraphicsPipelines() Succeeded
+createPipeline() => vkDestroyPipelineCache() Succeeded
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 0
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 1
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 1 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 2 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => free() Succeeded For vkSurfaceFormatKHR_array
+createSwapchain() => getPhysicalDeviceSurfaceFormatAndColorSpace() Succeeded
+createSwapchain() => vkGetPhysicalDeviceSurfaceCapabilitiesKHR() Succeeded
+createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 800 x 600
+getPhysicalDevicePresentMode() => Call 1 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+getPhysicalDevicePresentMode() => Call 2 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+
+------------------------------------------------------------------------------------------------
+Vulkan Physical Device Present Mode : VK_PRESENT_MODE_MAILBOX_KHR
+------------------------------------------------------------------------------------------------
+
+getPhysicalDevicePresentMode() => free() Succeeded For vkPresentModeKHR_array
+createSwapchain() => getPhysicalDevicePresentMode() Succeeded
+createSwapchain() => vkCreateSwapchainKHR() Succeeded
+createImagesAndImageViews() => Call 1 : vkGetSwapchainImagesKHR() => Swapchain Image Count = 2
+createImagesAndImageViews() => Call 2 : vkGetSwapchainImagesKHR() Succeeded
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 0
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 1
+createImagesAndImageViews() => getSupportedDepthFormat() Succeded
+createImagesAndImageViews() => vkCreateImage() Succeeded
+createImagesAndImageViews() => vkAllocateMemory() Succeeded For Depth
+createImagesAndImageViews() => vkBindImageMemory() Succeeded For Depth
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Depth
+createRenderPass() => vkCreateRenderPass() Succeeded
+createPipelineLayout() => vkCreatePipelineLayout() Succeeded
+createPipeline() => vkCreatePipelineCache() Succeeded
+createPipeline() => vkCreateGraphicsPipelines() Succeeded
+createPipeline() => vkDestroyPipelineCache() Succeeded
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 0
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 1
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 1 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 2 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => free() Succeeded For vkSurfaceFormatKHR_array
+createSwapchain() => getPhysicalDeviceSurfaceFormatAndColorSpace() Succeeded
+createSwapchain() => vkGetPhysicalDeviceSurfaceCapabilitiesKHR() Succeeded
+createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 2048 x 1152
+getPhysicalDevicePresentMode() => Call 1 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+getPhysicalDevicePresentMode() => Call 2 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+
+------------------------------------------------------------------------------------------------
+Vulkan Physical Device Present Mode : VK_PRESENT_MODE_MAILBOX_KHR
+------------------------------------------------------------------------------------------------
+
+getPhysicalDevicePresentMode() => free() Succeeded For vkPresentModeKHR_array
+createSwapchain() => getPhysicalDevicePresentMode() Succeeded
+createSwapchain() => vkCreateSwapchainKHR() Succeeded
+createImagesAndImageViews() => Call 1 : vkGetSwapchainImagesKHR() => Swapchain Image Count = 2
+createImagesAndImageViews() => Call 2 : vkGetSwapchainImagesKHR() Succeeded
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 0
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 1
+createImagesAndImageViews() => getSupportedDepthFormat() Succeded
+createImagesAndImageViews() => vkCreateImage() Succeeded
+createImagesAndImageViews() => vkAllocateMemory() Succeeded For Depth
+createImagesAndImageViews() => vkBindImageMemory() Succeeded For Depth
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Depth
+createRenderPass() => vkCreateRenderPass() Succeeded
+createPipelineLayout() => vkCreatePipelineLayout() Succeeded
+createPipeline() => vkCreatePipelineCache() Succeeded
+createPipeline() => vkCreateGraphicsPipelines() Succeeded
+createPipeline() => vkDestroyPipelineCache() Succeeded
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 0
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 1
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 1 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 2 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => free() Succeeded For vkSurfaceFormatKHR_array
+createSwapchain() => getPhysicalDeviceSurfaceFormatAndColorSpace() Succeeded
+createSwapchain() => vkGetPhysicalDeviceSurfaceCapabilitiesKHR() Succeeded
+createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 784 x 561
+getPhysicalDevicePresentMode() => Call 1 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+getPhysicalDevicePresentMode() => Call 2 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+
+------------------------------------------------------------------------------------------------
+Vulkan Physical Device Present Mode : VK_PRESENT_MODE_MAILBOX_KHR
+------------------------------------------------------------------------------------------------
+
+getPhysicalDevicePresentMode() => free() Succeeded For vkPresentModeKHR_array
+createSwapchain() => getPhysicalDevicePresentMode() Succeeded
+createSwapchain() => vkCreateSwapchainKHR() Succeeded
+createImagesAndImageViews() => Call 1 : vkGetSwapchainImagesKHR() => Swapchain Image Count = 2
+createImagesAndImageViews() => Call 2 : vkGetSwapchainImagesKHR() Succeeded
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 0
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 1
+createImagesAndImageViews() => getSupportedDepthFormat() Succeded
+createImagesAndImageViews() => vkCreateImage() Succeeded
+createImagesAndImageViews() => vkAllocateMemory() Succeeded For Depth
+createImagesAndImageViews() => vkBindImageMemory() Succeeded For Depth
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Depth
+createRenderPass() => vkCreateRenderPass() Succeeded
+createPipelineLayout() => vkCreatePipelineLayout() Succeeded
+createPipeline() => vkCreatePipelineCache() Succeeded
+createPipeline() => vkCreateGraphicsPipelines() Succeeded
+createPipeline() => vkDestroyPipelineCache() Succeeded
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 0
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 1
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 1 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 2 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => free() Succeeded For vkSurfaceFormatKHR_array
+createSwapchain() => getPhysicalDeviceSurfaceFormatAndColorSpace() Succeeded
+createSwapchain() => vkGetPhysicalDeviceSurfaceCapabilitiesKHR() Succeeded
+createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 800 x 600
+getPhysicalDevicePresentMode() => Call 1 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+getPhysicalDevicePresentMode() => Call 2 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+
+------------------------------------------------------------------------------------------------
+Vulkan Physical Device Present Mode : VK_PRESENT_MODE_MAILBOX_KHR
+------------------------------------------------------------------------------------------------
+
+getPhysicalDevicePresentMode() => free() Succeeded For vkPresentModeKHR_array
+createSwapchain() => getPhysicalDevicePresentMode() Succeeded
+createSwapchain() => vkCreateSwapchainKHR() Succeeded
+createImagesAndImageViews() => Call 1 : vkGetSwapchainImagesKHR() => Swapchain Image Count = 2
+createImagesAndImageViews() => Call 2 : vkGetSwapchainImagesKHR() Succeeded
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 0
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 1
+createImagesAndImageViews() => getSupportedDepthFormat() Succeded
+createImagesAndImageViews() => vkCreateImage() Succeeded
+createImagesAndImageViews() => vkAllocateMemory() Succeeded For Depth
+createImagesAndImageViews() => vkBindImageMemory() Succeeded For Depth
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Depth
+createRenderPass() => vkCreateRenderPass() Succeeded
+createPipelineLayout() => vkCreatePipelineLayout() Succeeded
+createPipeline() => vkCreatePipelineCache() Succeeded
+createPipeline() => vkCreateGraphicsPipelines() Succeeded
+createPipeline() => vkDestroyPipelineCache() Succeeded
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 0
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 1
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 1 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 2 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => free() Succeeded For vkSurfaceFormatKHR_array
+createSwapchain() => getPhysicalDeviceSurfaceFormatAndColorSpace() Succeeded
+createSwapchain() => vkGetPhysicalDeviceSurfaceCapabilitiesKHR() Succeeded
+createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 2048 x 1152
+getPhysicalDevicePresentMode() => Call 1 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+getPhysicalDevicePresentMode() => Call 2 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+
+------------------------------------------------------------------------------------------------
+Vulkan Physical Device Present Mode : VK_PRESENT_MODE_MAILBOX_KHR
+------------------------------------------------------------------------------------------------
+
+getPhysicalDevicePresentMode() => free() Succeeded For vkPresentModeKHR_array
+createSwapchain() => getPhysicalDevicePresentMode() Succeeded
+createSwapchain() => vkCreateSwapchainKHR() Succeeded
+createImagesAndImageViews() => Call 1 : vkGetSwapchainImagesKHR() => Swapchain Image Count = 2
+createImagesAndImageViews() => Call 2 : vkGetSwapchainImagesKHR() Succeeded
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 0
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 1
+createImagesAndImageViews() => getSupportedDepthFormat() Succeded
+createImagesAndImageViews() => vkCreateImage() Succeeded
+createImagesAndImageViews() => vkAllocateMemory() Succeeded For Depth
+createImagesAndImageViews() => vkBindImageMemory() Succeeded For Depth
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Depth
+createRenderPass() => vkCreateRenderPass() Succeeded
+createPipelineLayout() => vkCreatePipelineLayout() Succeeded
+createPipeline() => vkCreatePipelineCache() Succeeded
+createPipeline() => vkCreateGraphicsPipelines() Succeeded
+createPipeline() => vkDestroyPipelineCache() Succeeded
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 0
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 1
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
 buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 0
 buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 0
 buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
