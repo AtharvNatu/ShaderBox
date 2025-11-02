@@ -231,9 +231,7 @@ bool useGPU = false;
 //! ImGui Related
 ImFont* font;
 const float fontSize = 30.0f;
-
-static float smoothedFPS = 0.0f;
-static float zValue = -3.0f;
+float zValue = -3.0f;
 
 // CUDA Kernel
 __global__ void sineWaveKernel(float4* pos, unsigned int width, unsigned int height, float time)
@@ -826,16 +824,6 @@ VkResult initialize(void)
     //! Initialize ImGui
     initializeImGui("ImGui\\Poppins-Regular.ttf", fontSize);
 
-    // vkResult = buildCommandBuffers();
-    // if (vkResult != VK_SUCCESS)
-    // {
-    //     fprintf(gpFile, "%s() => buildCommandBuffers() Failed\n", __func__);
-    //     vkResult = VK_ERROR_INITIALIZATION_FAILED;
-    //     return vkResult;
-    // }
-    // else
-    //     fprintf(gpFile, "%s() => buildCommandBuffers() Succeeded\n", __func__);
-
     //! Initialization Completed
     bInitialized = TRUE;
     fprintf(gpFile, "%s() => Initialization Completed Successfully\n", __func__);
@@ -853,7 +841,6 @@ VkResult resize(int width, int height)
     VkResult createRenderPass(void);
     VkResult createPipeline(void);
     VkResult createFramebuffers(void);
-    VkResult buildCommandBuffers(void);
 
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -948,7 +935,6 @@ VkResult resize(int width, int height)
             vkFreeMemory(vkDevice, vkDeviceMemory_depth, NULL);
             vkDeviceMemory_depth = VK_NULL_HANDLE;
         }
-
         
         //* Destroy Swapchain Image and Image Views
         for (uint32_t i = 0; i < swapchainImageCount; i++)
@@ -1039,13 +1025,6 @@ VkResult resize(int width, int height)
             return vkResult;
         }
 
-        //* Build Command Buffers
-        vkResult = buildCommandBuffers();
-        if (vkResult != VK_SUCCESS)
-        {
-            fprintf(gpFile, "%s() => buildCommandBuffers() Failed\n", __func__);
-            return vkResult;
-        }
         //?--------------------------------------------------------------------------------------------------
     }
     bInitialized = TRUE;
@@ -1058,7 +1037,7 @@ VkResult display(void)
     // Function Declarations
     VkResult resize(int, int);
     void renderImGui(void);
-    VkResult recordCommandBufferForImage(uint32_t imageIndex);
+    VkResult recordCommandBuffer(uint32_t imageIndex);
     VkResult updateUniformBuffer(void);
 
     // Variable Declarations
@@ -1100,14 +1079,14 @@ VkResult display(void)
         return vkResult;
     }
 
-    //!!! ImGui Render
+    //! ImGui Render
     renderImGui();
 
-    //!!! RECORD COMMANDS FOR CURRENT IMAGE
-    vkResult = recordCommandBufferForImage(currentImageIndex);
+    //! RECORD COMMANDS FOR CURRENT IMAGE
+    vkResult = recordCommandBuffer(currentImageIndex);
     if (vkResult != VK_SUCCESS)
     {
-        fprintf(gpFile, "%s() => recordCommandBufferForImage() Failed : %d\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => recordCommandBuffer() Failed : %d\n", __func__, vkResult);
         return vkResult;
     }
 
@@ -1262,6 +1241,109 @@ void update(void)
                 memcpy(mappedPtr, position_4096, MESH_SIZE_4096 * sizeof(float));
             break;
         }  
+    }
+}
+
+void sineWave(unsigned int width, unsigned int height, float time)
+{
+    // Code
+    for (unsigned int i = 0; i < width; i++)
+    {
+        for (unsigned int j = 0; j < height; j++)
+        {
+            for (unsigned int k = 0; k < 4; k++)
+            {
+                float u = (float)i / (float)width;
+                float v = (float)j / (float)height;
+
+                u = u * 2.0f - 1.0f;
+                v = v * 2.0f - 1.0f;
+
+                float frequency = 4.0f;
+
+                float w = sinf(u * frequency + time) * cosf(v * frequency + time) * 0.5f;                      
+
+                switch (meshSize)
+                {
+                    case 64:
+                        if (k == 0)
+                            position_64[i][j][k] = u;
+                        if (k == 1)
+                            position_64[i][j][k] = w;
+                        if (k == 2)
+                            position_64[i][j][k] = v;
+                        if (k == 3)
+                            position_64[i][j][k] = 1.0f;
+                    break;
+
+                    case 128:
+                        if (k == 0)
+                            position_128[i][j][k] = u;
+                        if (k == 1)
+                            position_128[i][j][k] = w;
+                        if (k == 2)
+                            position_128[i][j][k] = v;
+                        if (k == 3)
+                            position_128[i][j][k] = 1.0f;
+                    break;
+
+                    case 256:
+                        if (k == 0)
+                            position_256[i][j][k] = u;
+                        if (k == 1)
+                            position_256[i][j][k] = w;
+                        if (k == 2)
+                            position_256[i][j][k] = v;
+                        if (k == 3)
+                            position_256[i][j][k] = 1.0f;
+                    break;
+
+                    case 512:
+                        if (k == 0)
+                            position_512[i][j][k] = u;
+                        if (k == 1)
+                            position_512[i][j][k] = w;
+                        if (k == 2)
+                            position_512[i][j][k] = v;
+                        if (k == 3)
+                            position_512[i][j][k] = 1.0f;
+                    break;
+
+                    case 1024:
+                        if (k == 0)
+                            position_1024[i][j][k] = u;
+                        if (k == 1)
+                            position_1024[i][j][k] = w;
+                        if (k == 2)
+                            position_1024[i][j][k] = v;
+                        if (k == 3)
+                            position_1024[i][j][k] = 1.0f;
+                    break;
+
+                    case 2048:
+                        if (k == 0)
+                            position_2048[i][j][k] = u;
+                        if (k == 1)
+                            position_2048[i][j][k] = w;
+                        if (k == 2)
+                            position_2048[i][j][k] = v;
+                        if (k == 3)
+                            position_2048[i][j][k] = 1.0f;
+                    break;
+
+                    case 4096:
+                        if (k == 0)
+                            position_4096[i][j][k] = u;
+                        if (k == 1)
+                            position_4096[i][j][k] = w;
+                        if (k == 2)
+                            position_4096[i][j][k] = v;
+                        if (k == 3)
+                            position_4096[i][j][k] = 1.0f;
+                    break;
+                }
+            }
+        }
     }
 }
 
@@ -3138,22 +3220,19 @@ VkResult createVertexBuffer(void)
 
 VkResult createExternalBuffer(void)
 {
+    // Function Declarations
+    VkResult getMemoryWin32HandleFunction(void);
+
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
 
     // Code
-
-    //* Get the required function pointer
-    vkGetMemoryWin32HandleKHR_fnptr = (PFN_vkGetMemoryWin32HandleKHR)vkGetDeviceProcAddr(vkDevice, "vkGetMemoryWin32HandleKHR");
-    if (vkGetMemoryWin32HandleKHR_fnptr == NULL)
-    {
-        vkResult = VK_ERROR_INITIALIZATION_FAILED;
-        fprintf(gpFile, "%s() => vkGetDeviceProcAddr() Failed To Get Function Pointer For vkGetMemoryWin32HandleKHR !!!\n", __func__);
-        return vkResult;
-    }
+    vkResult = getMemoryWin32HandleFunction();
+    if (vkResult != VK_SUCCESS)
+        fprintf(gpFile, "%s() => getMemoryWin32HandleFunction() Failed : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkGetDeviceProcAddr() Succeeded To Get Function Pointer For vkGetMemoryWin32HandleKHR\n", __func__);
-
+        fprintf(gpFile, "%s() => getMemoryWin32HandleFunction() Succeeded\n", __func__);
+    
     //! Vertex Position GPU
     //! -------------------------------------------------------------------------------------------------------------------------------------
     //* Step - 4
@@ -3280,6 +3359,25 @@ VkResult createExternalBuffer(void)
 
     //! -------------------------------------------------------------------------------------------------------------------------------------
     
+    return vkResult;
+}
+
+VkResult getMemoryWin32HandleFunction(void)
+{
+    // Variable Declarations
+    VkResult vkResult = VK_SUCCESS;
+
+    //* Get the required function pointer
+    vkGetMemoryWin32HandleKHR_fnptr = (PFN_vkGetMemoryWin32HandleKHR)vkGetDeviceProcAddr(vkDevice, "vkGetMemoryWin32HandleKHR");
+    if (vkGetMemoryWin32HandleKHR_fnptr == NULL)
+    {
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        fprintf(gpFile, "%s() => vkGetDeviceProcAddr() Failed To Get Function Pointer For vkGetMemoryWin32HandleKHR !!!\n", __func__);
+        return vkResult;
+    }
+    else
+        fprintf(gpFile, "%s() => vkGetDeviceProcAddr() Succeeded To Get Function Pointer For vkGetMemoryWin32HandleKHR\n", __func__);
+
     return vkResult;
 }
 
@@ -3413,109 +3511,6 @@ VkResult updateUniformBuffer(void)
     vkUnmapMemory(vkDevice, uniformData.vkDeviceMemory);
 
     return vkResult;
-}
-
-void sineWave(unsigned int width, unsigned int height, float time)
-{
-    // Code
-    for (unsigned int i = 0; i < width; i++)
-    {
-        for (unsigned int j = 0; j < height; j++)
-        {
-            for (unsigned int k = 0; k < 4; k++)
-            {
-                float u = (float)i / (float)width;
-                float v = (float)j / (float)height;
-
-                u = u * 2.0f - 1.0f;
-                v = v * 2.0f - 1.0f;
-
-                float frequency = 4.0f;
-
-                float w = sinf(u * frequency + time) * cosf(v * frequency + time) * 0.5f;                      
-
-                switch (meshSize)
-                {
-                    case 64:
-                        if (k == 0)
-                            position_64[i][j][k] = u;
-                        if (k == 1)
-                            position_64[i][j][k] = w;
-                        if (k == 2)
-                            position_64[i][j][k] = v;
-                        if (k == 3)
-                            position_64[i][j][k] = 1.0f;
-                    break;
-
-                    case 128:
-                        if (k == 0)
-                            position_128[i][j][k] = u;
-                        if (k == 1)
-                            position_128[i][j][k] = w;
-                        if (k == 2)
-                            position_128[i][j][k] = v;
-                        if (k == 3)
-                            position_128[i][j][k] = 1.0f;
-                    break;
-
-                    case 256:
-                        if (k == 0)
-                            position_256[i][j][k] = u;
-                        if (k == 1)
-                            position_256[i][j][k] = w;
-                        if (k == 2)
-                            position_256[i][j][k] = v;
-                        if (k == 3)
-                            position_256[i][j][k] = 1.0f;
-                    break;
-
-                    case 512:
-                        if (k == 0)
-                            position_512[i][j][k] = u;
-                        if (k == 1)
-                            position_512[i][j][k] = w;
-                        if (k == 2)
-                            position_512[i][j][k] = v;
-                        if (k == 3)
-                            position_512[i][j][k] = 1.0f;
-                    break;
-
-                    case 1024:
-                        if (k == 0)
-                            position_1024[i][j][k] = u;
-                        if (k == 1)
-                            position_1024[i][j][k] = w;
-                        if (k == 2)
-                            position_1024[i][j][k] = v;
-                        if (k == 3)
-                            position_1024[i][j][k] = 1.0f;
-                    break;
-
-                    case 2048:
-                        if (k == 0)
-                            position_2048[i][j][k] = u;
-                        if (k == 1)
-                            position_2048[i][j][k] = w;
-                        if (k == 2)
-                            position_2048[i][j][k] = v;
-                        if (k == 3)
-                            position_2048[i][j][k] = 1.0f;
-                    break;
-
-                    case 4096:
-                        if (k == 0)
-                            position_4096[i][j][k] = u;
-                        if (k == 1)
-                            position_4096[i][j][k] = w;
-                        if (k == 2)
-                            position_4096[i][j][k] = v;
-                        if (k == 3)
-                            position_4096[i][j][k] = 1.0f;
-                    break;
-                }
-            }
-        }
-    }
 }
 
 VkResult createShaders(void)
@@ -3763,9 +3758,10 @@ VkResult createDescriptorPool(void)
     vkDescriptorPoolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     vkDescriptorPoolCreateInfo.poolSizeCount = _ARRAYSIZE(vkDescriptorPoolSize_array);
     vkDescriptorPoolCreateInfo.pPoolSizes = vkDescriptorPoolSize_array;
+    vkDescriptorPoolCreateInfo.maxSets = 0;
 
     for (int i = 0; i < _ARRAYSIZE(vkDescriptorPoolSize_array); i++)
-        vkDescriptorPoolCreateInfo.maxSets += vkDescriptorPoolSize_array[i].descriptorCount;
+        vkDescriptorPoolCreateInfo.maxSets = vkDescriptorPoolCreateInfo.maxSets + vkDescriptorPoolSize_array[i].descriptorCount;
 
     vkResult = vkCreateDescriptorPool(vkDevice, &vkDescriptorPoolCreateInfo, NULL, &vkDescriptorPool);
     if (vkResult != VK_SUCCESS)
@@ -4231,129 +4227,7 @@ VkResult createFences(void)
     return vkResult;
 }
 
-VkResult buildCommandBuffers(void)
-{
-    // Code
-    VkResult vkResult = VK_SUCCESS;
-
-    //! Loop per swapchain image
-    for (uint32_t i = 0; i < swapchainImageCount; i++)
-    {
-        //* Step - 1 => Reset Command Buffer
-        vkResult = vkResetCommandBuffer(vkCommandBuffer_array[i], 0);   //! 0 specifies not to release the resources
-        if (vkResult != VK_SUCCESS)
-        {
-            fprintf(gpFile, "%s() => vkResetCommandBuffer() Failed For Index : %d, Reason : %d\n", __func__, i, vkResult);
-            vkResult = VK_ERROR_INITIALIZATION_FAILED;
-            return vkResult;
-        }
-        else
-            fprintf(gpFile, "%s() => vkResetCommandBuffer() Succeeded For Index : %d\n", __func__, i);
-
-        //* Step - 2
-        VkCommandBufferBeginInfo vkCommandBufferBeginInfo;
-        memset((void*)&vkCommandBufferBeginInfo, 0, sizeof(VkCommandBufferBeginInfo));
-        vkCommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        vkCommandBufferBeginInfo.pNext = NULL;
-        vkCommandBufferBeginInfo.flags = 0;     //! 0 specifies that we will use only the primary command buffer, and not going to use this command buffer simultaneously between multiple threads
-
-        //* Step - 3
-        vkResult = vkBeginCommandBuffer(vkCommandBuffer_array[i], &vkCommandBufferBeginInfo);
-        if (vkResult != VK_SUCCESS)
-        {
-            fprintf(gpFile, "%s() => vkBeginCommandBuffer() Failed For Index : %d, Reason : %d\n", __func__, i, vkResult);
-            vkResult = VK_ERROR_INITIALIZATION_FAILED;
-            return vkResult;
-        }
-        else
-            fprintf(gpFile, "%s() => vkBeginCommandBuffer() Succeeded For Index : %d\n", __func__, i);
-
-        //* Step - 4 => Set Clear Value
-        VkClearValue vkClearValue_array[2];
-        memset((void*)vkClearValue_array, 0, sizeof(VkClearValue) * _ARRAYSIZE(vkClearValue_array));
-        vkClearValue_array[0].color = vkClearColorValue;
-        vkClearValue_array[1].depthStencil = vkClearDepthStencilValue;
-
-        //* Step - 5
-        VkRenderPassBeginInfo vkRenderPassBeginInfo;
-        memset((void*)&vkRenderPassBeginInfo, 0, sizeof(VkRenderPassBeginInfo));
-        vkRenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        vkRenderPassBeginInfo.pNext = NULL;
-        vkRenderPassBeginInfo.renderPass = vkRenderPass;
-        vkRenderPassBeginInfo.renderArea.offset.x = 0;
-        vkRenderPassBeginInfo.renderArea.offset.y = 0;
-        vkRenderPassBeginInfo.renderArea.extent.width = vkExtent2D_swapchain.width;
-        vkRenderPassBeginInfo.renderArea.extent.height = vkExtent2D_swapchain.height;
-        vkRenderPassBeginInfo.clearValueCount = _ARRAYSIZE(vkClearValue_array);
-        vkRenderPassBeginInfo.pClearValues = vkClearValue_array;
-        vkRenderPassBeginInfo.framebuffer = vkFramebuffer_array[i];
-        
-        //* Step - 6
-        vkCmdBeginRenderPass(vkCommandBuffer_array[i], &vkRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-        {
-            //! Bind with Pipeline
-            vkCmdBindPipeline(vkCommandBuffer_array[i], VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline);
-
-            //! Bind the Descriptor Set to the Pipeline
-            vkCmdBindDescriptorSets(
-                vkCommandBuffer_array[i],
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                vkPipelineLayout,
-                0,
-                1,
-                &vkDescriptorSet,
-                0,
-                NULL
-            );
-
-            //! Bind with Vertex Position CPU Buffer
-            if (useGPU)
-            {
-                VkDeviceSize vkDeviceSize_offset_position[1];
-                memset((void*)vkDeviceSize_offset_position, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_position));
-                vkCmdBindVertexBuffers(
-                    vkCommandBuffer_array[i], 
-                    0, 
-                    1, 
-                    &vertexData_gpu.vkBuffer, 
-                    vkDeviceSize_offset_position
-                );
-            }
-            else
-            {
-                VkDeviceSize vkDeviceSize_offset_position[1];
-                memset((void*)vkDeviceSize_offset_position, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_position));
-                vkCmdBindVertexBuffers(
-                    vkCommandBuffer_array[i], 
-                    0, 
-                    1, 
-                    &vertexData_cpu.vkBuffer, 
-                    vkDeviceSize_offset_position
-                );
-            }
-
-            //! Vulkan Drawing Function
-            // vkCmdDraw(vkCommandBuffer_array[i], mesh_width * mesh_height, 1, 0, 0);
-        }
-        //* Step - 7
-        vkCmdEndRenderPass(vkCommandBuffer_array[i]);
-
-        //* Step - 8
-        vkResult = vkEndCommandBuffer(vkCommandBuffer_array[i]);
-        if (vkResult != VK_SUCCESS)
-        {
-            fprintf(gpFile, "%s() => vkEndCommandBuffer() Failed For Index : %d, Reason : %d\n", __func__, i, vkResult);
-            vkResult = VK_ERROR_INITIALIZATION_FAILED;
-            return vkResult;
-        }
-        else
-            fprintf(gpFile, "%s() => vkEndCommandBuffer() Succeeded For Index : %d\n", __func__, i);
-    }
-
-    return vkResult;
-}
-
-VkResult recordCommandBufferForImage(uint32_t imageIndex)
+VkResult recordCommandBuffer(uint32_t imageIndex)
 {
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -4521,7 +4395,6 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
 }
 
 
-
 //! ImGui Related Functions
 void initializeImGui(const char* fontFile, float fontSize)
 {
@@ -4585,9 +4458,7 @@ void renderImGui(void)
 
         ImGui::Spacing();
         ImGui::Spacing();
-        float currentFPS = ImGui::GetIO().Framerate;
-        smoothedFPS = 0.9f * smoothedFPS + 0.1f * currentFPS;
-        ImGui::TextColored(ImVec4(250.0f/255.0f, 206.0f/255.0f, 32.0f/255.0f, 1.0f), "FPS : %.1f", smoothedFPS);
+        ImGui::TextColored(ImVec4(250.0f/255.0f, 206.0f/255.0f, 32.0f/255.0f, 1.0f), "FPS : %d", (int)ImGui::GetIO().Framerate);
 
         ImGui::Spacing();
         ImGui::Spacing();
