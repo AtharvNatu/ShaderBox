@@ -16,7 +16,10 @@
 //! CUDA Header Files
 #include <cuda_runtime.h>
 
-#include <vector>
+//! ImGui Related
+#include "imgui.h"
+#include "imgui_impl_vulkan.h"
+#include "imgui_impl_win32.h"
 
 #include "Vk.h"
 
@@ -176,21 +179,44 @@ VkRect2D vkRect2D_scissor;
 VkPipeline vkPipeline = VK_NULL_HANDLE;
 
 //* Sine Wave Related Variables
-typedef struct
-{
-    unsigned int width;
-    unsigned int height;
-    std::vector<float> position;
-} Mesh;
+const unsigned int mesh_width_64 = 64;
+const unsigned int mesh_height_64 = 64;
 
-Mesh mesh64 = { 64, 64, std::vector<float>(64 * 64 * 4) };
-Mesh mesh128 = { 128, 128, std::vector<float>(128 * 128 * 4) };
-Mesh mesh256 = { 256, 256, std::vector<float>(256 * 256 * 4) };
-Mesh mesh512 = { 512, 512, std::vector<float>(512 * 512 * 4) };
-Mesh mesh1024 = { 1024, 1024, std::vector<float>(1024 * 1024 * 4) };
-Mesh mesh2048 = { 2048, 2048, std::vector<float>(2048 * 2048 * 4) };
+const unsigned int mesh_width_128 = 128;
+const unsigned int mesh_height_128 = 128;
 
-Mesh *currentMesh = &mesh64;
+const unsigned int mesh_width_256 = 256;
+const unsigned int mesh_height_256 = 256;
+
+const unsigned int mesh_width_512 = 512;
+const unsigned int mesh_height_512 = 512;
+
+const unsigned int mesh_width_1024 = 1024;
+const unsigned int mesh_height_1024 = 1024;
+
+const unsigned int mesh_width_2048 = 2048;
+const unsigned int mesh_height_2048 = 2048;
+
+const unsigned int mesh_width_4096 = 4096;
+const unsigned int mesh_height_4096 = 4096;
+
+#define MESH_SIZE_64 (mesh_width_64 * mesh_width_64 * 4)
+#define MESH_SIZE_128 (mesh_width_128 * mesh_width_128 * 4)
+#define MESH_SIZE_256 (mesh_width_256 * mesh_width_256 * 4)
+#define MESH_SIZE_512 (mesh_width_512 * mesh_width_512 * 4)
+#define MESH_SIZE_1024 (mesh_width_1024 * mesh_width_1024 * 4)
+#define MESH_SIZE_2048 (mesh_width_2048 * mesh_width_2048 * 4)
+#define MESH_SIZE_4096 (mesh_width_4096 * mesh_width_4096 * 4)
+
+float position_64[mesh_width_64][mesh_width_64][4];
+float position_128[mesh_width_128][mesh_width_128][4];
+float position_256[mesh_width_256][mesh_width_256][4];
+float position_512[mesh_width_512][mesh_width_512][4];
+float position_1024[mesh_width_1024][mesh_width_1024][4];
+float position_2048[mesh_width_2048][mesh_width_2048][4];
+float position_4096[mesh_width_4096][mesh_width_4096][4];
+
+int meshSize = 64;
 
 //* CUDA Related Variables
 VertexData vertexData_gpu;
@@ -201,7 +227,13 @@ PFN_vkGetMemoryWin32HandleKHR vkGetMemoryWin32HandleKHR_fnptr = NULL;
 
 float fAnimationSpeed = 0.0f;
 bool useGPU = false;
-int upscaleMesh = 0;
+
+//! ImGui Related
+ImFont* font;
+const float fontSize = 30.0f;
+
+static float smoothedFPS = 0.0f;
+static float zValue = -3.0f;
 
 // CUDA Kernel
 __global__ void sineWaveKernel(float4* pos, unsigned int width, unsigned int height, float time)
@@ -231,6 +263,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     VkResult display(void);
     void update(void);
     void uninitialize(void);
+    void ToggleFullScreen(void);
 
     // Variable Declarations
     WNDCLASSEX wndclass;
@@ -302,6 +335,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     else
         fprintf(gpFile, "%s() => initialize() Succeeded\n", __func__);
 
+    ToggleFullScreen();
+
     // Show and Update Window
     ShowWindow(hwnd, iCmdShow);
     UpdateWindow(hwnd);
@@ -347,6 +382,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
 
 }
 
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 // Callback Function
 LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -354,7 +391,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
     void ToggleFullScreen(void);
     VkResult resize(int, int);
     void uninitialize(void);
-    VkResult buildCommandBuffers(void);
+
+    if (ImGui_ImplWin32_WndProcHandler(hwnd, iMsg, wParam, lParam))
+        return true;
 
     // Code
     switch(iMsg)
@@ -391,27 +430,31 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
                 break;
 
                 case 49:
-                    currentMesh = &mesh64;
+                    meshSize = 64;
                 break;
 
                 case 50:
-                    currentMesh = &mesh128;
+                    meshSize = 128;
                 break;
 
                 case 51:
-                    currentMesh = &mesh256;
+                    meshSize = 256;
                 break;
 
                 case 52:
-                    currentMesh = &mesh512;
+                    meshSize = 512;
                 break;
                 
                 case 53:
-                    currentMesh = &mesh1024;
+                    meshSize = 1024;
                 break;
                 
                 case 54:
-                    currentMesh = &mesh2048;
+                    meshSize = 2048;
+                break;
+
+                case 55:
+                    meshSize = 4096;
                 break;
 
                 default:
@@ -429,10 +472,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
                     ToggleFullScreen();
                 break;
 
-                case 'G':
+                case 'c':
+                case 'C':
+                    useGPU = false;
+                break;
+                
                 case 'g':
-                    useGPU = !useGPU;
-                    buildCommandBuffers();
+                case 'G':
+                    useGPU = true;
                 break;
 
                 default:
@@ -483,8 +530,6 @@ void ToggleFullScreen(void)
                     SWP_NOZORDER | SWP_FRAMECHANGED
                 );
             }
-
-            ShowCursor(FALSE);
             gbFullScreen = TRUE;
         }
     }
@@ -502,7 +547,6 @@ void ToggleFullScreen(void)
             SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER | SWP_FRAMECHANGED | SWP_NOZORDER
         );
 
-        ShowCursor(TRUE);
         gbFullScreen = FALSE;
     }
 }
@@ -534,6 +578,8 @@ VkResult initialize(void)
     VkResult createSemaphores(void);
     VkResult createFences(void);
     VkResult buildCommandBuffers(void);
+    void initializeImGui(const char* fontFile, float fontSize);
+    void initializeSinewavePosition(void);
 
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -619,6 +665,8 @@ VkResult initialize(void)
     }
     else
         fprintf(gpFile, "%s() => createCommandBuffers() Succeeded\n", __func__);
+
+    initializeSinewavePosition();
 
     //! Create Vertex Buffer
     vkResult = createVertexBuffer();
@@ -775,15 +823,18 @@ VkResult initialize(void)
     vkClearDepthStencilValue.depth = 1.0f;
     vkClearDepthStencilValue.stencil = 0;
 
-    vkResult = buildCommandBuffers();
-    if (vkResult != VK_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => buildCommandBuffers() Failed\n", __func__);
-        vkResult = VK_ERROR_INITIALIZATION_FAILED;
-        return vkResult;
-    }
-    else
-        fprintf(gpFile, "%s() => buildCommandBuffers() Succeeded\n", __func__);
+    //! Initialize ImGui
+    initializeImGui("ImGui\\Poppins-Regular.ttf", fontSize);
+
+    // vkResult = buildCommandBuffers();
+    // if (vkResult != VK_SUCCESS)
+    // {
+    //     fprintf(gpFile, "%s() => buildCommandBuffers() Failed\n", __func__);
+    //     vkResult = VK_ERROR_INITIALIZATION_FAILED;
+    //     return vkResult;
+    // }
+    // else
+    //     fprintf(gpFile, "%s() => buildCommandBuffers() Succeeded\n", __func__);
 
     //! Initialization Completed
     bInitialized = TRUE;
@@ -1006,6 +1057,8 @@ VkResult display(void)
 {
     // Function Declarations
     VkResult resize(int, int);
+    void renderImGui(void);
+    VkResult recordCommandBufferForImage(uint32_t imageIndex);
     VkResult updateUniformBuffer(void);
 
     // Variable Declarations
@@ -1044,6 +1097,17 @@ VkResult display(void)
     if (vkResult != VK_SUCCESS)
     {
         fprintf(gpFile, "%s() => vkResetFences() Failed : %d\n", __func__, vkResult);
+        return vkResult;
+    }
+
+    //!!! ImGui Render
+    renderImGui();
+
+    //!!! RECORD COMMANDS FOR CURRENT IMAGE
+    vkResult = recordCommandBufferForImage(currentImageIndex);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => recordCommandBufferForImage() Failed : %d\n", __func__, vkResult);
         return vkResult;
     }
 
@@ -1106,37 +1170,106 @@ VkResult display(void)
 
 void update(void)
 {
-    // Function Declarations
-    void clearMesh(Mesh& mesh);
-    size_t getMeshSize(Mesh& mesh);
-    void sineWave(Mesh& mesh, float);
+    void sineWave(unsigned int, unsigned int, float);
 
     // Code
     fAnimationSpeed += 0.02f;
 
-    clearMesh(*currentMesh);
-
     if (useGPU)
     {
         float4* pPosition = (float4*)cudaDevicePtr;
-        dim3 block(8, 8, 1);
-        dim3 grid(currentMesh->width / block.x, currentMesh->height / block.y, 1);
 
-        sineWaveKernel<<<grid, block>>>(pPosition, currentMesh->width, currentMesh->height, fAnimationSpeed);
+        dim3 block(8, 8, 1);
+
+        dim3 grid_64(mesh_width_64 / block.x, mesh_height_64 / block.y, 1);
+        dim3 grid_128(mesh_width_128 / block.x, mesh_height_128 / block.y, 1);
+        dim3 grid_256(mesh_width_256 / block.x, mesh_height_256 / block.y, 1);
+        dim3 grid_512(mesh_width_512 / block.x, mesh_height_512 / block.y, 1);
+        dim3 grid_1024(mesh_width_1024 / block.x, mesh_height_1024 / block.y, 1);
+        dim3 grid_2048(mesh_width_2048 / block.x, mesh_height_2048 / block.y, 1);
+        dim3 grid_4096(mesh_width_4096 / block.x, mesh_height_4096 / block.y, 1);
+
+        switch (meshSize)
+        {
+            case 64:               
+                sineWaveKernel<<< grid_64, block >>>(pPosition, mesh_width_64, mesh_height_64, fAnimationSpeed);
+            break;
+
+            case 128:                
+                sineWaveKernel<<< grid_128, block >>>(pPosition, mesh_width_128, mesh_height_128, fAnimationSpeed);
+            break;
+
+            case 256:                
+                sineWaveKernel<<< grid_256, block >>>(pPosition, mesh_width_256, mesh_height_256, fAnimationSpeed);
+            break;
+
+            case 512:               
+                sineWaveKernel<<< grid_512, block >>>(pPosition, mesh_width_512, mesh_height_512, fAnimationSpeed);
+            break;
+
+            case 1024:                
+                sineWaveKernel<<< grid_1024, block >>>(pPosition, mesh_width_1024, mesh_height_1024, fAnimationSpeed);
+            break;
+
+            case 2048:               
+                sineWaveKernel<<< grid_2048, block >>>(pPosition, mesh_width_2048, mesh_height_2048, fAnimationSpeed);
+            break;
+
+            case 4096:               
+                sineWaveKernel<<< grid_4096, block >>>(pPosition, mesh_width_4096, mesh_height_4096, fAnimationSpeed);
+            break;
+        }
+
         cudaDeviceSynchronize();
     }
     else
     {
-        sineWave(*currentMesh, fAnimationSpeed);
-        memcpy(mappedPtr, currentMesh->position.data(), getMeshSize(*currentMesh) * sizeof(float));
+        // CPU Related Code
+        switch (meshSize)
+        {
+            case 64:
+                sineWave(mesh_width_64, mesh_height_64, fAnimationSpeed);
+                memcpy(mappedPtr, position_64, MESH_SIZE_64 * sizeof(float));
+            break;
+
+            case 128:
+                sineWave(mesh_width_128, mesh_height_128, fAnimationSpeed);
+                memcpy(mappedPtr, position_128, MESH_SIZE_128 * sizeof(float));
+            break;
+
+            case 256:
+                sineWave(mesh_width_256, mesh_height_256, fAnimationSpeed);
+                memcpy(mappedPtr, position_256, MESH_SIZE_256 * sizeof(float));
+            break;
+
+            case 512:
+                sineWave(mesh_width_512, mesh_height_512, fAnimationSpeed);
+                memcpy(mappedPtr, position_512, MESH_SIZE_512 * sizeof(float));
+            break;
+
+            case 1024:
+                sineWave(mesh_width_1024, mesh_height_1024, fAnimationSpeed);
+                memcpy(mappedPtr, position_1024, MESH_SIZE_1024 * sizeof(float));
+            break;
+
+            case 2048:
+                sineWave(mesh_width_2048, mesh_height_2048, fAnimationSpeed);
+                memcpy(mappedPtr, position_2048, MESH_SIZE_2048 * sizeof(float));
+            break;
+
+            case 4096:
+                sineWave(mesh_width_4096, mesh_height_4096, fAnimationSpeed);
+                memcpy(mappedPtr, position_4096, MESH_SIZE_4096 * sizeof(float));
+            break;
+        }  
     }
-    
 }
 
 void uninitialize(void)
 {
     // Function Declarations
     void ToggleFullScreen(void);
+    void uninitializeImGui(void);
 
     // Code
     if (gbFullScreen)
@@ -1155,6 +1288,8 @@ void uninitialize(void)
         vkDeviceWaitIdle(vkDevice);
         fprintf(gpFile, "%s() => vkDeviceWaitIdle() Succeeded\n", __func__);
     }
+
+    uninitializeImGui();
 
     //* Step - 7 of Fences and Semaphores
     for (uint32_t i = 0; i < swapchainImageCount; i++)
@@ -2845,11 +2980,77 @@ VkResult createCommandBuffers(void)
     return vkResult;
 }
 
+void initializeSinewavePosition(void)
+{
+    for (unsigned int i = 0; i < mesh_width_64; i++)
+    {
+        for (unsigned int j = 0; j < mesh_height_64; j++)
+        {
+            for (unsigned int k = 0; k < 4; k++)
+            {
+                position_64[i][j][k] = 0.0f;
+            }
+        }
+    }
+
+    for (unsigned int i = 0; i < mesh_width_128; i++)
+    {
+        for (unsigned int j = 0; j < mesh_height_128; j++)
+        {
+            for (unsigned int k = 0; k < 4; k++)
+            {
+                position_128[i][j][k] = 0.0f;
+            }
+        }
+    }
+
+    for (unsigned int i = 0; i < mesh_width_256; i++)
+    {
+        for (unsigned int j = 0; j < mesh_height_256; j++)
+        {
+            for (unsigned int k = 0; k < 4; k++)
+            {
+                position_256[i][j][k] = 0.0f;
+            }
+        }
+    }
+
+    for (unsigned int i = 0; i < mesh_width_512; i++)
+    {
+        for (unsigned int j = 0; j < mesh_height_512; j++)
+        {
+            for (unsigned int k = 0; k < 4; k++)
+            {
+                position_512[i][j][k] = 0.0f;
+            }
+        }
+    }
+
+    for (unsigned int i = 0; i < mesh_width_1024; i++)
+    {
+        for (unsigned int j = 0; j < mesh_height_1024; j++)
+        {
+            for (unsigned int k = 0; k < 4; k++)
+            {
+                position_1024[i][j][k] = 0.0f;
+            }
+        }
+    }
+
+    for (unsigned int i = 0; i < mesh_width_2048; i++)
+    {
+        for (unsigned int j = 0; j < mesh_height_2048; j++)
+        {
+            for (unsigned int k = 0; k < 4; k++)
+            {
+                position_2048[i][j][k] = 0.0f;
+            }
+        }
+    }
+}
+
 VkResult createVertexBuffer(void)
 {
-    // Function Declarations
-    size_t getMaxMeshSize();
-
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
 
@@ -2866,7 +3067,7 @@ VkResult createVertexBuffer(void)
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.flags = 0;   //! Valid Flags are used in sparse(scattered) buffers
     vkBufferCreateInfo.pNext = NULL;
-    vkBufferCreateInfo.size = getMaxMeshSize() * sizeof(float);
+    vkBufferCreateInfo.size = MESH_SIZE_4096 * sizeof(float);
     vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     
     //* Step - 6
@@ -2937,9 +3138,6 @@ VkResult createVertexBuffer(void)
 
 VkResult createExternalBuffer(void)
 {
-    // Function Declarations
-    size_t getMaxMeshSize();
-
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
 
@@ -2972,7 +3170,7 @@ VkResult createExternalBuffer(void)
     memset((void*)&vkBufferCreateInfo, 0, sizeof(VkBufferCreateInfo));
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.flags = 0;   //! Valid Flags are used in sparse(scattered) buffers
-    vkBufferCreateInfo.size = getMaxMeshSize() * sizeof(float);
+    vkBufferCreateInfo.size = MESH_SIZE_4096 * sizeof(float);
     vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     vkBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     vkBufferCreateInfo.pNext = &vkExternalMemoryBufferCreateInfo;
@@ -3183,7 +3381,7 @@ VkResult updateUniformBuffer(void)
     glm::mat4 modelViewMatrix = glm::mat4(1.0f);
     glm::mat4 modelViewProjectionMatrix = glm::mat4(1.0f);
 
-    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, 0.0f));
+    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, zValue));
     modelViewMatrix = translationMatrix;
     
     glm::mat4 perspectiveProjectionMatrix = glm::mat4(1.0f);
@@ -3217,6 +3415,109 @@ VkResult updateUniformBuffer(void)
     return vkResult;
 }
 
+void sineWave(unsigned int width, unsigned int height, float time)
+{
+    // Code
+    for (unsigned int i = 0; i < width; i++)
+    {
+        for (unsigned int j = 0; j < height; j++)
+        {
+            for (unsigned int k = 0; k < 4; k++)
+            {
+                float u = (float)i / (float)width;
+                float v = (float)j / (float)height;
+
+                u = u * 2.0f - 1.0f;
+                v = v * 2.0f - 1.0f;
+
+                float frequency = 4.0f;
+
+                float w = sinf(u * frequency + time) * cosf(v * frequency + time) * 0.5f;                      
+
+                switch (meshSize)
+                {
+                    case 64:
+                        if (k == 0)
+                            position_64[i][j][k] = u;
+                        if (k == 1)
+                            position_64[i][j][k] = w;
+                        if (k == 2)
+                            position_64[i][j][k] = v;
+                        if (k == 3)
+                            position_64[i][j][k] = 1.0f;
+                    break;
+
+                    case 128:
+                        if (k == 0)
+                            position_128[i][j][k] = u;
+                        if (k == 1)
+                            position_128[i][j][k] = w;
+                        if (k == 2)
+                            position_128[i][j][k] = v;
+                        if (k == 3)
+                            position_128[i][j][k] = 1.0f;
+                    break;
+
+                    case 256:
+                        if (k == 0)
+                            position_256[i][j][k] = u;
+                        if (k == 1)
+                            position_256[i][j][k] = w;
+                        if (k == 2)
+                            position_256[i][j][k] = v;
+                        if (k == 3)
+                            position_256[i][j][k] = 1.0f;
+                    break;
+
+                    case 512:
+                        if (k == 0)
+                            position_512[i][j][k] = u;
+                        if (k == 1)
+                            position_512[i][j][k] = w;
+                        if (k == 2)
+                            position_512[i][j][k] = v;
+                        if (k == 3)
+                            position_512[i][j][k] = 1.0f;
+                    break;
+
+                    case 1024:
+                        if (k == 0)
+                            position_1024[i][j][k] = u;
+                        if (k == 1)
+                            position_1024[i][j][k] = w;
+                        if (k == 2)
+                            position_1024[i][j][k] = v;
+                        if (k == 3)
+                            position_1024[i][j][k] = 1.0f;
+                    break;
+
+                    case 2048:
+                        if (k == 0)
+                            position_2048[i][j][k] = u;
+                        if (k == 1)
+                            position_2048[i][j][k] = w;
+                        if (k == 2)
+                            position_2048[i][j][k] = v;
+                        if (k == 3)
+                            position_2048[i][j][k] = 1.0f;
+                    break;
+
+                    case 4096:
+                        if (k == 0)
+                            position_4096[i][j][k] = u;
+                        if (k == 1)
+                            position_4096[i][j][k] = w;
+                        if (k == 2)
+                            position_4096[i][j][k] = v;
+                        if (k == 3)
+                            position_4096[i][j][k] = 1.0f;
+                    break;
+                }
+            }
+        }
+    }
+}
+
 VkResult createShaders(void)
 {
     // Variable Declarations
@@ -3225,7 +3526,7 @@ VkResult createShaders(void)
     //! Vertex Shader
     //! ---------------------------------------------------------------------------------------------------------------------------
     //* Step - 6
-    const char* szFileName = "Shader.vert.spv";
+    const char* szFileName = "Bin/Shader.vert.spv";
     FILE *fp = NULL;
     size_t size;
 
@@ -3302,7 +3603,7 @@ VkResult createShaders(void)
 
     //! Fragment Shader
     //! ---------------------------------------------------------------------------------------------------------------------------
-    szFileName = "Shader.frag.spv";
+    szFileName = "Bin/Shader.frag.spv";
 
     fp = NULL;
     fp = fopen(szFileName, "rb");
@@ -3445,20 +3746,26 @@ VkResult createDescriptorPool(void)
     // Code
 
     //* Vulkan expects decriptor pool size before creating actual descriptor pool
-    VkDescriptorPoolSize vkDescriptorPoolSize;
-    memset((void*)&vkDescriptorPoolSize, 0, sizeof(VkDescriptorPoolSize));
-    vkDescriptorPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    vkDescriptorPoolSize.descriptorCount = 1;
+    VkDescriptorPoolSize vkDescriptorPoolSize_array[2];
+    memset((void*)vkDescriptorPoolSize_array, 0, sizeof(VkDescriptorPoolSize) * _ARRAYSIZE(vkDescriptorPoolSize_array));
+
+    vkDescriptorPoolSize_array[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    vkDescriptorPoolSize_array[0].descriptorCount = 1;
+
+    vkDescriptorPoolSize_array[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    vkDescriptorPoolSize_array[1].descriptorCount = IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE;
    
     //* Create the pool
     VkDescriptorPoolCreateInfo vkDescriptorPoolCreateInfo;
     memset((void*)&vkDescriptorPoolCreateInfo, 0, sizeof(VkDescriptorPoolCreateInfo));
     vkDescriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     vkDescriptorPoolCreateInfo.pNext = NULL;
-    vkDescriptorPoolCreateInfo.flags = 0;
-    vkDescriptorPoolCreateInfo.poolSizeCount = 1;
-    vkDescriptorPoolCreateInfo.pPoolSizes = &vkDescriptorPoolSize;
-    vkDescriptorPoolCreateInfo.maxSets = 1;
+    vkDescriptorPoolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    vkDescriptorPoolCreateInfo.poolSizeCount = _ARRAYSIZE(vkDescriptorPoolSize_array);
+    vkDescriptorPoolCreateInfo.pPoolSizes = vkDescriptorPoolSize_array;
+
+    for (int i = 0; i < _ARRAYSIZE(vkDescriptorPoolSize_array); i++)
+        vkDescriptorPoolCreateInfo.maxSets += vkDescriptorPoolSize_array[i].descriptorCount;
 
     vkResult = vkCreateDescriptorPool(vkDevice, &vkDescriptorPoolCreateInfo, NULL, &vkDescriptorPool);
     if (vkResult != VK_SUCCESS)
@@ -4026,7 +4333,7 @@ VkResult buildCommandBuffers(void)
             }
 
             //! Vulkan Drawing Function
-            vkCmdDraw(vkCommandBuffer_array[i], currentMesh->width * currentMesh->height, 1, 0, 0);
+            // vkCmdDraw(vkCommandBuffer_array[i], mesh_width * mesh_height, 1, 0, 0);
         }
         //* Step - 7
         vkCmdEndRenderPass(vkCommandBuffer_array[i]);
@@ -4046,6 +4353,156 @@ VkResult buildCommandBuffers(void)
     return vkResult;
 }
 
+VkResult recordCommandBufferForImage(uint32_t imageIndex)
+{
+    // Variable Declarations
+    VkResult vkResult = VK_SUCCESS;
+
+    // Code
+    VkCommandBuffer commandBuffer = vkCommandBuffer_array[imageIndex];
+
+    //* Step - 1 => Reset Command Buffer
+    vkResult = vkResetCommandBuffer(commandBuffer, 0);   //! 0 specifies not to release the resources
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkResetCommandBuffer() Failed : %d\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+
+    //* Step - 2
+    VkCommandBufferBeginInfo vkCommandBufferBeginInfo;
+    memset((void*)&vkCommandBufferBeginInfo, 0, sizeof(VkCommandBufferBeginInfo));
+    vkCommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    vkCommandBufferBeginInfo.pNext = NULL;
+    vkCommandBufferBeginInfo.flags = 0;     //! 0 specifies that we will use only the primary command buffer, and not going to use this command buffer simultaneously between multiple threads
+
+    //* Step - 3
+    vkResult = vkBeginCommandBuffer(commandBuffer, &vkCommandBufferBeginInfo);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkBeginCommandBuffer() Failed : %d\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+
+    //* Step - 4 => Set Clear Value
+    VkClearValue vkClearValue_array[2];
+    memset((void*)vkClearValue_array, 0, sizeof(VkClearValue) * _ARRAYSIZE(vkClearValue_array));
+    vkClearValue_array[0].color = vkClearColorValue;
+    vkClearValue_array[1].depthStencil = vkClearDepthStencilValue;
+
+    //* Step - 5
+    VkRenderPassBeginInfo vkRenderPassBeginInfo;
+    memset((void*)&vkRenderPassBeginInfo, 0, sizeof(VkRenderPassBeginInfo));
+    vkRenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    vkRenderPassBeginInfo.pNext = NULL;
+    vkRenderPassBeginInfo.renderPass = vkRenderPass;
+    vkRenderPassBeginInfo.renderArea.offset.x = 0;
+    vkRenderPassBeginInfo.renderArea.offset.y = 0;
+    vkRenderPassBeginInfo.renderArea.extent.width = vkExtent2D_swapchain.width;
+    vkRenderPassBeginInfo.renderArea.extent.height = vkExtent2D_swapchain.height;
+    vkRenderPassBeginInfo.clearValueCount = _ARRAYSIZE(vkClearValue_array);
+    vkRenderPassBeginInfo.pClearValues = vkClearValue_array;
+    vkRenderPassBeginInfo.framebuffer = vkFramebuffer_array[imageIndex];
+
+    //* Step - 6
+    vkCmdBeginRenderPass(commandBuffer, &vkRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    {
+        //! Bind with Pipeline
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline);
+
+        //! Bind the Descriptor Set to the Pipeline
+        vkCmdBindDescriptorSets(
+            commandBuffer,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            vkPipelineLayout,
+            0,
+            1,
+            &vkDescriptorSet,
+            0,
+            NULL
+        );
+
+        //! Bind with Vertex Position CPU Buffer
+        if (useGPU)
+        {
+            VkDeviceSize vkDeviceSize_offset_position[1];
+            memset((void*)vkDeviceSize_offset_position, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_position));
+            vkCmdBindVertexBuffers(
+                commandBuffer, 
+                0, 
+                1, 
+                &vertexData_gpu.vkBuffer, 
+                vkDeviceSize_offset_position
+            );
+        }
+        else
+        {
+            VkDeviceSize vkDeviceSize_offset_position[1];
+            memset((void*)vkDeviceSize_offset_position, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_position));
+            vkCmdBindVertexBuffers(
+                commandBuffer, 
+                0, 
+                1, 
+                &vertexData_cpu.vkBuffer, 
+                vkDeviceSize_offset_position
+            );
+        }
+
+        //! Vulkan Drawing Function
+        switch (meshSize)
+        {
+            case 64:
+                vkCmdDraw(commandBuffer, mesh_width_64 * mesh_height_64, 1, 0, 0);
+            break;
+
+            case 128:
+                vkCmdDraw(commandBuffer, mesh_width_128 * mesh_height_128, 1, 0, 0);
+            break;
+
+            case 256:
+                vkCmdDraw(commandBuffer, mesh_width_256 * mesh_height_256, 1, 0, 0);
+            break;
+
+            case 512:
+                vkCmdDraw(commandBuffer, mesh_width_512 * mesh_height_512, 1, 0, 0);
+            break;
+
+            case 1024:
+                vkCmdDraw(commandBuffer, mesh_width_1024 * mesh_height_1024, 1, 0, 0);
+            break;
+
+            case 2048:
+                vkCmdDraw(commandBuffer, mesh_width_2048 * mesh_height_2048, 1, 0, 0);
+            break;
+
+            case 4096:
+                vkCmdDraw(commandBuffer, mesh_width_4096 * mesh_height_4096, 1, 0, 0);
+            break;
+        }
+
+        ImDrawData* imDrawData = ImGui::GetDrawData();
+        if (imDrawData != nullptr && imDrawData->TotalVtxCount > 0)
+        {
+            ImGui_ImplVulkan_RenderDrawData(imDrawData, commandBuffer);
+        }
+
+    }
+    //* Step - 7
+    vkCmdEndRenderPass(commandBuffer);
+
+    //* Step - 8
+    vkResult = vkEndCommandBuffer(commandBuffer);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkEndCommandBuffer() Failed : %d\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+
+    return vkResult;
+}
 
 VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
     VkDebugReportFlagsEXT vkDebugReportFlagsEXT,
@@ -4064,48 +4521,88 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
 }
 
 
-// Sine Wave Mesh Related
-void clearMesh(Mesh& mesh)
+
+//! ImGui Related Functions
+void initializeImGui(const char* fontFile, float fontSize)
 {
-    std::fill(mesh.position.begin(), mesh.position.end(), 0.0f);
+    //! Setup ImGui Context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+
+    //! Setup ImGui Style
+    ImGui::StyleColorsDark();
+
+    //! Setup Platform / Renderer Backends
+    ImGui_ImplWin32_Init(ghwnd);
+    ImGui_ImplVulkan_InitInfo imgui_vulkan_init_info;
+    memset((void*)&imgui_vulkan_init_info, 0, sizeof(ImGui_ImplVulkan_InitInfo));
+    imgui_vulkan_init_info.Instance = vkInstance;
+    imgui_vulkan_init_info.Device = vkDevice;
+    imgui_vulkan_init_info.PhysicalDevice = vkPhysicalDevice_selected;
+    imgui_vulkan_init_info.QueueFamily = graphicsQueueFamilyIndex_selected;
+    imgui_vulkan_init_info.Queue = vkQueue;
+    imgui_vulkan_init_info.PipelineCache = VK_NULL_HANDLE;
+    imgui_vulkan_init_info.DescriptorPool = vkDescriptorPool;
+    imgui_vulkan_init_info.RenderPass = vkRenderPass;
+    imgui_vulkan_init_info.Subpass = 0;
+    imgui_vulkan_init_info.MinImageCount = 2;
+    imgui_vulkan_init_info.ImageCount = swapchainImageCount;
+    imgui_vulkan_init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    imgui_vulkan_init_info.Allocator = NULL;
+    imgui_vulkan_init_info.CheckVkResultFn = NULL;
+
+    bool imguiStatus = ImGui_ImplVulkan_Init(&imgui_vulkan_init_info);
+    if (imguiStatus == false)
+    {
+        fprintf(gpFile, "%s() => ImGui_ImplVulkan_Init() Failed !!!\n", __func__);
+        return;
+    }
+
+    io.Fonts->AddFontFromFileTTF(fontFile, fontSize, NULL, io.Fonts->GetGlyphRangesDefault());
 }
 
-size_t getMeshSize(Mesh& mesh)
+void renderImGui(void)
 {
-    return mesh.width * mesh.height * 4;
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::SetWindowSize(ImVec2(450, 250));
+    ImGui::Begin("Vulkan-CUDA Interop");
+    ImGui::PushFont(font);
+    {
+        if (!useGPU)
+            ImGui::TextColored(ImVec4(66.0f/255.0f, 135.0f/255.0f, 245.0f/255.0f, 1.0f), "CPU : Intel Core i7-13620H");
+        else
+            ImGui::TextColored(ImVec4(59.0f/255.0f, 227.0f/255.0f, 87.0f/255.0f, 1.0f), "GPU : NVIDIA GeForce RTX 4050");
+        
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Mesh Size : %d x %d x 4", meshSize, meshSize);
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+        float currentFPS = ImGui::GetIO().Framerate;
+        smoothedFPS = 0.9f * smoothedFPS + 0.1f * currentFPS;
+        ImGui::TextColored(ImVec4(250.0f/255.0f, 206.0f/255.0f, 32.0f/255.0f, 1.0f), "FPS : %.1f", smoothedFPS);
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::SliderFloat("Z-Translation", &zValue, -4.0f, 0.0f);
+    }
+    ImGui::PopFont();
+    ImGui::End();
+
+    ImGui::Render();
 }
 
-size_t getMaxMeshSize()
-{
-    return 2048 * 2048 * 4;
-}
-
-void sineWave(Mesh& mesh, float time)
+void uninitializeImGui(void)
 {
     // Code
-    unsigned int width = mesh.width;
-    unsigned int height = mesh.height;
-    float* position = mesh.position.data();
-
-    const float frequency = 4.0f;
-    const float invertedWidth = 1.0f / static_cast<float>(width);
-    const float invertedHeight = 1.0f / static_cast<float>(height);
-
-    for (unsigned int j = 0; j < height; j++)
-    {
-        float v = j * invertedHeight * 2.0f - 1.0f;
-        for (unsigned int i = 0; i < width; i++)
-        {
-            float u = i * invertedWidth * 2.0f - 1.0f;
-            float w = sinf(u * frequency + time) * cosf(v * frequency + time) * 0.5f;
-
-            size_t index = static_cast<size_t>((j * width + i) * 4);
-            
-            position[index + 0] = u;
-            position[index + 1] = w;
-            position[index + 2] = v;
-            position[index + 3] = 1.0f;
-        }
-    }
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
 }
-
