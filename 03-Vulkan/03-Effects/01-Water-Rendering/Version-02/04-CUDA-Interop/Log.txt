@@ -1,0 +1,1201 @@
+WinMain() => Program Started Successfully
+resize() => Initialization Not Yet Completed or Failed !!!
+fillInstanceExtensionNames() => Call 1 : vkEnumerateInstanceExtensionProperties() Succeeded
+fillInstanceExtensionNames() => Call 2 : vkEnumerateInstanceExtensionProperties() Succeeded
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_KHR_device_group_creation
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_KHR_display
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_KHR_external_fence_capabilities
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_KHR_external_memory_capabilities
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_KHR_external_semaphore_capabilities
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_KHR_get_display_properties2
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_KHR_get_physical_device_properties2
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_KHR_get_surface_capabilities2
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_KHR_surface
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_KHR_surface_protected_capabilities
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_KHR_win32_surface
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_EXT_debug_report
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_EXT_debug_utils
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_EXT_direct_mode_display
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_EXT_surface_maintenance1
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_EXT_swapchain_colorspace
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_NV_external_memory_capabilities
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_KHR_portability_enumeration
+fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_LUNARG_direct_driver_loading
+fillInstanceExtensionNames() => VK_KHR_SURFACE_EXTENSION_NAME Extension Found
+fillInstanceExtensionNames() => VK_KHR_WIN32_SURFACE_EXTENSION_NAME Extension Found
+fillInstanceExtensionNames() => VALIDATION ON : VK_EXT_DEBUG_REPORT_EXTENSION_NAME Extension Supported
+fillInstanceExtensionNames() => Enabled Vulkan Instance Extension Name : VK_KHR_surface
+fillInstanceExtensionNames() => Enabled Vulkan Instance Extension Name : VK_KHR_win32_surface
+fillInstanceExtensionNames() => Enabled Vulkan Instance Extension Name : VK_EXT_debug_report
+createVulkanInstance() => fillInstanceExtensionNames() Succeeded
+fillValidationLayerNames() => Call 1 : vkEnumerateInstanceLayerProperties() Succeeded
+fillValidationLayerNames() => Call 2 : vkEnumerateInstanceLayerProperties() Succeeded
+fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_NV_optimus
+fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_NV_present
+fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_OBS_HOOK
+fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_LUNARG_api_dump
+fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_LUNARG_gfxreconstruct
+fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_KHRONOS_synchronization2
+fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_KHRONOS_validation
+fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_LUNARG_monitor
+fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_LUNARG_screenshot
+fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_KHRONOS_profiles
+fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_KHRONOS_shader_object
+fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_LUNARG_crash_diagnostic
+fillValidationLayerNames() => VK_LAYER_KHRONOS_validation Supported
+fillValidationLayerNames() => Enabled Vulkan Validation Layer Name : VK_LAYER_KHRONOS_validation
+createVulkanInstance() => fillValidationLayerNames() Succeeded
+createVulkanInstance() => vkCreateInstance() Succeeded
+createValidationCallbackFunction() => vkGetInstanceProcAddr() Succeeded To Get Function Pointer For vkCreateDebugReportCallbackEXT
+createValidationCallbackFunction() => vkGetInstanceProcAddr() Succeeded To Get Function Pointer For vkDestroyDebugReportCallbackEXT
+createValidationCallbackFunction() => vkCreateDebugReportCallbackEXT_fnptr() Succeeded
+createVulkanInstance() => createValidationCallbackFunction() Succeeded
+initialize() => createVulkanInstance() Succeeded
+getSupportedSurface() => vkCreateWin32SurfaceKHR() Succeeded
+initialize() => getSupportedSurface() Succeeded
+getPhysicalDevice() Call 1 => vkEnumeratePhysicalDevices() Succeeded
+getPhysicalDevice() Call 2 => vkEnumeratePhysicalDevices() Succeeded
+getPhysicalDevice() => free() Succeeded For isQueueSurfaceSupported_array
+getPhysicalDevice() => free() Succeeded For vkQueueFamilyProperties_array
+getPhysicalDevice() => Succeeded To Obtain Graphics Supported Physical Device
+getPhysicalDevice() => Selected Physical Device Supports Tessellation Shader
+getPhysicalDevice() => Selected Physical Device Supports Geometry Shader
+initialize() => getPhysicalDevice() Succeeded
+
+VULKAN INFORMATION
+------------------------------------------------------------------------------------------------
+Vulkan API Version : 1.4.303
+Device Name : NVIDIA GeForce RTX 4050 Laptop GPU
+Device Type : Discrete GPU (dGPU)
+Vendor ID : 0x10de
+Device ID : 0x28e1
+------------------------------------------------------------------------------------------------
+
+printVkInfo() => free() Succeeded For vkPhysicalDevice_array
+initialize() => printVkInfo() Succeeded
+fillDeviceExtensionNames() => Call 1 : vkEnumerateDeviceExtensionProperties() Succeeded
+fillDeviceExtensionNames() => Call 2 : vkEnumerateDeviceExtensionProperties() Succeeded
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_16bit_storage
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_8bit_storage
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_acceleration_structure
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_bind_memory2
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_buffer_device_address
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_calibrated_timestamps
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_compute_shader_derivatives
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_cooperative_matrix
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_copy_commands2
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_create_renderpass2
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_dedicated_allocation
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_deferred_host_operations
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_depth_stencil_resolve
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_descriptor_update_template
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_device_group
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_draw_indirect_count
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_driver_properties
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_dynamic_rendering
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_dynamic_rendering_local_read
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_external_fence
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_external_fence_win32
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_external_memory
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_external_memory_win32
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_external_semaphore
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_external_semaphore_win32
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_format_feature_flags2
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_fragment_shader_barycentric
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_fragment_shading_rate
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_get_memory_requirements2
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_global_priority
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_image_format_list
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_imageless_framebuffer
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_index_type_uint8
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_line_rasterization
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_load_store_op_none
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance1
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance2
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance3
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance4
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance5
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance6
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance7
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_map_memory2
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_multiview
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_pipeline_binary
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_pipeline_executable_properties
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_pipeline_library
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_present_id
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_present_wait
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_push_descriptor
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_ray_query
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_ray_tracing_maintenance1
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_ray_tracing_pipeline
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_ray_tracing_position_fetch
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_relaxed_block_layout
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_sampler_mirror_clamp_to_edge
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_sampler_ycbcr_conversion
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_separate_depth_stencil_layouts
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_atomic_int64
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_clock
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_draw_parameters
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_expect_assume
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_float16_int8
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_float_controls
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_float_controls2
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_integer_dot_product
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_maximal_reconvergence
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_non_semantic_info
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_quad_control
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_relaxed_extended_instruction
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_subgroup_extended_types
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_subgroup_rotate
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_subgroup_uniform_control_flow
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_shader_terminate_invocation
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_spirv_1_4
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_storage_buffer_storage_class
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_swapchain
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_swapchain_mutable_format
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_synchronization2
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_timeline_semaphore
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_uniform_buffer_standard_layout
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_variable_pointers
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_vertex_attribute_divisor
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_decode_av1
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_decode_h264
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_decode_h265
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_decode_queue
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_encode_av1
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_encode_h264
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_encode_h265
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_encode_quantization_map
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_encode_queue
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_maintenance1
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_maintenance2
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_video_queue
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_vulkan_memory_model
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_win32_keyed_mutex
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_workgroup_memory_explicit_layout
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_zero_initialize_workgroup_memory
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_4444_formats
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_attachment_feedback_loop_dynamic_state
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_attachment_feedback_loop_layout
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_blend_operation_advanced
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_border_color_swizzle
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_buffer_device_address
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_calibrated_timestamps
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_color_write_enable
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_conditional_rendering
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_conservative_rasterization
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_custom_border_color
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_depth_bias_control
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_depth_clamp_control
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_depth_clamp_zero_one
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_depth_clip_control
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_depth_clip_enable
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_depth_range_unrestricted
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_descriptor_buffer
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_descriptor_indexing
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_device_address_binding_report
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_device_fault
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_device_generated_commands
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_discard_rectangles
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_dynamic_rendering_unused_attachments
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_extended_dynamic_state
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_extended_dynamic_state2
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_extended_dynamic_state3
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_external_memory_host
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_fragment_shader_interlock
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_full_screen_exclusive
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_global_priority
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_global_priority_query
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_graphics_pipeline_library
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_hdr_metadata
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_host_image_copy
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_host_query_reset
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_image_2d_view_of_3d
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_image_robustness
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_image_sliced_view_of_3d
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_image_view_min_lod
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_index_type_uint8
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_inline_uniform_block
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_legacy_vertex_attributes
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_line_rasterization
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_load_store_op_none
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_memory_budget
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_memory_priority
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_mesh_shader
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_multi_draw
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_mutable_descriptor_type
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_nested_command_buffer
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_non_seamless_cube_map
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_opacity_micromap
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_pageable_device_local_memory
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_pci_bus_info
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_pipeline_creation_cache_control
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_pipeline_creation_feedback
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_pipeline_library_group_handles
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_pipeline_robustness
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_post_depth_coverage
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_present_mode_fifo_latest_ready
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_primitive_topology_list_restart
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_primitives_generated_query
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_private_data
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_provoking_vertex
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_queue_family_foreign
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_robustness2
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_sample_locations
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_sampler_filter_minmax
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_scalar_block_layout
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_separate_stencil_usage
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_atomic_float
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_demote_to_helper_invocation
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_image_atomic_int64
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_module_identifier
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_object
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_replicated_composites
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_subgroup_ballot
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_subgroup_vote
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_viewport_index_layer
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_subgroup_size_control
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_swapchain_maintenance1
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_texel_buffer_alignment
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_tooling_info
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_transform_feedback
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_vertex_attribute_divisor
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_vertex_attribute_robustness
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_vertex_input_dynamic_state
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_ycbcr_2plane_444_formats
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_ycbcr_image_arrays
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_acquire_winrt_display
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_clip_space_w_scaling
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_cluster_acceleration_structure
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_compute_shader_derivatives
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_cooperative_matrix
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_cooperative_matrix2
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_cooperative_vector
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_copy_memory_indirect
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_corner_sampled_image
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_coverage_reduction_mode
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_cuda_kernel_launch
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_dedicated_allocation
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_dedicated_allocation_image_aliasing
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_descriptor_pool_overallocation
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_diagnostic_checkpoints
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_diagnostics_config
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_generated_commands
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_generated_commands_compute
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_disk_cache_utils
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_memory
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_memory_win32
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_fill_rectangle
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_fragment_coverage_to_color
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_fragment_shader_barycentric
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_fragment_shading_rate_enums
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_framebuffer_mixed_samples
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_geometry_shader_passthrough
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_inherited_viewport_scissor
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_internal_nvpresent
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_linear_color_attachment
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_low_latency
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_low_latency2
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_memory_decompression
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_mesh_shader
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_optical_flow
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_partitioned_acceleration_structure
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_present_metering
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_raw_access_chains
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_ray_tracing
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_ray_tracing_invocation_reorder
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_ray_tracing_motion_blur
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_representative_fragment_test
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_sample_mask_override_coverage
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_scissor_exclusive
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_shader_atomic_float16_vector
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_shader_image_footprint
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_shader_sm_builtins
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_shader_subgroup_partitioned
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_shading_rate_image
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_viewport_array2
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_viewport_swizzle
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_win32_keyed_mutex
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NVX_binary_import
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NVX_image_view_handle
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NVX_multiview_per_view_attributes
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_AMD_buffer_marker
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_GOOGLE_hlsl_functionality1
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_GOOGLE_user_type
+
+------------------------------------------------------------------------------------------------
+fillDeviceExtensionNames() => Vulkan Device Extension Count : 247
+------------------------------------------------------------------------------------------------
+
+fillDeviceExtensionNames() => VK_KHR_SWAPCHAIN_EXTENSION_NAME Extension Found
+fillDeviceExtensionNames() => VK_KHR_external_memory_win32 Extension Found
+fillDeviceExtensionNames() => Enabled Vulkan Device Extensions : VK_KHR_external_memory_win32
+fillDeviceExtensionNames() => Enabled Vulkan Device Extensions : VK_KHR_swapchain
+createVulkanDevice() => fillDeviceExtensionNames() Succeeded
+createVulkanDevice() => vkCreateDevice() Succeeded
+initialize() => createVulkanDevice() Succeeded
+getDeviceQueue() => vkGetDeviceQueue() Succeeded ...
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 1 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 2 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => free() Succeeded For vkSurfaceFormatKHR_array
+createSwapchain() => getPhysicalDeviceSurfaceFormatAndColorSpace() Succeeded
+createSwapchain() => vkGetPhysicalDeviceSurfaceCapabilitiesKHR() Succeeded
+createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 784 x 561
+getPhysicalDevicePresentMode() => Call 1 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+getPhysicalDevicePresentMode() => Call 2 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+
+------------------------------------------------------------------------------------------------
+Vulkan Physical Device Present Mode : VK_PRESENT_MODE_MAILBOX_KHR
+------------------------------------------------------------------------------------------------
+
+getPhysicalDevicePresentMode() => free() Succeeded For vkPresentModeKHR_array
+createSwapchain() => getPhysicalDevicePresentMode() Succeeded
+createSwapchain() => vkCreateSwapchainKHR() Succeeded
+initialize() => createSwapchain() Succeeded
+createImagesAndImageViews() => Call 1 : vkGetSwapchainImagesKHR() => Swapchain Image Count = 2
+createImagesAndImageViews() => Call 2 : vkGetSwapchainImagesKHR() Succeeded
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 0
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 1
+createImagesAndImageViews() => getSupportedDepthFormat() Succeded
+createImagesAndImageViews() => vkCreateImage() Succeeded
+createImagesAndImageViews() => vkAllocateMemory() Succeeded For Depth
+createImagesAndImageViews() => vkBindImageMemory() Succeeded For Depth
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Depth
+initialize() => createImagesAndImageViews() Succeeded
+createCommandPool() => vkCreateCommandPool() Succeeded
+initialize() => createCommandPool() Succeeded
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 0
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 1
+initialize() => createCommandBuffers() Succeeded
+createShaders() => Succeeded In Opening SPIR-V Shader File : Bin/Shader.vert.spv
+createShaders() => Successfully Read Shader From SPIR-V Shader File : Bin/Shader.vert.spv
+createShaders() => Closed SPIR-V File : Bin/Shader.vert.spv
+createShaders() => vkCreateShaderModule() Succeeded For Vertex Shader
+createShaders() => free() Succeeded For shaderData
+createShaders() => Vertex Shader Module Successfully Created
+createShaders() => Succeeded In Opening SPIR-V Shader File : Bin/Shader.frag.spv
+createShaders() => Successfully Read Shader From SPIR-V Shader File : Bin/Shader.frag.spv
+createShaders() => Closed SPIR-V File : Bin/Shader.frag.spv
+createShaders() => vkCreateShaderModule() Succeeded For Fragment Shader
+createShaders() => free() Succeeded For shaderData
+createShaders() => Fragment Shader Module Successfully Created
+initialize() => createShaders() Succeeded
+createRenderPass() => vkCreateRenderPass() Succeeded
+initialize() => createRenderPass() Succeeded
+initialize() => createFramebuffers() Succeeded
+initialize() => createSemaphores() Succeeded
+createFences() => vkCreateFence() Succeeded For Index : 0
+createFences() => vkCreateFence() Succeeded For Index : 1
+initialize() => createFences() Succeeded
+initialize() => initializeHostData() Succeeded For Ocean
+initialize() => initializeDeviceData() Succeeded For Ocean
+getMemoryWin32HandleFunction() => vkGetDeviceProcAddr() Succeeded To Get Function Pointer For vkGetMemoryWin32HandleKHR
+createBuffers() => getMemoryWin32HandleFunction() Failed : 103165992 !!!
+createBuffers() => vkCreateBuffer() Succeeded For Vertex Displacement Buffer
+createBuffers() => vkAllocateMemory() Succeeded For Vertex Displacement Buffer
+createBuffers() => vkBindBufferMemory() Succeeded For Vertex Displacement Buffer
+createBuffers() => vkGetMemoryWin32HandleKHR_fnptr() Succeeded For Vertex Displacement Buffer
+createBuffers() => cudaImportExternalMemory() Succeeded For Vertex Displacement Buffer
+createBuffers() => cudaExternalMemoryGetMappedBuffer() Succeeded For Vertex Displacement Buffer
+createBuffers() => vkCreateBuffer() Succeeded For Vertex Normals Buffer
+createBuffers() => vkAllocateMemory() Succeeded For Vertex Normals Buffer
+createBuffers() => vkBindBufferMemory() Succeeded For Vertex Normals Buffer
+createBuffers() => vkGetMemoryWin32HandleKHR_fnptr() Succeeded For Vertex Normals Buffer
+createBuffers() => cudaImportExternalMemory() Succeeded For Vertex Normals Buffer
+createBuffers() => cudaExternalMemoryGetMappedBuffer() Succeeded For Vertex Normals Buffer
+createBuffers() => vkCreateBuffer() Succeeded For Index Buffer
+createBuffers() => vkAllocateMemory() Succeeded For Index Buffer
+createBuffers() => vkBindBufferMemory() Succeeded For Index Buffer
+createBuffers() => vkMapMemory() Succeeded For Index Buffer
+initialize() => createBuffers() Succeeded For Ocean
+createUniformBuffer() => vkCreateBuffer() Succeeded For Vertex Uniform Data
+createUniformBuffer() => vkAllocateMemory() Succeeded For Vertex Uniform Data
+createUniformBuffer() => vkBindBufferMemory() Succeeded For Vertex Uniform Data
+createUniformBuffer() => vkCreateBuffer() Succeeded For Water Surface Uniform Data
+createUniformBuffer() => vkAllocateMemory() Succeeded For Water Surface Uniform Data
+createUniformBuffer() => vkBindBufferMemory() Succeeded For Water Surface Uniform Data
+createUniformBuffer() => updateUniformBuffer() Succeeded
+initialize() => createUniformBuffer() Succeeded For Ocean
+createDescriptorSetLayout() => vkCreateDescriptorSetLayout() Succeeded For Ocean
+initialize() => createDescriptorSetLayout() Succeeded For Ocean
+createPipelineLayout() => vkCreatePipelineLayout() Succeeded For Ocean
+initialize() => createPipelineLayout() Succeeded For Ocean
+createDescriptorPool() => vkCreateDescriptorPool() Succeeded For Ocean
+initialize() => createDescriptorPool() Succeeded For Ocean
+createDescriptorSet() => vkAllocateDescriptorSets() Succeeded For Ocean
+initialize() => createDescriptorSet() Succeeded For Ocean
+createPipeline() => vkCreatePipelineCache() Succeeded For Ocean
+createPipeline() => vkCreateGraphicsPipelines() Succeeded For Ocean
+createPipeline() => vkDestroyPipelineCache() Succeeded For Ocean
+initialize() => createPipeline() Succeeded For Ocean
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
+initialize() => buildCommandBuffers() Succeeded
+initialize() => Initialization Completed Successfully
+WinMain() => initialize() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 1 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 2 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => free() Succeeded For vkSurfaceFormatKHR_array
+createSwapchain() => getPhysicalDeviceSurfaceFormatAndColorSpace() Succeeded
+createSwapchain() => vkGetPhysicalDeviceSurfaceCapabilitiesKHR() Succeeded
+createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 2048 x 1152
+getPhysicalDevicePresentMode() => Call 1 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+getPhysicalDevicePresentMode() => Call 2 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+
+------------------------------------------------------------------------------------------------
+Vulkan Physical Device Present Mode : VK_PRESENT_MODE_MAILBOX_KHR
+------------------------------------------------------------------------------------------------
+
+getPhysicalDevicePresentMode() => free() Succeeded For vkPresentModeKHR_array
+createSwapchain() => getPhysicalDevicePresentMode() Succeeded
+createSwapchain() => vkCreateSwapchainKHR() Succeeded
+createImagesAndImageViews() => Call 1 : vkGetSwapchainImagesKHR() => Swapchain Image Count = 2
+createImagesAndImageViews() => Call 2 : vkGetSwapchainImagesKHR() Succeeded
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 0
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 1
+createImagesAndImageViews() => getSupportedDepthFormat() Succeded
+createImagesAndImageViews() => vkCreateImage() Succeeded
+createImagesAndImageViews() => vkAllocateMemory() Succeeded For Depth
+createImagesAndImageViews() => vkBindImageMemory() Succeeded For Depth
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Depth
+createRenderPass() => vkCreateRenderPass() Succeeded
+createPipelineLayout() => vkCreatePipelineLayout() Succeeded For Ocean
+createPipeline() => vkCreatePipelineCache() Succeeded For Ocean
+createPipeline() => vkCreateGraphicsPipelines() Succeeded For Ocean
+createPipeline() => vkDestroyPipelineCache() Succeeded For Ocean
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 0
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 1
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
+Sample vertex: 2585479849443328.000 -0.000 784087099253981184.000
+Sample vertex: 13821325017612288.000 -0.000 790826555776434176.000
+Sample vertex: 25359359521325056.000 -0.000 796802813790257152.000
+Sample vertex: 37104269714784256.000 -0.000 801947222538190848.000
+Sample vertex: 48955231240716288.000 -0.000 806204668999892992.000
+Sample vertex: 60810711072243712.000 -0.000 809537288743682048.000
+Sample vertex: 72568695146151936.000 -0.000 811921923305897984.000
+Sample vertex: 84129054889869312.000 -0.000 813351494580436992.000
+Sample vertex: 95393079070031872.000 -0.000 813832599637065728.000
+Sample vertex: 106267369327820800.000 -0.000 813385373282467840.000
+Sample vertex: 116662908171059200.000 -0.000 812039914647453696.000
+Sample vertex: 126496278744924160.000 -0.000 809835668711669760.000
+Sample vertex: 135689939709853696.000 -0.000 806816959537610752.000
+Sample vertex: 144174458624540672.000 -0.000 803031615881084928.000
+Sample vertex: 151885007252619264.000 -0.000 798526985461563392.000
+Sample vertex: 158764514068660224.000 -0.000 793346911305203712.000
+Sample vertex: 164762109480009728.000 -0.000 787529945038454784.000
+Sample vertex: 169832850948882432.000 -0.000 781105498597359616.000
+Sample vertex: 173937310675501056.000 -0.000 774091988801683456.000
+Sample vertex: 177041232000712704.000 -0.000 766495875282239488.000
+Sample vertex: 179114601693052928.000 -0.000 758308842982342656.000
+Sample vertex: 180131581229268992.000 -0.000 749508145755193344.000
+Sample vertex: 180069647800860672.000 -0.000 740055369413296128.000
+Sample vertex: 178909027378397184.000 -0.000 729898355873808384.000
+Sample vertex: 176633811403014144.000 -0.000 718970378524819456.000
+Sample vertex: 173229362626166784.000 -0.000 707192547407036416.000
+Sample vertex: 168685201327652864.000 -0.000 694476008237039616.000
+Sample vertex: 162991552161906688.000 -0.000 680724828625305600.000
+Sample vertex: 156143879643463680.000 -0.000 665836960148881408.000
+Sample vertex: 148139194475085824.000 -0.000 649709804629000192.000
+Sample vertex: 138979841708916736.000 -0.000 632241451081662464.000
+Sample vertex: 128671490701787136.000 -0.000 613336379434205184.000
+Sample vertex: 117225892484218880.000 -0.000 592906422597976064.000
+Sample vertex: 104660080896507904.000 -0.000 570875095795367936.000
+Sample vertex: 90998829310017536.000 -0.000 547181857167376384.000
+Sample vertex: 76273319187316736.000 -0.000 521782588809936896.000
+Sample vertex: 60522939673477120.000 -0.000 494652242473779200.000
+Sample vertex: 43796949748416512.000 -0.000 465788894013554688.000
+Sample vertex: 26152798894686208.000 -0.000 435211303846412288.000
+Sample vertex: 7657075748372480.000 -0.000 402963452437463040.000
+Sample vertex: -11612113025892352.000 -0.000 369111138685681664.000
+Sample vertex: -31568750507458560.000 -0.000 333743491752394752.000
+Sample vertex: -52116889811288064.000 -0.000 296972043348344832.000
+Sample vertex: -73151410539069440.000 -0.000 258927515098152960.000
+Sample vertex: -94559168219840512.000 -0.000 219759663921496064.000
+Sample vertex: -116220406280486912.000 -0.000 179632471669735424.000
+Sample vertex: -138008251387084800.000 -0.000 138723303312326656.000
+Sample vertex: -159792969757491200.000 -0.000 97219574042198016.000
+Sample vertex: -181440000066322432.000 -0.000 55313466465976320.000
+Sample vertex: -202814660729110528.000 -0.000 13200721570693120.000
+Sample vertex: -223782691068182528.000 -0.000 -28923684160798720.000
+Sample vertex: -244212510465458176.000 -0.000 -70868957543792640.000
+Sample vertex: -263977108148060160.000 -0.000 -112451168751321088.000
+Sample vertex: -282956585808953344.000 -0.000 -153496753859985408.000
+Sample vertex: -301039789694517248.000 -0.000 -193844381013245952.000
+Sample vertex: -318126200390156288.000 -0.000 -233348012733104128.000
+Sample vertex: -334126877713104896.000 -0.000 -271877717668921344.000
+Sample vertex: -348969356975144960.000 -0.000 -309322376426815488.000
+Sample vertex: -362595501498957824.000 -0.000 -345589080274239488.000
+Sample vertex: -374963254964781056.000 -0.000 -380604505529516032.000
+Sample vertex: -386049974305030144.000 -0.000 -414315497677389824.000
+Sample vertex: -395851020955025408.000 -0.000 -446687456461324288.000
+Sample vertex: -404378867499794432.000 -0.000 -477704164084809728.000
+Sample vertex: -411666190050525184.000 -0.000 -507367475973718016.000
+Sample vertex: -417763737940787200.000 -0.000 -535694400198541312.000
+Sample vertex: -422738512660398080.000 -0.000 -562717097474392064.000
+Sample vertex: -426674008373592064.000 -0.000 -588479994942980096.000
+Sample vertex: -429668974968438784.000 -0.000 -613038274344124416.000
+Sample vertex: -431833775924576256.000 -0.000 -636456360187265024.000
+Sample vertex: -433290766270332928.000 -0.000 -658804415058149376.000
+Sample vertex: -434170238133600256.000 -0.000 -680159061173338112.000
+Sample vertex: -434607775041978368.000 -0.000 -700598363858403328.000
+Sample vertex: -434743118051409920.000 -0.000 -720202724901126144.000
+Sample vertex: -434716523613913088.000 -0.000 -739051790175043584.000
+Sample vertex: -434665155805052928.000 -0.000 -757223418847297536.000
+Sample vertex: -434722880165511168.000 -0.000 -774792858744913920.000
+Sample vertex: -435015109740331008.000 -0.000 -791831715562651648.000
+Sample vertex: -435658255323103232.000 -0.000 -808405753839747072.000
+Sample vertex: -436756323841867776.000 -0.000 -824576546227355648.000
+Sample vertex: -438399647048794112.000 -0.000 -840399618062680064.000
+Sample vertex: -440663850728030208.000 -0.000 -855924584807923712.000
+Sample vertex: -443607449514016768.000 -0.000 -871195289489244160.000
+Sample vertex: -447271537653841920.000 -0.000 -886249046782509056.000
+Sample vertex: -451680991598084096.000 -0.000 -901118773317074944.000
+Sample vertex: -456840518630899712.000 -0.000 -915831200969392128.000
+Sample vertex: -462739707751563264.000 -0.000 -930408113813585920.000
+Sample vertex: -469350280895397888.000 -0.000 -944867310194130944.000
+Sample vertex: -476629975584210944.000 -0.000 -959222121689513984.000
+Sample vertex: -484522132609433600.000 -0.000 -973482581343338496.000
+Sample vertex: -492957207860609024.000 -0.000 -987654461591650304.000
+Sample vertex: -501857170371903488.000 -0.000 -1001742435358867456.000
+Sample vertex: -511135193084461056.000 -0.000 -1015747464717664256.000
+Sample vertex: -520698951381286912.000 -0.000 -1029667900400599040.000
+Sample vertex: -530453955981869056.000 -0.000 -1043501131067555840.000
+Sample vertex: -540303656021393408.000 -0.000 -1057242277635686400.000
+Sample vertex: -550153802737516544.000 -0.000 -1070884468157317120.000
+Sample vertex: -559913308463824896.000 -0.000 -1084419250136809472.000
+Sample vertex: -569496892329689088.000 -0.000 -1097837002847420416.000
+Sample vertex: -578826351570583552.000 -0.000 -1111124738308046848.000
+Sample vertex: -587831489241022464.000 -0.000 -1124269674696015872.000
+Sample vertex: -596452347597553664.000 -0.000 -1137256625006968832.000
+Sample vertex: -604640135811694592.000 -0.000 -1150067447299047424.000
+Sample vertex: -612356027379089408.000 -0.000 -1162683106277195776.000
+Sample vertex: -619572671947997184.000 -0.000 -1175082298903625728.000
+Sample vertex: -626275157391966208.000 -0.000 -1187241660556247040.000
+Sample vertex: -632456817921753088.000 -0.000 -1199136452223434752.000
+Sample vertex: -638123700851310592.000 -0.000 -1210740010748215296.000
+Sample vertex: -643289618795462656.000 -0.000 -1222023473950359552.000
+Sample vertex: -647976768145195008.000 -0.000 -1232957704771731456.000
+Sample vertex: -652215454189748224.000 -0.000 -1243511779447799808.000
+Sample vertex: -656042304410222592.000 0.000 -1253654499336126464.000
+Sample vertex: -659498756651089920.000 0.000 -1263354390916366336.000
+Sample vertex: -662630303205949440.000 0.000 -1272580530423988224.000
+Sample vertex: -665485185147469824.000 0.000 -1281302681289228288.000
+Sample vertex: -668115354400063488.000 0.000 -1289491294137090048.000
+Sample vertex: -670572488010235904.000 0.000 -1297119293493739520.000
+Sample vertex: -672910668206178304.000 0.000 -1304162215225458688.000
+Sample vertex: -675183633618698240.000 0.000 -1310597794221785088.000
+Sample vertex: -677446084951277568.000 0.000 -1316407888540860416.000
+Sample vertex: -679751829554200576.000 0.000 -1321576967580942336.000
+Sample vertex: -682155568130949120.000 0.000 -1326095410615287808.000
+Sample vertex: -684711795226574848.000 0.000 -1329956895452037120.000
+Sample vertex: -687474799227699200.000 0.000 -1333159772823748608.000
+Sample vertex: -690500586507862016.000 0.000 -1335707616143212544.000
+Sample vertex: -693843170575777792.000 0.000 -1337609221503451136.000
+Sample vertex: -697558970121846784.000 0.000 -1338877783043997696.000
+Sample vertex: -701703510483271680.000 0.000 -1339530755511943168.000
+Sample vertex: -706332591875162112.000 0.000 -1339590541456703488.000
+Sample vertex: -711501808354197504.000 0.000 -1339083666596298752.000
+Sample vertex: -717264898551185408.000 0.000 -1338039817744678912.000
+Sample vertex: -723675051341119488.000 0.000 -1336492255128584192.000
+Sample vertex: -730781607308296192.000 0.000 -1334476850314870784.000
+Sample vertex: -738630333624221696.000 0.000 -1332030436943069184.000
+Sample vertex: -747261980938600448.000 0.000 -1329193009748639744.000
+Sample vertex: -756711527465091072.000 0.000 -1326004700905996288.000
+Sample vertex: -767003368617934848.000 0.000 -1322506192345366528.000
+Sample vertex: -778156470972710912.000 0.000 -1318737478802210816.000
+Sample vertex: -790175713612267520.000 0.000 -1314738692450942976.000
+Sample vertex: -803055667697942528.000 0.000 -1310548316198535168.000
+Sample vertex: -816777710251540480.000 0.000 -1306203733440331776.000
+Sample vertex: -831308581046321152.000 0.000 -1301740678304235520.000
+Sample vertex: -846601413399150592.000 0.000 -1297193510528614400.000
+Sample vertex: -862594016183582720.000 0.000 -1292594253389627392.000
+Sample vertex: -879210110780440576.000 0.000 -1287972731140177920.000
+Sample vertex: -896359124919386112.000 0.000 -1283357943399448576.000
+Sample vertex: -913937292190547968.000 0.000 -1278776690763366400.000
+Sample vertex: -931829851067777024.000 0.000 -1274253437365649408.000
+Sample vertex: -949911594664460288.000 0.000 -1269812509901062144.000
+Sample vertex: -968050169268404224.000 0.000 -1265476860674834432.000
+Sample vertex: -986106486658695168.000 0.000 -1261267655285800960.000
+Sample vertex: -1003940702700175360.000 0.000 -1257206471649656832.000
+Sample vertex: -1021411667587629056.000 0.000 -1253313100975702016.000
+Sample vertex: -1038380980294909952.000 0.000 -1249607884229050368.000
+Sample vertex: -1054717936377266176.000 0.000 -1246108963351560192.000
+Sample vertex: -1070299459251863552.000 0.000 -1242835854674624512.000
+Sample vertex: -1085014360805343232.000 0.000 -1239806150384287744.000
+Sample vertex: -1098764578344402944.000 0.000 -1237036480593920000.000
+Sample vertex: -1111469916239691776.000 0.000 -1234542375905263616.000
+Sample vertex: -1123065365866217472.000 0.000 -1232337442774712320.000
+Sample vertex: -1133505709808287744.000 0.000 -1230432538879590400.000
+Sample vertex: -1142765865456893952.000 0.000 -1228837010068733952.000
+Sample vertex: -1150839098303315968.000 0.000 -1227555666705514496.000
+Sample vertex: -1157738052731273216.000 0.000 -1226589883179466752.000
+Sample vertex: -1163492759152099328.000 0.000 -1225936360955707392.000
+Sample vertex: -1168150015529451520.000 0.000 -1225586578819121152.000
+Sample vertex: -1171771669392392192.000 0.000 -1225527205191221248.000
+Sample vertex: -1174429601313587200.000 0.000 -1225738311423754240.000
+Sample vertex: -1176205999787212800.000 -0.000 -1226194058993467392.000
+Sample vertex: -1177189512938258432.000 -0.000 -1226862012307341312.000
+Sample vertex: -1177469888403341312.000 -0.000 -1227703551019450368.000
+Sample vertex: -1177138385647566848.000 -0.000 -1228672907958288384.000
+Sample vertex: -1176281866089529344.000 -0.000 -1229719917905838080.000
+Sample vertex: -1174980319200149504.000 -0.000 -1230786993940594688.000
+Sample vertex: -1173305075796279296.000 -0.000 -1231811738777681920.000
+Sample vertex: -1171315234627911680.000 -0.000 -1232727769402572800.000
+Sample vertex: -1169056287988645888.000 -0.000 -1233465266826903552.000
+Sample vertex: -1166558335009292288.000 -0.000 -1233950563771613184.000
+Sample vertex: -1163835119585198080.000 -0.000 -1234108343690199040.000
+Sample vertex: -1160882655986712576.000 -0.000 -1233863015158251520.000
+Sample vertex: -1157681565321396224.000 -0.000 -1233138849312407552.000
+Sample vertex: -1154195013949718528.000 -0.000 -1231860941923024896.000
+Sample vertex: -1150370981227790336.000 -0.000 -1229957274978484224.000
+Sample vertex: -1146144802128003072.000 -0.000 -1227357892051468288.000
+Sample vertex: -1141438342605307904.000 -0.000 -1223997784516984832.000
+Sample vertex: -1136164741241110528.000 -0.000 -1219815242284924928.000
+Sample vertex: -1130230814424956928.000 -0.000 -1214754602579132416.000
+Sample vertex: -1123537812268777472.000 -0.000 -1208766112498450432.000
+Sample vertex: -1115986366409211904.000 -0.000 -1201805654138814464.000
+Sample vertex: -1107476971043946496.000 -0.000 -1193835294349066240.000
+Sample vertex: -1097914930734039040.000 -0.000 -1184823697047814144.000
+Sample vertex: -1087211185037639680.000 -0.000 -1174745848345526272.000
+Sample vertex: -1075283614180048896.000 -0.000 -1163583331422437376.000
+Sample vertex: -1062062811489763328.000 -0.000 -1151323639333781504.000
+Sample vertex: -1047488991022022656.000 -0.000 -1137960862204559360.000
+Sample vertex: -1031515973288460288.000 -0.000 -1123493831803666432.000
+Sample vertex: -1014110360623382528.000 -0.000 -1107927702091857920.000
+Sample vertex: -995253049012256768.000 -0.000 -1091272780990644224.000
+Sample vertex: -974938197299560448.000 -0.000 -1073545217577058304.000
+Sample vertex: -953174120541978624.000 -0.000 -1054765696413597696.000
+Sample vertex: -929980884826718208.000 -0.000 -1034959712426131456.000
+Sample vertex: -905389894954647552.000 -0.000 -1014157983220760576.000
+Sample vertex: -879443894440296448.000 -0.000 -992396723961724928.000
+Sample vertex: -852194972647030784.000 -0.000 -969716616579252224.000
+Sample vertex: -823700716496355328.000 -0.000 -946164046720139264.000
+Sample vertex: -794027165405413376.000 -0.000 -921790210394554368.000
+Sample vertex: -763243313728847872.000 -0.000 -896652488365572096.000
+Sample vertex: -731421866673045504.000 -0.000 -870812865601208320.000
+Sample vertex: -698638415662415872.000 -0.000 -844339511822385152.000
+Sample vertex: -664968139804508160.000 -0.000 -817305750710779904.000
+Sample vertex: -630486149487394816.000 -0.000 -789788891677720576.000
+Sample vertex: -595267761257578496.000 -0.000 -761873184801685504.000
+Sample vertex: -559386882912288768.000 -0.000 -733644941745455104.000
+Sample vertex: -522914123713871872.000 -0.000 -705195147096227840.000
+Sample vertex: -485920642680487936.000 -0.000 -676615197758062592.000
+Sample vertex: -448474094136983552.000 -0.000 -648000751242575872.000
+Sample vertex: -410640723658932224.000 -0.000 -619445540916035584.000
+Sample vertex: -372487017340076032.000 -0.000 -591041719596744704.000
+Sample vertex: -334076712495087616.000 -0.000 -562880512390070272.000
+Sample vertex: -295472756164657152.000 -0.000 -535045413460246528.000
+Sample vertex: -256740174153646080.000 -0.000 -507617271271653376.000
+Sample vertex: -217941655804706816.000 -0.000 -480666935604805632.000
+Sample vertex: -179141608447410176.000 -0.000 -454256906823794688.000
+Sample vertex: -140404413641523200.000 -0.000 -428439617889370112.000
+Sample vertex: -101795191681187840.000 -0.000 -403253826586411008.000
+Sample vertex: -63379659861000192.000 -0.000 -378727020705611776.000
+Sample vertex: -25223775993724928.000 -0.000 -354873665696825344.000
+Sample vertex: 12605402596245504.000 -0.000 -331693624121098240.000
+Sample vertex: 50042369067712512.000 -0.000 -309173804918112256.000
+Sample vertex: 87022574357184512.000 -0.000 -287287235693248512.000
+Sample vertex: 123480962595028992.000 -0.000 -265997237425799168.000
+Sample vertex: 159356120043880448.000 -0.000 -245251806651744256.000
+Sample vertex: 194589334500802560.000 -0.000 -224993837485916160.000
+Sample vertex: 229123671879319552.000 -0.000 -205156328438497280.000
+Sample vertex: 262907558212141056.000 -0.000 -185666969440092160.000
+Sample vertex: 295892322929868800.000 -0.000 -166453124003790848.000
+Sample vertex: 328034140186214400.000 -0.000 -147439217885052928.000
+Sample vertex: 359295214268973056.000 -0.000 -128552837935267840.000
+Sample vertex: 389641941354020864.000 -0.000 -109727601139908608.000
+Sample vertex: 419045356181913600.000 -0.000 -90903558345457664.000
+Sample vertex: 447481784892915712.000 -0.000 -72030986715529216.000
+Sample vertex: 474933222984122368.000 -0.000 -53072343940988928.000
+Sample vertex: 501383933695361024.000 -0.000 -34003311917006848.000
+Sample vertex: 526823265507737600.000 -0.000 -14814521172426752.000
+Sample vertex: 551242697206136832.000 -0.000 4488077615562752.000
+Sample vertex: 574636250196082688.000 -0.000 23881811314606080.000
+Sample vertex: 596999904388186112.000 -0.000 43329159090405376.000
+Sample vertex: 618329536613842944.000 -0.000 62777200503422976.000
+Sample vertex: 638620405229158400.000 -0.000 82159125189885952.000
+Sample vertex: 657868318346051584.000 -0.000 101397194241736704.000
+Sample vertex: 676066060419465216.000 -0.000 120403360829407232.000
+Sample vertex: 693204629197946880.000 -0.000 139081812822458368.000
+Sample vertex: 709272685967835136.000 -0.000 157334599196737536.000
+Sample vertex: 724255112444248064.000 -0.000 175060564882489344.000
+Sample vertex: 738134385160617984.000 -0.000 192161956424056832.000
+Sample vertex: 750888994920726528.000 -0.000 208545091994779648.000
+Sample vertex: 762495096066146304.000 -0.000 224126254092124160.000
+Sample vertex: 772925888000950272.000 -0.000 238831741077291008.000
+Sample vertex: 782152233667002368.000 -0.000 252602522919763968.000
+Sample vertex: 790143965214015488.000 -0.000 265395460968022016.000
+Sample vertex: 796869952719028224.000 -0.000 277184922857242624.000
+Sample vertex: 802299409856462848.000 -0.000 287965290770202624.000
+Sample vertex: 806403130848706560.000 -0.000 297750635019763712.000
+Sample vertex: 809154108941402112.000 -0.000 306574559430049792.000
+Sample vertex: 810530147743563776.000 -0.000 314492761136955392.000
+Sample vertex: 810511730923798528.000 -0.000 321577189432623104.000
+Sample vertex: 809086970012631040.000 -0.000 327918141709484032.000
+Sample vertex: 806250023854538752.000 -0.000 333622682912292864.000
+Sample vertex: 802004946898649088.000 -0.000 338809869534494720.000
+Sample vertex: 796361909627518976.000 -0.000 343609237789736960.000
+Sample vertex: 789342764834750464.000 -0.000 348158157912014848.000
+Sample vertex: 780978642443304960.000 -0.000 352599119736340480.000
+Sample vertex: 771311117736607744.000 -0.000 357074510018510848.000
+Sample vertex: 760393173431222272.000 -0.000 361725753441648640.000
+Sample vertex: 748286244739350528.000 -0.000 366688777130737664.000
+Sample vertex: 735064479976390656.000 -0.000 372091055715123200.000
+Sample vertex: 720809449161228288.000 -0.000 378050958493483008.000
+Sample vertex: 705612892795305984.000 -0.000 384671427241967616.000
+Sample vertex: 689573904364077056.000 -0.000 392042518834839552.000
+Sample vertex: 672797555947470848.000 -0.000 400236148204503040.000
+Sample vertex: 655394417183555584.000 0.000 409307428371300352.000
+Sample vertex: 637478837281619968.000 0.000 419291371908628480.000
+Sample vertex: 619166814718394368.000 0.000 430205708441485312.000
+Sample vertex: 600575035165376512.000 0.000 442048479464783872.000
+Sample vertex: 581817435514994688.000 0.000 454798656818642944.000
+Sample vertex: 563006028514328576.000 0.000 468418857107718144.000
+Sample vertex: 544246710877028352.000 0.000 482853967311667200.000
+Sample vertex: 525639022765146112.000 0.000 498034202801864704.000
+Sample vertex: 507275151356723200.000 0.000 513876619169890304.000
+Sample vertex: 489235738957709312.000 0.000 530285180947005440.000
+Sample vertex: 471592666140770304.000 0.000 547154163218251776.000
+Sample vertex: 454406234246742016.000 0.000 564370350645706752.000
+Sample vertex: 437724684348293120.000 0.000 581812762590576640.000
+Sample vertex: 421584540847308800.000 0.000 599358288110288896.000
+Sample vertex: 406009855560646656.000 0.000 616877837667794944.000
+Sample vertex: 391013719548624896.000 0.000 634245036145377280.000
+Sample vertex: 376599362626650112.000 0.000 651332477633167360.000
+Sample vertex: 362758985134112768.000 0.000 668014886525075456.000
+Sample vertex: 349478190340636672.000 0.000 684173584284778496.000
+Sample vertex: 336734781855236096.000 0.000 699692847313453056.000
+Sample vertex: 324502027801460736.000 0.000 714464167557332992.000
+Sample vertex: 312750859840651264.000 0.000 728388726408871936.000
+Sample vertex: 301450560366706688.000 0.000 741376089036685312.000
+Sample vertex: 290571614364368896.000 0.000 753345716214038528.000
+Sample vertex: 280087994331824128.000 0.000 764229369500532736.000
+Sample vertex: 269977727216386048.000 0.000 773971042522628096.000
+Sample vertex: 260224474962460672.000 0.000 782526823534690304.000
+Sample vertex: 250821125104205824.000 0.000 789867781637013504.000
+Sample vertex: 241767643281883136.000 0.000 795979760617390080.000
+Sample vertex: 233073753301450752.000 0.000 800861317366808576.000
+Sample vertex: 224759005854040064.000 0.000 804527776328581120.000
+Sample vertex: 216850991809560576.000 0.000 807009511511425024.000
+Sample vertex: 209386510447804416.000 0.000 808350984416788480.000
+Sample vertex: 202410298148126720.000 0.000 808611774831001600.000
+Sample vertex: 195972502948675584.000 0.000 807865000277311488.000
+Sample vertex: 190128753265868800.000 0.000 806196079065300992.000
+Sample vertex: 184935691128406016.000 0.000 803703623644086272.000
+Sample vertex: 180450869098053632.000 0.000 800494973836328960.000
+Sample vertex: 176729864051621888.000 0.000 796686540435619840.000
+Sample vertex: 173823013005819904.000 0.000 792401193866362880.000
+Sample vertex: 171774210526412800.000 0.000 787765446685229056.000
+Sample vertex: 170616854279094272.000 0.000 782908147911098368.000
+Sample vertex: 170373879389224960.000 0.000 777956978331746304.000
+Sample vertex: 171055250180931584.000 0.000 773035289407913984.000
+Sample vertex: 172654988059738112.000 0.000 768263408943366144.000
+Sample vertex: 175152958218960896.000 0.000 763749157797101568.000
+Sample vertex: 178513082933313536.000 0.000 759591698174050304.000
+Sample vertex: 182682053068718080.000 0.000 755876310944841728.000
+Sample vertex: 187592953034702848.000 0.000 752672677658886144.000
+Sample vertex: 193164779748065280.000 0.000 750033025118502912.000
+Sample vertex: 199304006000967680.000 0.000 747992950012641280.000
+Sample vertex: 205905765871910912.000 0.000 746565783919788032.000
+Sample vertex: 212859438183219200.000 0.000 745747197512908800.000
+Sample vertex: 220049333695807488.000 0.000 745514032328343552.000
+Sample vertex: 227358680838832128.000 0.000 745822101742551040.000
+Sample vertex: 234671996531638272.000 0.000 746610589018619904.000
+Sample vertex: 241878986014064640.000 0.000 747802116025745408.000
+Sample vertex: 248878958072823808.000 0.000 749304667384578048.000
+Sample vertex: 255580464264249344.000 0.000 751013377173618688.000
+Sample vertex: 261907466487332864.000 0.000 752815820328927232.000
+Sample vertex: 267800470855090176.000 0.000 754590569535111168.000
+Sample vertex: 273217266428936192.000 0.000 756214342050906112.000
+Sample vertex: 278134711925080064.000 0.000 757562343306559488.000
+Sample vertex: 282550556780658688.000 0.000 758513077267202048.000
+Sample vertex: 286480451856498688.000 0.000 758949995700289536.000
+Sample vertex: 289960285899325440.000 0.000 758766033661067264.000
+Sample vertex: 293044003698376704.000 0.000 757862372541988864.000
+Sample vertex: 295799104959676416.000 0.000 756156136654110720.000
+Sample vertex: 298309083847458816.000 0.000 753577300850638848.000
+Sample vertex: 300666230618980352.000 0.000 750072195220242432.000
+Sample vertex: 302969570040217600.000 0.000 745602955331239936.000
+Sample vertex: 305323212118425600.000 0.000 740150752047005696.000
+Sample vertex: 307831198141382656.000 0.000 733712561710563328.000
+Sample vertex: 310594889337274368.000 0.000 726301509741969408.000
+Sample vertex: 313708637547659264.000 0.000 717946183443546112.000
+Sample vertex: 317258788795056128.000 0.000 708689807366160384.000
+Sample vertex: 321318769840357376.000 0.000 698586463738003456.000
+Sample vertex: 325949741017858048.000 0.000 687701573500928000.000
+Sample vertex: 331194617640779776.000 0.000 676107704422367232.000
+Sample vertex: 337083498839932928.000 0.000 663884296217427968.000
+Sample vertex: 343626898695258112.000 0.000 651112025551798272.000
+Sample vertex: 350822034067947520.000 0.000 637875898418200576.000
+Sample vertex: 358648563992887296.000 0.000 624258515627671552.000
+Sample vertex: 367073537480982528.000 0.000 610339660492701696.000
+Sample vertex: 376053489463197696.000 0.000 596194993157177344.000
+Sample vertex: 385534990546370560.000 0.000 581895500840566784.000
+Sample vertex: 395458598383124480.000 0.000 567504577260158976.000
+Sample vertex: 405764114711838720.000 0.000 553078709825830912.000
+Sample vertex: 416390001241096192.000 0.000 538666792445280256.000
+Sample vertex: 427278430531223552.000 0.000 524311190675914752.000
+Sample vertex: 438379512242110464.000 0.000 510044992945782784.000
+Sample vertex: 449651842889023488.000 0.000 495895858844270592.000
+Sample vertex: 461067865961791488.000 0.000 481885812963672064.000
+Sample vertex: 472612360096317440.000 0.000 468031141819973632.000
+Sample vertex: 484285806328938496.000 0.000 454345658027999232.000
+Sample vertex: 496107686631309312.000 0.000 440840528502718464.000
+Sample vertex: 508109680682205184.000 0.000 427523999581339648.000
+Sample vertex: 520343740406038528.000 0.000 414405314033483776.000
+Sample vertex: 532875321104400384.000 0.000 401496497767579648.000
+Sample vertex: 545783003498938368.000 0.000 388807686906445824.000
+Sample vertex: 559158837328740352.000 0.000 376354446411563008.000
+Sample vertex: 573101194524753920.000 0.000 364154059231330304.000
+Sample vertex: 587716521556443136.000 0.000 352227347367198720.000
+Sample vertex: 603111952088039424.000 0.000 340598431355502592.000
+Sample vertex: 619396887526506496.000 0.000 329294867706413056.000
+Sample vertex: 636674063489564672.000 0.000 318347545824722944.000
+Sample vertex: 655040786756272128.000 0.000 307787492554178560.000
+Sample vertex: 674581169966153728.000 0.000 297647590164398080.000
+Sample vertex: 695369017837223936.000 0.000 287963263545638912.000
+Sample vertex: 717460268023545856.000 0.000 278765316203347968.000
+Sample vertex: 740893403432091648.000 0.000 270085651154599936.000
+Sample vertex: 765686497285242880.000 0.000 261951189254406144.000
+Sample vertex: 791837900315557888.000 0.000 254385621542371328.000
+Sample vertex: 819323629425655808.000 0.000 247407227399307264.000
+Sample vertex: 848098673358274560.000 0.000 241028256071942144.000
+Sample vertex: 878096717818363904.000 0.000 235253621002862592.000
+Sample vertex: 909231657301573632.000 0.000 230081449586327552.000
+Sample vertex: 941398969483788288.000 0.000 225501571339780096.000
+Sample vertex: 974475852660080640.000 0.000 221495827141492736.000
+Sample vertex: 1008326792022327296.000 0.000 218039890296700928.000
+Sample vertex: 1042801841672290304.000 0.000 215099435426775040.000
+Sample vertex: 1077740885229174784.000 0.000 212633918040440832.000
+Sample vertex: 1112979751863058432.000 0.000 210598928175857664.000
+Sample vertex: 1148343069469310976.000 0.000 208941757994369024.000
+Sample vertex: 1183659589111906304.000 0.000 207606950878248960.000
+Sample vertex: 1218751877101912064.000 0.000 206537830439059456.000
+Sample vertex: 1253451089684987904.000 0.000 205672961464598528.000
+Sample vertex: 1287586527680921600.000 0.000 204952540830236672.000
+Sample vertex: 1320998212147871744.000 0.000 204319600089759744.000
+Sample vertex: 1353533036091670528.000 0.000 203717789272244224.000
+Sample vertex: 1385045176782684160.000 0.000 203094830035763200.000
+Sample vertex: 1415402830264532992.000 0.000 202406776274944000.000
+Sample vertex: 1444484363063394304.000 0.000 201614148650401792.000
+Sample vertex: 1472180098894397440.000 0.000 200684700547678208.000
+Sample vertex: 1498395067440693248.000 0.000 199597420986761216.000
+Sample vertex: 1523046667891245056.000 0.000 198338789410603008.000
+Sample vertex: 1546067417719898112.000 0.000 196907087832285184.000
+Sample vertex: 1567404815246426112.000 0.000 195310614128623616.000
+Sample vertex: 1587018453418508288.000 0.000 193567046385008640.000
+Sample vertex: 1604885929686728704.000 0.000 191707617603616768.000
+Sample vertex: 1620997211007483904.000 0.000 189772047642001408.000
+Sample vertex: 1635357107744145408.000 0.000 187809917602627584.000
+Sample vertex: 1647984449033338880.000 0.000 185882645517828096.000
+Sample vertex: 1658913319735525376.000 0.000 184057988791664640.000
+Sample vertex: 1668187975193722880.000 0.000 182411315510247424.000
+Sample vertex: 1675869438303272960.000 0.000 181027081910484992.000
+Sample vertex: 1682026840857772032.000 0.000 179990723481829376.000
+Sample vertex: 1686742508790349824.000 0.000 179395578453557248.000
+Sample vertex: 1690106052298670080.000 0.000 179334864795860992.000
+Sample vertex: 1692218626452488192.000 0.000 179903329487290368.000
+Sample vertex: 1693184959734349824.000 0.000 181194688714244096.000
+Sample vertex: 1693115827940753408.000 0.000 183299566286667776.000
+Sample vertex: 1692125442842034176.000 0.000 186305098501062656.000
+Sample vertex: 1690328016208527360.000 0.000 190291395087433728.000
+Sample vertex: 1687835973104173056.000 0.000 195332363843010560.000
+Sample vertex: 1684760089325469696.000 0.000 201493666227814400.000
+Sample vertex: 1681201932259033088.000 0.000 208828319318147072.000
+Sample vertex: 1677259770756595712.000 0.000 217381712328392704.000
+Sample vertex: 1673016755385008128.000 0.000 227184150547791872.000
+Sample vertex: 1668547378057052160.000 0.000 238254875429830656.000
+Sample vertex: 1663911287278534656.000 0.000 250600277885845504.000
+Sample vertex: 1659152463514566656.000 0.000 264212266197450752.000
+Sample vertex: 1654299219189563392.000 0.000 279069588866465792.000
+Sample vertex: 1649364198687244288.000 0.000 295138607709028352.000
+Sample vertex: 1644341629571563520.000 0.000 312371803206975488.000
+Sample vertex: 1639208422098337792.000 0.000 330712241273831424.000
+Sample vertex: 1633928704700710912.000 0.000 350090858835476480.000
+Sample vertex: 1628449563381596160.000 0.000 370430037242937344.000
+Sample vertex: 1622703927931699200.000 0.000 391643361754218496.000
+Sample vertex: 1616616756682424320.000 0.000 413638576471801856.000
+Sample vertex: 1610103662116339712.000 0.000 436320539280146432.000
+Sample vertex: 1603070773428224000.000 0.000 459589606937985024.000
+Sample vertex: 1595425731641344000.000 0.000 483346101844312064.000
+Sample vertex: 1587072879244083200.000 0.000 507491445909749760.000
+Sample vertex: 1577921369088196608.000 0.000 531929947262943232.000
+Sample vertex: 1567885576705671168.000 0.000 556571033633554432.000
+Sample vertex: 1556888948599422976.000 0.000 581329458510692352.000
+Sample vertex: 1544865514071785472.000 0.000 606129011994656768.000
+Sample vertex: 1531763321198346240.000 0.000 630900459212636160.000
+Sample vertex: 1517546910729109504.000 0.000 655586900437893120.000
+Sample vertex: 1502196079137914880.000 0.000 680138170452410368.000
+Sample vertex: 1485710551546855424.000 0.000 704519359762006016.000
+Sample vertex: 1468106820630347776.000 0.000 728703255453892608.000
+Sample vertex: 1449420070760480768.000 0.000 752676525949583360.000
+Sample vertex: 1429704590323875840.000 0.000 776433398813032448.000
+Sample vertex: 1409028549041455104.000 0.000 799980264955576320.000
+Sample vertex: 1387478121137045504.000 0.000 823332792417910784.000
+Sample vertex: 1365151163145519104.000 0.000 846513246310498304.000
+Sample vertex: 1342154602572677120.000 0.000 869552412958916608.000
+Sample vertex: 1318605812284784640.000 0.000 892485957771591680.000
+Sample vertex: 1294625875999850496.000 0.000 915354012922937344.000
+Sample vertex: 1270337389264371712.000 0.000 938198428574285824.000
+Sample vertex: 1245862810185891840.000 0.000 961063185190748160.000
+Sample vertex: 1221320198825443328.000 0.000 983990957567377408.000
+Sample vertex: 1196818956589989888.000 0.000 1007023183548645376.000
+Sample vertex: 1172460925744054272.000 -0.000 1030197933724663808.000
+Sample vertex: 1148334548254195712.000 -0.000 1053547643688452096.000
+Sample vertex: 1124511704693080064.000 -0.000 1077099388913844224.000
+Sample vertex: 1101051218932793344.000 -0.000 1100872479573803008.000
+Sample vertex: 1077993223147749376.000 -0.000 1124879285174140928.000
+Sample vertex: 1055356752633004032.000 -0.000 1149122417054973952.000
+Sample vertex: 1033142838180708352.000 -0.000 1173594797110198272.000
+Sample vertex: 1011335330713829376.000 -0.000 1198279245470629888.000
+Sample vertex: 989893135985278976.000 -0.000 1223149098979295232.000
+Sample vertex: 968764508229074944.000 -0.000 1248165462412361728.000
+Sample vertex: 947871175961214976.000 -0.000 1273280507014021120.000
+Sample vertex: 927125178251476992.000 -0.000 1298433347327885312.000
+Sample vertex: 906422061495222272.000 -0.000 1323556913144659968.000
+Sample vertex: 885644246667755520.000 -0.000 1348569428287029248.000
+Sample vertex: 864665152492929024.000 -0.000 1373383069263724544.000
+Sample vertex: 843348989284712448.000 -0.000 1397900941612548096.000
+Sample vertex: 821557012419575808.000 -0.000 1422017492217233408.000
+Sample vertex: 799144223801606144.000 -0.000 1445621670403375104.000
+Sample vertex: 775970092100878336.000 -0.000 1468595553548894208.000
+Sample vertex: 751892849036886016.000 -0.000 1490817233302061056.000
+Sample vertex: 726778285471563776.000 -0.000 1512163426921611264.000
+Sample vertex: 700499820128763904.000 -0.000 1532507415692443648.000
+Sample vertex: 672940973495418880.000 -0.000 1551724267605852160.000
+Sample vertex: 643997773003227136.000 -0.000 1569688363458363392.000
+Sample vertex: 613581226929815552.000 -0.000 1586280406238363648.000
+Sample vertex: 581619317263564800.000 -0.000 1601385496980750336.000
+Sample vertex: 548057240221777920.000 -0.000 1614893684522745856.000
+Sample vertex: 512861185821900800.000 -0.000 1626707249768431616.000
+Sample vertex: 476016379376435200.000 -0.000 1636736170203283456.000
+Sample vertex: 437529246156455936.000 -0.000 1644902655379636224.000
+Sample vertex: 397428064226639872.000 -0.000 1651143620817846272.000
+Sample vertex: 355762105451806720.000 -0.000 1655408076666175488.000
+Sample vertex: 312598886717849600.000 -0.000 1657660426235674624.000
+Sample vertex: 268027949502955520.000 -0.000 1657882527584485376.000
+Sample vertex: 222153489713725440.000 -0.000 1656070120105050112.000
+Sample vertex: 175096436449345536.000 -0.000 1652237085131669504.000
+Sample vertex: 126993678907473920.000 -0.000 1646409673504456704.000
+Sample vertex: 77987612433842176.000 -0.000 1638632827761197056.000
+Sample vertex: 28232701232283648.000 -0.000 1628960149093744640.000
+Sample vertex: -22114644873183232.000 -0.000 1617462556002091008.000
+Sample vertex: -72894846372675584.000 -0.000 1604217701494947840.000
+Sample vertex: -123954508509216768.000 -0.000 1589311759796142080.000
+Sample vertex: -175140313835241472.000 -0.000 1572838601710895104.000
+Sample vertex: -226314694548258816.000 -0.000 1554894159628730368.000
+Sample vertex: -277349437284548608.000 -0.000 1535575053133938688.000
+Sample vertex: -328130484892598272.000 -0.000 1514976527421276160.000
+Sample vertex: -378563708869148672.000 -0.000 1493190391711662080.000
+Sample vertex: -428574651661156352.000 -0.000 1470301995595202560.000
+Sample vertex: -478110330552057856.000 -0.000 1446385968423632896.000
+Sample vertex: -527139924856537088.000 -0.000 1421508693211480064.000
+Sample vertex: -575656837504827392.000 -0.000 1395722946516877312.000
+Sample vertex: -623673781600124928.000 -0.000 1369070647220633600.000
+Sample vertex: -671230202122076160.000 -0.000 1341575847139606528.000
+Sample vertex: -718380146939133952.000 -0.000 1313252565047050240.000
+Sample vertex: -765197420769312768.000 -0.000 1284100663504011264.000
+Sample vertex: -811771496371322880.000 -0.000 1254103787275026432.000
+Sample vertex: -858199130768408576.000 -0.000 1223240495883354112.000
+Sample vertex: -904589381770149888.000 -0.000 1191473680811556864.000
+Sample vertex: -951051513344557056.000 -0.000 1158761698056732672.000
+Sample vertex: -997695682812837888.000 -0.000 1125056306546212864.000
+Sample vertex: -1044625381706956800.000 -0.000 1090309471365758976.000
+Sample vertex: -1091938741439692800.000 -0.000 1054470133944156160.000
+Sample vertex: -1139717400749408256.000 -0.000 1017493420463095808.000
+Sample vertex: -1188030835027083264.000 -0.000 979336724847001600.000
+Sample vertex: -1236927079186956288.000 -0.000 939970085404016640.000
+Sample vertex: -1286433689739198464.000 -0.000 899371855498969088.000
+Sample vertex: -1336557263753576448.000 -0.000 857534819586801664.000
+Sample vertex: -1387281308555673600.000 -0.000 814464062908792832.000
+Sample vertex: -1438562118558285824.000 -0.000 770184461915521024.000
+Sample vertex: -1490338121110257664.000 -0.000 724735186708725760.000
+Sample vertex: -1542524104060436480.000 -0.000 678171006711365632.000
+Sample vertex: -1595017675388485632.000 -0.000 630566070238838784.000
+Sample vertex: -1647698850888024064.000 -0.000 582006895112355840.000
+Sample vertex: -1700435826602672128.000 -0.000 532596972863881216.000
+Sample vertex: -1753086078337679360.000 -0.000 482451958372761600.000
+Sample vertex: -1805503920802365440.000 -0.000 431695821575028736.000
+Sample vertex: -1857540232732213248.000 -0.000 380462634169794560.000
+Sample vertex: -1909050840665030656.000 -0.000 328891484377972736.000
+Sample vertex: -1959894732234555392.000 -0.000 277122714550927360.000
+Sample vertex: -2009945188725686272.000 -0.000 225296615500414976.000
+Sample vertex: -2059083325443670016.000 -0.000 173552790843424768.000
+Sample vertex: -2107209224269332480.000 -0.000 122021558477651968.000
+Sample vertex: -2154237947929427968.000 -0.000 70829357945323520.000
+Sample vertex: -2200104625237917696.000 -0.000 20088440364204032.000
+Sample vertex: -2244760053049458688.000 -0.000 -30095954682052608.000
+Sample vertex: -2288175094305914880.000 -0.000 -79636493328449536.000
+Sample vertex: -2330337929257287680.000 -0.000 -128454689342619648.000
+Sample vertex: -2371250756926832640.000 -0.000 -176490307955720192.000
+Sample vertex: -2410929932550012928.000 -0.000 -223697118139777024.000
+Sample vertex: -2449401844405895168.000 -0.000 -270038973450027008.000
+Sample vertex: -2486701127110754304.000 -0.000 -315497542966050816.000
+Sample vertex: -2522866263571562496.000 -0.000 -360065662682398720.000
+Sample vertex: -2557936286451105792.000 -0.000 -403746888831991808.000
+Sample vertex: -2591949128900542464.000 -0.000 -446553934518026240.000
+Sample vertex: -2624937226512891904.000 -0.000 -488508549454888960.000
+Sample vertex: -2656925318299779072.000 -0.000 -529639801981239296.000
+Sample vertex: -2687927697912365056.000 -0.000 -569977859947364352.000
+Sample vertex: -2717948763397160960.000 -0.000 -609562580649771008.000
+Sample vertex: -2746976969882075136.000 -0.000 -648430729008513024.000
+Sample vertex: -2774990876890365952.000 -0.000 -686622677716172800.000
+Sample vertex: -2801952001515061248.000 -0.000 -724176978399199232.000
+Sample vertex: -2827813339634073600.000 -0.000 -761131770367180800.000
+Sample vertex: -2852512219084619776.000 -0.000 -797523200064880640.000
+Sample vertex: -2875979645512056832.000 -0.000 -833386864181248000.000
+Sample vertex: -2898136179201277952.000 -0.000 -868753411602907136.000
+Sample vertex: -2918898807024386048.000 -0.000 -903651704510087168.000
+Sample vertex: -2938181492196507648.000 -0.000 -938109780449296384.000
+Sample vertex: -2955896823543234560.000 -0.000 -972150866603671552.000
+Sample vertex: -2971962337692483584.000 -0.000 -1005796884486291456.000
+Sample vertex: -2986297770295427072.000 -0.000 -1039069549451804672.000
+Sample vertex: -2998831927974166528.000 -0.000 -1071987209600499712.000
+Sample vertex: -3009501863688011776.000 -0.000 -1104567250959990784.000
+Sample vertex: -3018254800878829568.000 -0.000 -1136826647241031680.000
+Sample vertex: -3025051981761740800.000 -0.000 -1168779898253213696.000
+Sample vertex: -3029862345133260800.000 -0.000 -1200442946915139584.000
+Sample vertex: -3032670772708507648.000 -0.000 -1231829468402679808.000
+Sample vertex: -3033473965952598016.000 -0.000 -1262951007587926016.000
+Sample vertex: -3032277422423670784.000 -0.000 -1293821308366225408.000
+Sample vertex: -3029098734307770368.000 -0.000 -1324447792441065472.000
+Sample vertex: -3023965389395591168.000 -0.000 -1354842691879305216.000
+Sample vertex: -3016908723768524800.000 -0.000 -1385012741189664768.000
+Sample vertex: -3007968319845171200.000 -0.000 -1414963575369236480.000
+Sample vertex: -2997186233945292800.000 -0.000 -1444699455025577984.000
+Sample vertex: -2984609745068883968.000 -0.000 -1474224503327293440.000
+Sample vertex: -2970282833681055744.000 -0.000 -1503537895640662016.000
+Sample vertex: -2954254153171337216.000 -0.000 -1532641281233125376.000
+Sample vertex: -2936567409126932480.000 -0.000 -1561533560593055744.000
+Sample vertex: -2917266582012952576.000 -0.000 -1590212534697197568.000
+Sample vertex: -2896393178393346048.000 -0.000 -1618677104033923072.000
+Sample vertex: -2873987330442526720.000 -0.000 -1646925894213697536.000
+Sample vertex: -2850088070823280640.000 -0.000 -1674960004748148736.000
+Sample vertex: -2824730583907696640.000 -0.000 -1702778748442509312.000
+Sample vertex: -2797953352602746880.000 -0.000 -1730388584927592448.000
+Sample vertex: -2769793210547961856.000 -0.000 -1757791850665607168.000
+Sample vertex: -2740289740161941504.000 -0.000 -1784999403333877760.000
+Sample vertex: -2709484173130727424.000 -0.000 -1812020726220193792.000
+Sample vertex: -2677422139186872320.000 -0.000 -1838869013464088576.000
+Sample vertex: -2644152566597812224.000 -0.000 -1865560757739978752.000
+Sample vertex: -2609727132410052608.000 -0.000 -1892111077332746240.000
+Sample vertex: -2574204935373586432.000 -0.000 -1918537839306342400.000
+Sample vertex: -2537646723505848320.000 -0.000 -1944858086090997760.000
+Sample vertex: -2500118192626597888.000 -0.000 -1971085973898919936.000
+Sample vertex: -2461686687823036416.000 -0.000 -1997232910163247104.000
+Sample vertex: -2422421203449806848.000 -0.000 -2023306591465373696.000
+Sample vertex: -2382391283617366016.000 -0.000 -2049307567561113600.000
+Sample vertex: -2341662899023380480.000 -0.000 -2075227454674305024.000
+Sample vertex: -2300301333170749440.000 -0.000 -2101051409397972992.000
+Sample vertex: -2258362661152489472.000 -0.000 -2126752768575143936.000
+Sample vertex: -2215899522087780352.000 -0.000 -2152291125153497088.000
+Sample vertex: -2172951773273128960.000 -0.000 -2177617825743503360.000
+Sample vertex: -2129550338473066496.000 -0.000 -2202669098670751744.000
+Sample vertex: -2085715421213753344.000 -0.000 -2227367840682344448.000
+Sample vertex: -2041454580637630464.000 -0.000 -2251628014993408000.000
+Sample vertex: -1996762044308652032.000 -0.000 -2275348466534187008.000
+Sample vertex: -1951620632357634048.000 -0.000 -2298419381580857344.000
+Sample vertex: -1905998184069464064.000 -0.000 -2320722974950293504.000
+Sample vertex: -1859858690438332416.000 -0.000 -2342136513657044992.000
+Sample vertex: -1813152948318896128.000 -0.000 -2362531354840662016.000
+Sample vertex: -1765826806763487232.000 -0.000 -2381776656617439232.000
+Sample vertex: -1717821854216880128.000 -0.000 -2399747624417624064.000
+Sample vertex: -1669079679123849216.000 -0.000 -2416319463671463936.000
+Sample vertex: -1619543381757657088.000 -0.000 -2431376725658042368.000
+Sample vertex: -1569162796900286464.000 -0.000 -2444816606040162304.000
+Sample vertex: -1517895181037207552.000 -0.000 -2456545371451555840.000
+Sample vertex: -1465709198087028736.000 -0.000 -2466486330956185600.000
+Sample vertex: -1412587530741612544.000 -0.000 -2474581760193593344.000
+Sample vertex: -1358529766684098560.000 -0.000 -2480787953576574976.000
+Sample vertex: -1303552398588903424.000 -0.000 -2485084295262109696.000
+Sample vertex: -1247695146313580544.000 -0.000 -2487471609883918336.000
+Sample vertex: -1191010648977309696.000 -0.000 -2487963916215255040.000
+Sample vertex: -1133578964770488320.000 -0.000 -2486601346430533632.000
+Sample vertex: -1075491696755605504.000 -0.000 -2483436677087887360.000
+Sample vertex: -1016866011640496128.000 -0.000 -2478542475954749440.000
+Sample vertex: -957832201553051648.000 -0.000 -2472000656647389184.000
+Sample vertex: -898531072701104128.000 -0.000 -2463909900334399488.000
+Sample vertex: -839120130125332480.000 -0.000 -2454370262573907968.000
+Sample vertex: -779761964107694080.000 -0.000 -2443491694528692224.000
+Sample vertex: -720623288098750464.000 -0.000 -2431387720774320128.000
+Sample vertex: -661873152011272192.000 -0.000 -2418164993938685952.000
+Sample vertex: -603678269295820800.000 -0.000 -2403930166649683968.000
+Sample vertex: -546200165082464256.000 -0.000 -2388783294465441792.000
+Sample vertex: -489588750909702144.000 -0.000 -2372810414170832896.000
+Sample vertex: -433987994081296384.000 -0.000 -2356092614748405760.000
+Sample vertex: -379520627582697472.000 -0.000 -2338691468849315840.000
+Sample vertex: -326300038550519808.000 -0.000 -2320658378642161664.000
+Sample vertex: -274419582393909248.000 -0.000 -2302026466914729984.000
+Sample vertex: -223952617154281472.000 -0.000 -2282814837681553408.000
+Sample vertex: -174952348886499328.000 -0.000 -2263023903259492352.000
+Sample vertex: -127460344284053504.000 -0.000 -2242643630604943360.000
+Sample vertex: -81491790351302656.000 -0.000 -2221645707293491200.000
+Sample vertex: -37044049978327040.000 -0.000 -2199989588833861632.000
+Sample vertex: 5894381441646592.000 -0.000 -2177626484397572096.000
+Sample vertex: 47362451208929280.000 -0.000 -2154494546455560192.000
+Sample vertex: 87401021105504256.000 -0.000 -2130528079188066304.000
+Sample vertex: 126070802104713216.000 -0.000 -2105654789705564160.000
+Sample vertex: 163440805741068288.000 -0.000 -2079798949144690688.000
+Sample vertex: 199587130245120000.000 -0.000 -2052886340470571008.000
+Sample vertex: 234595786631938048.000 -0.000 -2024842884087283712.000
+Sample vertex: 268554615572660224.000 -0.000 -1995599310762278912.000
+Sample vertex: 301557212994600960.000 -0.000 -1965091711382192128.000
+Sample vertex: 333699030250946560.000 -0.000 -1933265522682494976.000
+Sample vertex: 365077167962324992.000 -0.000 -1900071541517844480.000
+Sample vertex: 395788726749364224.000 -0.000 -1865472934248710144.000
+Sample vertex: 425926443545919488.000 -0.000 -1829447848081489920.000
+Sample vertex: 455587006655758336.000 -0.000 -1791982126803976192.000
+Sample vertex: 484859613959684096.000 -0.000 -1753078519195238400.000
+Sample vertex: 513831126876291072.000 -0.000 -1712751181467484160.000
+Sample vertex: 542585829843795968.000 -0.000 -1671029113239896064.000
+Sample vertex: 571199589164515328.000 -0.000 -1627958906317701120.000
+Sample vertex: 599743117180010496.000 -0.000 -1583597322988683264.000
+Sample vertex: 628281903551610880.000 -0.000 -1538016243825508352.000
+uninitialize() => vkDeviceWaitIdle() Succeeded
+~Ocean() => vkFreeMemory() Succeeded For uniformData_water.vkDeviceMemory
+~Ocean() => vkDestroyBuffer() Succedded For uniformData_water.vkBuffer
+~Ocean() => vkFreeMemory() Succeeded For uniformData_mvp.vkDeviceMemory
+~Ocean() => vkDestroyBuffer() Succedded For uniformData_mvp.vkBuffer
+~Ocean() => cudaDestroyExternalMemory() Succedded For cudaExternalMemory_normals
+~Ocean() => cudaDestroyExternalMemory() Succedded For cudaExternalMemory_displacement
+~Ocean() => vkFreeMemory() Succeeded For indexData.vkDeviceMemory
+~Ocean() => vkDestroyBuffer() Succeeded For indexData.vkBuffer
+~Ocean() => vkFreeMemory() Succeeded For vertexData_normals.vkDeviceMemory
+~Ocean() => vkDestroyBuffer() Succeeded For vertexData_normals.vkBuffer
+~Ocean() => vkFreeMemory() Succeeded For vertexData_displacement.vkDeviceMemory
+~Ocean() => vkDestroyBuffer() Succeeded For vertexData_displacement.vkBuffer
+uninitialize() => vkDestroyFence() Succeeded For Index : 0
+uninitialize() => vkDestroyFence() Succeeded For Index : 1
+uninitialize() => free() Succeeded For vkFence_array
+uninitialize() => vkDestroySemaphore() Succeeded For vkSemaphore_renderComplete
+uninitialize() => vkDestroySemaphore() Succeeded For vkSemaphore_backBuffer
+uninitialize() => vkDestroyFramebuffer() Succeeded For Index : 0
+uninitialize() => vkDestroyFramebuffer() Succeeded For Index : 1
+uninitialize() => free() Succeeded For vkFramebuffer_array
+uninitialize() => vkDestroyRenderPass() Succeeded
+uninitialize() => vkDestroyShaderModule() Succeeded For Fragment Shader
+uninitialize() => vkDestroyShaderModule() Succeeded For Vertex Shader
+uninitialize() => vkFreeCommandBuffers() Succeeded For Index : 0
+uninitialize() => vkFreeCommandBuffers() Succeeded For Index : 1
+uninitialize() => free() Succeeded For vkCommandBuffer_array
+uninitialize() => vkDestroyCommandPool() Succeeded
+uninitialize() => vkDestroyImageView() Succeeded For vkImageView_depth
+uninitialize() => vkDestroyImage() Succeeded For vkImage_depth
+uninitialize() => vkFreeMemory() Succeeded For vkDeviceMemory_depth
+uninitialize() => vkDestroyImageView() Succeeded
+uninitialize() => free() Succeeded For swapchainImageView_array
+uninitialize() => free() Succeeded For swapchainImage_array
+uninitialize() => vkDestroySwapchainKHR() Succeeded
+uninitialize() => vkDestroyDevice() Succeeded
+uninitialize() => vkDestroySurfaceKHR() Succeeded
+uninitialize() => vkDestroyInstance() Succeeded
+uninitialize() => Program Terminated Successfully
