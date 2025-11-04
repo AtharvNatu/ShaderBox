@@ -945,8 +945,6 @@ VkResult display(void)
         }
     }
 
-    ocean->update(camera.getViewMatrix());
-
     vkDeviceWaitIdle(vkDevice);
 
     return vkResult;
@@ -957,7 +955,7 @@ void update(void)
     // Code
     deltaTime = sdkGetTimerValue(&timer) / 1000.0f;
 
-    
+    ocean->update(camera.getViewMatrix());
 }
 
 void uninitialize(void)

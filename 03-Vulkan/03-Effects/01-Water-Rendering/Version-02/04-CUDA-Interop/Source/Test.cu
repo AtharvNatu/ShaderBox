@@ -1,121 +1,125 @@
 #include "Ocean.hpp"
 
+
+#define K_VEC(n, m) glm::vec2(2 * M_PI * (n - N / 2) / x_length, 2 * M_PI * (m - M / 2) / z_length)
+
+#define CUDA_CHECK(call) \
+    do { cudaError_t err = (call); if (err != cudaSuccess) { fprintf(gpFile, "CUDA error %s:%d: %s\n", __FILE__, __LINE__, cudaGetErrorString(err)); return (VkResult)VK_ERROR_DEVICE_LOST; } } while(0)
+
+#define CUFFT_CHECK(call) \
+    do { cufftResult r = (call); if (r != CUFFT_SUCCESS) { fprintf(gpFile, "cuFFT error %s:%d code=%d\n", __FILE__, __LINE__, (int)r); return (VkResult)VK_ERROR_DEVICE_LOST; } } while(0)
+
+
 //! CUDA Kernels
-
-__global__ void build_fft(
-    const cufftComplex* __restrict__ h_twiddle_0,
-    const cufftComplex* __restrict__ h_twiddle_0_conjugate,
-    cufftComplex* __restrict__ out_h_twiddle,
-    cufftComplex* __restrict__ slope_x,
-    cufftComplex* __restrict__ slope_z,
-    cufftComplex* __restrict__ displacement_x,
-    cufftComplex* __restrict__ displacement_z,
-    int N,
-    int M,
-    float time,
-    float lambda,
-    float x_length,
-    float z_length
-)
+__global__ void buildSpectrumKernel(
+    cuComplex* h_twiddle,
+    const cuComplex* h0,
+    const cuComplex* h0_conj,
+    int N, int M, float t, float G)
 {
-    int ix = blockIdx.x * blockDim.x + threadIdx.x;
-    int iy = blockIdx.y * blockDim.y + threadIdx.y;
-    if (ix >= N || iy >= M) return;
+    int n = blockIdx.x * blockDim.x + threadIdx.x;
+    int m = blockIdx.y * blockDim.y + threadIdx.y;
+    if (n >= N || m >= M) return;
 
-    int idx = iy * N + ix;
+    int idx = m * N + n;
 
-    // Compute wave vector
-    float kx = 2.0f * M_PI * (float(ix) - float(N) * 0.5f) / x_length;
-    float kz = 2.0f * M_PI * (float(iy) - float(M) * 0.5f) / z_length;
-    float k_len = sqrtf(kx*kx + kz*kz);
-    if (k_len < 1e-6f) k_len = 1e-6f;
+    float kx = 2.0f * M_PI * (n - N / 2.0f);
+    float kz = 2.0f * M_PI * (m - M / 2.0f);
+    float k_len = sqrtf(kx * kx + kz * kz);
+    if (k_len < 1e-6f) { h_twiddle[idx] = make_cuComplex(0,0); return; }
 
-    cufftComplex h0 = h_twiddle_0[idx];
-    cufftComplex h0_conj = h_twiddle_0_conjugate[idx];
+    float omega = sqrtf(G * k_len);
+    cuComplex e_pos = make_cuComplex(cosf(omega * t), sinf(omega * t));
+    cuComplex e_neg = make_cuComplex(cosf(-omega * t), sinf(-omega * t));
 
-    // Angular frequency
-    float omega = sqrtf(9.8f * k_len);
+    cuComplex term1 = cuCmulf(h0[idx], e_pos);
+    cuComplex term2 = cuCmulf(h0_conj[idx], e_neg);
+    h_twiddle[idx] = cuCaddf(term1, term2);
+}
 
-    float cosw = cosf(omega * time);
-    float sinw = sinf(omega * time);
+// Custom float3 normalize for CUDA
+__device__ inline float3 normalize3(const float3& v)
+{
+    float len = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+    if (len > 1e-6f)
+        return make_float3(v.x / len, v.y / len, v.z / len);
+    else
+        return make_float3(0.0f, 1.0f, 0.0f);
+}
 
-    // h_t(k, t) = h0 * e^{iwt} + h0* * e^{-iwt}
-    cufftComplex term1 = { h0.x * cosw - h0.y * sinw, h0.x * sinw + h0.y * cosw };
-    cufftComplex term2 = { h0_conj.x * cosw + h0_conj.y * sinw, -h0_conj.x * sinw + h0_conj.y * cosw };
-    cufftComplex h_t = { term1.x + term2.x, term1.y + term2.y };
+// ------------------------------
+// buildSpatialSpectraKernel
+// ------------------------------
+__global__ void buildSpatialSpectraKernel(
+    const cuComplex* h_twiddle,
+    cuComplex* dispX, cuComplex* dispZ,
+    cuComplex* slopeX, cuComplex* slopeZ,
+    int N, int M, float lambda)
+{
+    int n = blockIdx.x * blockDim.x + threadIdx.x;
+    int m = blockIdx.y * blockDim.y + threadIdx.y;
+    if (n >= N || m >= M) return;
 
-    // Checkerboard sign correction
-    int sign = ((ix + iy) & 1) ? -1 : 1;
-    h_t.x *= sign;
-    h_t.y *= sign;
+    int idx = m * N + n;
+    float kx = 2.0f * CUDART_PI_F * (n - N / 2.0f);
+    float kz = 2.0f * CUDART_PI_F * (m - M / 2.0f);
+    float k_len = sqrtf(kx * kx + kz * kz);
 
-    // Write height spectrum
-    out_h_twiddle[idx] = h_t;
+    if (k_len < 1e-6f)
+    {
+        dispX[idx] = make_cuComplex(0, 0);
+        dispZ[idx] = make_cuComplex(0, 0);
+        slopeX[idx] = make_cuComplex(0, 0);
+        slopeZ[idx] = make_cuComplex(0, 0);
+        return;
+    }
 
-    // Slopes
-    slope_x[idx].x = -kx * h_t.y;
-    slope_x[idx].y =  kx * h_t.x;
-
-    slope_z[idx].x = -kz * h_t.y;
-    slope_z[idx].y =  kz * h_t.x;
-
-    // Displacement
     float nx = kx / k_len;
     float nz = kz / k_len;
 
-    displacement_x[idx].x = -nx * h_t.y;
-    displacement_x[idx].y =  nx * h_t.x;
+    // Use cuCmulf for complex multiplication
+    slopeX[idx] = cuCmulf(make_cuComplex(0.0f, kx), h_twiddle[idx]);
+    slopeZ[idx] = cuCmulf(make_cuComplex(0.0f, kz), h_twiddle[idx]);
 
-    displacement_z[idx].x = -nz * h_t.y;
-    displacement_z[idx].y =  nz * h_t.x;
+    dispX[idx] = cuCmulf(make_cuComplex(0.0f, -nx * lambda), h_twiddle[idx]);
+    dispZ[idx] = cuCmulf(make_cuComplex(0.0f, -nz * lambda), h_twiddle[idx]);
 }
 
-__global__ void copy_to_maps(
-    const cufftComplex* __restrict__ out_height,
-    const cufftComplex* __restrict__ out_slope_x,
-    const cufftComplex* __restrict__ out_slope_z,
-    const cufftComplex* __restrict__ out_displacement_x,
-    const cufftComplex* __restrict__ out_displacement_z,
-    float3* __restrict__ displacement_map,
-    float3* __restrict__ normal_map,
-    int N,
-    int M,
-    float lambda,
-    float x_length,
-    float z_length
-)
+// ------------------------------
+// finalizeOceanKernel
+// ------------------------------
+__global__ void finalizeOceanKernel(
+    const cuComplex* outH,
+    const cuComplex* outDispX,
+    const cuComplex* outDispZ,
+    const cuComplex* outSlopeX,
+    const cuComplex* outSlopeZ,
+    float3* outDisplacement,
+    float3* outNormal,
+    int N, int M, float x_len, float z_len)
 {
-    int ix = blockIdx.x * blockDim.x + threadIdx.x;
-    int iy = blockIdx.y * blockDim.y + threadIdx.y;
-    if (ix >= N || iy >= M) return;
+    int n = blockIdx.x * blockDim.x + threadIdx.x;
+    int m = blockIdx.y * blockDim.y + threadIdx.y;
+    if (n >= N || m >= M) return;
 
-    int idx = iy * N + ix;
+    int idx = m * N + n;
+    float sign = ((n + m) & 1) ? -1.0f : 1.0f;
 
-    float scale = 1.0f / (float)(N * M);
+    float y = sign * outH[idx].x;
 
-    // Real part only (height field)
-    float h = out_height[idx].x * scale;
-    float sx = out_slope_x[idx].x * scale;
-    float sz = out_slope_z[idx].x * scale;
-    float dx = out_displacement_x[idx].x * scale;
-    float dz = out_displacement_z[idx].x * scale;
+    float x = (n - N / 2.0f) * x_len / N - sign * outDispX[idx].x;
+    float z = (m - M / 2.0f) * z_len / M - sign * outDispZ[idx].x;
 
-    int sign = ((ix + iy) & 1) ? -1 : 1;
+    float sx = sign * outSlopeX[idx].x;
+    float sz = sign * outSlopeZ[idx].x;
 
-    // Normals
-    float nx = -sx;
-    float ny = 1.0f;
-    float nz = -sz;
-    float invlen = rsqrtf(nx*nx + ny*ny + nz*nz + 1e-12f);
-    normal_map[idx] = make_float3(nx * invlen, ny * invlen, nz * invlen);
+    float3 normal = normalize3(make_float3(-sx, 1.0f, -sz));
 
-    // Displacement (world-space)
-    float wx = (float(ix) - N * 0.5f) * x_length / float(N) - sign * lambda * dx;
-    float wy = sign * h;
-    float wz = (float(iy) - M * 0.5f) * z_length / float(M) - sign * lambda * dz;
-
-    displacement_map[idx] = make_float3(wx, wy, wz);
+    outDisplacement[idx] = make_float3(x, y, z);
+    outNormal[idx] = normal;
 }
+
+
 
 
 Ocean::Ocean()
@@ -124,17 +128,66 @@ Ocean::Ocean()
     omega_hat = glm::normalize(omega_vec);
     meshSize = sizeof(glm::vec3) * N * M;
     kNum = N * M;
+
+    std::mt19937 rng(1337);
+    std::normal_distribution<float> normalDist(0.0f, 1.0f);
+
+    const float A = 0.00002f;   // amplitude constant (tune for wave size)
+    const float g = 9.81f;      // gravity
+    const float windSpeed = 30.0f;  // m/s
+    const glm::vec2 windDir = glm::normalize(glm::vec2(1.0f, 1.0f));
+    const float L = (windSpeed * windSpeed) / g;
+
+    const float damp = 0.001f;
+    const float l = L * damp;
+
+    h_twiddle_0 = new std::complex<float>[N * M];
+    h_twiddle_0_conjunction = new std::complex<float>[N * M];
+
+    for (int m = 0; m < M; ++m)
+    {
+        float kz = 2.0f * M_PI * (m - M / 2.0f) / z_length;
+        for (int n = 0; n < N; ++n)
+        {
+            float kx = 2.0f * M_PI * (n - N / 2.0f) / x_length;
+
+            glm::vec2 k(kx, kz);
+            float k_len = glm::length(k);
+
+            if (k_len < 1e-6f)
+            {
+                h_twiddle_0[m * N + n] = {0.0f, 0.0f};
+                h_twiddle_0_conjunction[m * N + n] = {0.0f, 0.0f};
+                continue;
+            }
+
+            // Phillips spectrum
+            float k_dot_w = glm::dot(glm::normalize(k), glm::normalize(windDir));
+            float phillips = A * expf(-1.0f / (k_len * L * k_len * L)) /
+                             (k_len * k_len * k_len * k_len) *
+                             (k_dot_w * k_dot_w);
+
+            // suppress waves against wind direction
+            if (k_dot_w < 0.0f)
+                phillips *= 0.07f;
+
+            // dampen small waves
+            phillips *= expf(-k_len * k_len * l * l);
+
+            float Er = normalDist(rng);
+            float Ei = normalDist(rng);
+
+            std::complex<float> h0 = std::complex<float>(Er, Ei) * sqrtf(phillips * 0.5f);
+            h_twiddle_0[m * N + n] = h0;
+            h_twiddle_0_conjunction[m * N + n] = std::conj(h0);
+        }
+    }
 }
 
 VkResult Ocean::initialize()
 {
-    bool status = initializeHostData();
-    if (!status)
-        fprintf(gpFile, "%s() => initializeHostData() Failed For Ocean : %d !!!\n", __func__);
-    else
-        fprintf(gpFile, "%s() => initializeHostData() Succeeded For Ocean\n", __func__);
 
-    status = initializeDeviceData();
+    bool status = initializeDeviceData();
     if (!status)
         fprintf(gpFile, "%s() => initializeDeviceData() Failed For Ocean : %d !!!\n", __func__);
     else
@@ -185,149 +238,26 @@ VkResult Ocean::initialize()
     return vkResult;
 }
 
-bool Ocean::initializeHostData()
-{
-    // Code
-
-    //* Allocate Host Arrays
-    host_h_twiddle_0 = (cufftComplex*)malloc(sizeof(cufftComplex) * kNum);
-    if (host_h_twiddle_0 == NULL)
-    {
-        fprintf(gpFile, "%s() => malloc() Failed For host_h_twiddle_0 !!!\n", __func__);
-        return false;
-    }
-
-    host_h_twiddle_0_conjugate = (cufftComplex*)malloc(sizeof(cufftComplex) * kNum);
-    if (host_h_twiddle_0_conjugate == NULL)
-    {
-        fprintf(gpFile, "%s() => malloc() Failed For host_h_twiddle_0_conjunction !!!\n", __func__);
-        return false;
-    }
-
-    //! Compute host_h_twiddle_0 and host_h_twiddle_0_conjugate
-    compute_h_twiddle_0();
-    compute_h_twiddle_0_conjugate();
-
-    return true;
-}
-
 bool Ocean::initializeDeviceData()
 {
     // Code
+    size_t kNumBytes = sizeof(cufftComplex) * kNum;
+    size_t float3Bytes = sizeof(float3) * kNum;
 
-    //* Allocate Device Arrays
-    cudaResult = cudaMalloc(&device_h_twiddle_0, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_h_twiddle_0 !!!\n", __func__);
-        return false;
-    }
+    // allocate device arrays
+    CUDA_CHECK(cudaMalloc((void**)&d_h0, kNumBytes));
+    CUDA_CHECK(cudaMalloc((void**)&d_h0_conj, kNumBytes));
+    CUDA_CHECK(cudaMalloc((void**)&d_h, kNumBytes));
+    CUDA_CHECK(cudaMalloc((void**)&d_slope_x, kNumBytes));
+    CUDA_CHECK(cudaMalloc((void**)&d_slope_z, kNumBytes));
+    CUDA_CHECK(cudaMalloc((void**)&d_disp_x, kNumBytes));
+    CUDA_CHECK(cudaMalloc((void**)&d_disp_z, kNumBytes));
 
-    cudaResult = cudaMalloc(&device_h_twiddle_0_conjugate, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_h_twiddle_0_conjugate !!!\n", __func__);
-        return false;
-    }
+    cudaMemcpy(d_h0, h_twiddle_0, sizeof(cuComplex) * kNum, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_h0_conj, h_twiddle_0_conjunction, sizeof(cuComplex) * kNum, cudaMemcpyHostToDevice);
 
-    cudaResult = cudaMemcpy(device_h_twiddle_0, host_h_twiddle_0, sizeof(cufftComplex) * kNum, cudaMemcpyHostToDevice);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMemcpy() Failed For device_h_twiddle_0 !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMemcpy(device_h_twiddle_0_conjugate, host_h_twiddle_0_conjugate, sizeof(cufftComplex) * kNum, cudaMemcpyHostToDevice);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMemcpy() Failed For device_h_twiddle_0_conjugate !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_h_twiddle, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_h_twiddle !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_in_height, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_in_height !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_in_slope_x, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_in_slope_x !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_in_slope_z, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_in_slope_z !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_in_displacement_x, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_in_displacement_x !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_in_displacement_z, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_in_displacement_z !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_out_height, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_out_height !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_out_slope_x, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_out_slope_x !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_out_slope_z, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_out_slope_z !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_out_displacement_x, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_out_displacement_x !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_out_displacement_z, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_out_displacement_z !!!\n", __func__);
-        return false;
-    }
-
-    //* Create Plan 2D Complex-To-Complex
-    fftResult = cufftPlan2d(&plan2d, M, N, CUFFT_C2C);
-    if (fftResult != CUFFT_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => cufftPlan2d() Failed For Ocean !!!\n", __func__);
-        return false;
-    }
+    // create a 2D plan (in-place)
+    CUFFT_CHECK(cufftPlan2d(&plan2d, N, M, CUFFT_C2C));
 
     return true;
 
@@ -695,7 +625,7 @@ VkResult Ocean::createBuffers()
 VkResult Ocean::getMemoryWin32HandleFunction(void)
 {
     VkResult vkResult = VK_SUCCESS;
-    
+
     //* Get the required function pointer
     vkGetMemoryWin32HandleKHR_fnptr = (PFN_vkGetMemoryWin32HandleKHR)vkGetDeviceProcAddr(vkDevice, "vkGetMemoryWin32HandleKHR");
     if (vkGetMemoryWin32HandleKHR_fnptr == NULL)
@@ -1410,153 +1340,43 @@ void Ocean::update(glm::mat4 cameraViewMatrix)
     //* Build Tessendorf Mesh
     generate_fft_data(fTime);
 
+    
     updateUniformBuffer();
 }
 
-//* Tessendorf Related
-inline float Ocean::phillips_spectrum(float kx, float kz) const
-{
-    // Code
-    float k_length = sqrtf((kx * kx) + (kz * kz));
-    if (k_length < 1e-6f)
-        return 0.0f;
-
-    // Largest possible waves from continuous wind of speed V
-    float wave_length = (V * V) / G;
-
-    float kx_normalized = kx / k_length;
-    float kz_normalized = kz / k_length;
-
-    float dot = kx_normalized * omega_hat.x + kz_normalized * omega_hat.y;
-    float dot_term = dot * dot;
-
-    float exp_term = expf(-1.0f / (k_length * k_length * wave_length * wave_length));
-    float result = A * exp_term * dot_term / powf(k_length, 4.0f);
-
-    // Small-wave damping (Eq. 24) — uses constant L
-    result *= expf(-k_length * k_length * L * L);
-
-    return result;
-}
-
-void Ocean::compute_h_twiddle_0()
-{
-    // Code
-    std::default_random_engine generator((unsigned)time(nullptr));
-    std::normal_distribution<float> normal_distribution{0.0f, 1.0f}; 
-
-    for (int n = 0; n < N; n++)
-    {
-        for (int m = 0; m < M; m++)
-        {
-            int index = m * N + n;
-            
-            // K Vector (kx, kz)
-            float kx = 2.0f * M_PI * (float(n) - float(N) / 2.0f) / x_length;
-            float kz = 2.0f * M_PI * (float(m) - float(M) / 2.0f) / z_length;
-
-            float xi_real = normal_distribution(generator);
-            float xi_imag = normal_distribution(generator);
-            float spectrum = phillips_spectrum(kx, kz);
-            float mag_sqrt = sqrtf(0.5f * spectrum);
-
-            host_h_twiddle_0[index].x = mag_sqrt * xi_real;
-            host_h_twiddle_0[index].y = mag_sqrt * xi_imag;
-        }
-    }
-}
-
-void Ocean::compute_h_twiddle_0_conjugate()
-{
-    // Code
-    for (int n = 0; n < N; n++)
-    {
-        for (int m = 0; m < M; m++)
-        {
-            int index = m * N + n;
-            
-            int kn_neg = (N - n) % N;
-            int km_neg = (M - m) % M;
-
-            int index_neg = km_neg * N + kn_neg;
-
-            host_h_twiddle_0_conjugate[index].x = host_h_twiddle_0_conjugate[index_neg].x;
-            host_h_twiddle_0_conjugate[index].y = -host_h_twiddle_0_conjugate[index_neg].y;
-        }
-    }
-}
-
-//! Eqn. 19
 void Ocean::generate_fft_data(float time)
 {
-    // Variable Declarations
     dim3 block(16, 16);
-    dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
+    dim3 grid((N + 15) / 16, (M + 15) / 16);
 
-    float3* pDisplacement = (float3*)displacementPtr;
-    float3* pNormals = (float3*)normalsPtr;
-
-    build_fft<<<grid, block>>>(
-        device_h_twiddle_0,
-        device_h_twiddle_0_conjugate,
-        device_h_twiddle,
-        device_in_slope_x,
-        device_in_slope_z,
-        device_in_displacement_x,
-        device_in_displacement_z,
-        N,
-        M,
-        time,
-        lambda,
-        x_length,
-        z_length
-    );
-
-    //* Inverse FFTs
-    fftResult = cufftExecC2C(plan2d, device_h_twiddle, device_out_height, CUFFT_INVERSE);
-    if (fftResult != CUFFT_SUCCESS)
-        fprintf(gpFile, "%s() => cufftExecC2C() Failed For h_twiddle !!!\n", __func__);
-
-    fftResult = cufftExecC2C(plan2d, device_in_slope_x, device_out_slope_x, CUFFT_INVERSE);
-    if (fftResult != CUFFT_SUCCESS)
-        fprintf(gpFile, "%s() => cufftExecC2C() Failed For slope_x !!!\n", __func__);
-
-    fftResult = cufftExecC2C(plan2d, device_in_slope_z, device_out_slope_z, CUFFT_INVERSE);
-    if (fftResult != CUFFT_SUCCESS)
-        fprintf(gpFile, "%s() => cufftExecC2C() Failed For slope_z !!!\n", __func__);
-
-    fftResult = cufftExecC2C(plan2d, device_in_displacement_x, device_out_displacement_x, CUFFT_INVERSE);
-    if (fftResult != CUFFT_SUCCESS)
-        fprintf(gpFile, "%s() => cufftExecC2C() Failed For displacement_x !!!\n", __func__);
-
-    fftResult = cufftExecC2C(plan2d, device_in_displacement_z, device_out_displacement_z, CUFFT_INVERSE);
-    if (fftResult != CUFFT_SUCCESS)
-        fprintf(gpFile, "%s() => cufftExecC2C() Failed For displacement_z !!!\n", __func__);
-
-    copy_to_maps<<<grid, block>>>(
-        device_out_height,
-        device_out_slope_x,
-        device_out_slope_z,
-        device_out_displacement_x,
-        device_out_displacement_z,
-        pDisplacement,
-        pNormals,
-        N,
-        M,
-        lambda,
-        x_length,
-        z_length
-    );
-
+    // Build h_twiddle(k, t)
+    buildSpectrumKernel<<<grid, block>>>(d_h, d_h0, d_h0_conj, N, M, time, G);
     cudaDeviceSynchronize();
 
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess)
-        fprintf(gpFile, "CUDA Kernel Error: %s\n", cudaGetErrorString(err));
+    // Build slope/displacement frequency domain
+    buildSpatialSpectraKernel<<<grid, block>>>(d_h, d_disp_x, d_disp_z, d_slope_x, d_slope_z, N, M, lambda);
+    cudaDeviceSynchronize();
 
-    float3 test;
-    cudaMemcpy(&test, displacementPtr, sizeof(float3), cudaMemcpyDeviceToHost);
-    fprintf(gpFile, "Sample vertex: %.3f %.3f %.3f\n", test.x, test.y, test.z);
+    // Run CUFFT (frequency -> spatial domain)
+    cufftExecC2C(plan2d, (cufftComplex*)d_h, (cufftComplex*)d_h, CUFFT_INVERSE);
+    cufftExecC2C(plan2d, (cufftComplex*)d_disp_x, (cufftComplex*)d_disp_x, CUFFT_INVERSE);
+    cufftExecC2C(plan2d, (cufftComplex*)d_disp_z, (cufftComplex*)d_disp_z, CUFFT_INVERSE);
+    cufftExecC2C(plan2d, (cufftComplex*)d_slope_x, (cufftComplex*)d_slope_x, CUFFT_INVERSE);
+    cufftExecC2C(plan2d, (cufftComplex*)d_slope_z, (cufftComplex*)d_slope_z, CUFFT_INVERSE);
+    cudaDeviceSynchronize();
+
+    // Final pass — write directly to shared Vulkan buffers
+    finalizeOceanKernel<<<grid, block>>>(
+        d_h,
+        d_disp_x, d_disp_z,
+        d_slope_x, d_slope_z,
+        (float3*)displacementPtr,
+        (float3*)normalsPtr,
+        N, M, x_length, z_length
+    );
+    cudaDeviceSynchronize();
+    
+
 
 }
 
@@ -1773,6 +1593,14 @@ Ocean::~Ocean()
         cudaFree(device_h_twiddle_0);
         device_h_twiddle_0 = nullptr;
     }
+
+    cudaFree(d_h0);
+    cudaFree(d_h0_conj);
+    cudaFree(d_h);
+    cudaFree(d_disp_x);
+    cudaFree(d_disp_z);
+    cudaFree(d_slope_x);
+    cudaFree(d_slope_z);
 
     if (host_h_twiddle_0_conjugate)
     {
