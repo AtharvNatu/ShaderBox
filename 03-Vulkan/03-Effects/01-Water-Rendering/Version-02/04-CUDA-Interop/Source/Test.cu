@@ -15,7 +15,7 @@ __global__ void buildSpectrumKernel(
     cuComplex* h_twiddle,
     const cuComplex* h0,
     const cuComplex* h0_conj,
-    int N, int M, float t, float G)
+    int N, int M, float t, float G, float x_len, float z_len)
 {
     int n = blockIdx.x * blockDim.x + threadIdx.x;
     int m = blockIdx.y * blockDim.y + threadIdx.y;
@@ -23,8 +23,8 @@ __global__ void buildSpectrumKernel(
 
     int idx = m * N + n;
 
-    float kx = 2.0f * M_PI * (n - N / 2.0f);
-    float kz = 2.0f * M_PI * (m - M / 2.0f);
+    float kx = 2.0f * M_PI * (n - N / 2.0f)/x_len;
+    float kz = 2.0f * M_PI * (m - M / 2.0f)/z_len;
     float k_len = sqrtf(kx * kx + kz * kz);
     if (k_len < 1e-6f) { h_twiddle[idx] = make_cuComplex(0,0); return; }
 
@@ -54,15 +54,15 @@ __global__ void buildSpatialSpectraKernel(
     const cuComplex* h_twiddle,
     cuComplex* dispX, cuComplex* dispZ,
     cuComplex* slopeX, cuComplex* slopeZ,
-    int N, int M, float lambda)
+    int N, int M, float lambda, float x_len, float z_len)
 {
     int n = blockIdx.x * blockDim.x + threadIdx.x;
     int m = blockIdx.y * blockDim.y + threadIdx.y;
     if (n >= N || m >= M) return;
 
     int idx = m * N + n;
-    float kx = 2.0f * CUDART_PI_F * (n - N / 2.0f);
-    float kz = 2.0f * CUDART_PI_F * (m - M / 2.0f);
+     float kx = 2.0f * M_PI * (n - N / 2.0f)/x_len;
+    float kz = 2.0f * M_PI * (m - M / 2.0f)/z_len;
     float k_len = sqrtf(kx * kx + kz * kz);
 
     if (k_len < 1e-6f)
@@ -122,6 +122,8 @@ __global__ void finalizeOceanKernel(
 
 
 
+
+
 Ocean::Ocean()
 {
     // Code
@@ -146,18 +148,20 @@ Ocean::Ocean()
 
     for (int m = 0; m < M; ++m)
     {
-        float kz = 2.0f * M_PI * (m - M / 2.0f) / z_length;
         for (int n = 0; n < N; ++n)
         {
+            int index = m * N + n;
+
             float kx = 2.0f * M_PI * (n - N / 2.0f) / x_length;
+            float kz = 2.0f * M_PI * (m - M / 2.0f) / z_length;
 
             glm::vec2 k(kx, kz);
             float k_len = glm::length(k);
 
             if (k_len < 1e-6f)
             {
-                h_twiddle_0[m * N + n] = {0.0f, 0.0f};
-                h_twiddle_0_conjunction[m * N + n] = {0.0f, 0.0f};
+                h_twiddle_0[index] = {0.0f, 0.0f};
+                h_twiddle_0_conjunction[index] = {0.0f, 0.0f};
                 continue;
             }
 
@@ -174,12 +178,33 @@ Ocean::Ocean()
             // dampen small waves
             phillips *= expf(-k_len * k_len * l * l);
 
+            // Phillips spectrum (same as your code)...
             float Er = normalDist(rng);
             float Ei = normalDist(rng);
-
             std::complex<float> h0 = std::complex<float>(Er, Ei) * sqrtf(phillips * 0.5f);
-            h_twiddle_0[m * N + n] = h0;
-            h_twiddle_0_conjunction[m * N + n] = std::conj(h0);
+            h_twiddle_0[index] = h0;
+
+            // MIRROR INDEX: (-k) -> (N - n) % N, (M - m) % M
+            int kn_neg = (N - n) % N;
+            int km_neg = (M - m) % M;
+            int index_neg = km_neg * N + kn_neg;
+
+            // store conj(h0(-k)) at index (so h0_conj[index] == conj(h0(index_neg)))
+            // If you prefer, you can compute conj(h_twiddle_0[index_neg]) after whole loop; but this is fine.
+            // For now, leave temporary zero for index_neg until it's filled; to be safe fill conj array after whole loop:
+        }
+    }
+
+    // After filling h_twiddle_0, fill conj array using mirror:
+    for (int m = 0; m < M; ++m)
+    {
+        for (int n = 0; n < N; ++n)
+        {
+            int index = m * N + n;
+            int kn_neg = (N - n) % N;
+            int km_neg = (M - m) % M;
+            int index_neg = km_neg * N + kn_neg;
+            h_twiddle_0_conjunction[index] = std::conj(h_twiddle_0[index_neg]);
         }
     }
 }
@@ -1350,11 +1375,11 @@ void Ocean::generate_fft_data(float time)
     dim3 grid((N + 15) / 16, (M + 15) / 16);
 
     // Build h_twiddle(k, t)
-    buildSpectrumKernel<<<grid, block>>>(d_h, d_h0, d_h0_conj, N, M, time, G);
+    buildSpectrumKernel<<<grid, block>>>(d_h, d_h0, d_h0_conj, N, M, time, G, x_length, z_length);
     cudaDeviceSynchronize();
 
     // Build slope/displacement frequency domain
-    buildSpatialSpectraKernel<<<grid, block>>>(d_h, d_disp_x, d_disp_z, d_slope_x, d_slope_z, N, M, lambda);
+    buildSpatialSpectraKernel<<<grid, block>>>(d_h, d_disp_x, d_disp_z, d_slope_x, d_slope_z, N, M, lambda, x_length, z_length);
     cudaDeviceSynchronize();
 
     // Run CUFFT (frequency -> spatial domain)

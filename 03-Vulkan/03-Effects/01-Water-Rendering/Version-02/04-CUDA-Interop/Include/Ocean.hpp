@@ -118,7 +118,7 @@ class Ocean
         glm::vec2 omega_vec = {1, 1};       //  Wind Direction
         float fTime = 0.0f;
         float heightMin = 0, heightMax = 0;
-        const float waveSpeed = 0.05f;
+        const float waveSpeed = 0.005f;
         const float PI = float(M_PI);
         const float G = 9.8f;               //  Gravitational Constant
         const float L = 0.1;
