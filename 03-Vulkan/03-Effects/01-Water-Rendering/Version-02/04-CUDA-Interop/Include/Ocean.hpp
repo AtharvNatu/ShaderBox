@@ -25,8 +25,6 @@
 #define _USE_MATH_DEFINES   1
 #include <math.h>
 
-#include "Camera.hpp"
-
 extern FILE* gpFile;
 extern VkDevice vkDevice;
 extern VkPhysicalDeviceMemoryProperties vkPhysicalDeviceMemoryProperties;
@@ -62,32 +60,32 @@ class Ocean
 
         typedef struct
         {
-            //* Light Attributes
-            glm::vec4 lightPosition;
-            glm::vec4 lightAmbient;
-            glm::vec4 lightDiffuse;
-            glm::vec4 lightSpecular;
+            glm::vec4 deepColor;
+            glm::vec4 shallowColor;
+            glm::vec4 skyColor;
+            glm::vec4 lightDirection;
 
-            //* Misc
-            glm::vec4 viewPosition;
-            glm::vec4 heightVector;  // 0 -> Height Min | 1 -> Height Max | 2, 3 -> Padding
+            float heightScale;
+            float choppiness;
+            glm::vec2 size;
 
         } WaterUBO;
 
         //* Vertex Buffers
-        BufferData vertexData_displacement, vertexData_normals;
+        BufferData vertexData_height, vertexData_slope, vertexData_position;
+        VkDeviceSize heightSize, slopeSize, indexSize;
         BufferData indexData;
         VkDeviceSize meshSize;
         uint32_t indexCount;
 
         //* Device Vertex Data Pointers
-        void *displacementPtr = nullptr, *normalsPtr = nullptr;
+        void *heightPtr = nullptr, *slopePtr = nullptr;
 
         //* CUDA
         cudaError_t cudaResult;
         cufftResult_t fftResult;
-        cudaExternalMemory_t cudaExternalMemory_displacement = NULL;
-        cudaExternalMemory_t cudaExternalMemory_normals = NULL;
+        cudaExternalMemory_t cudaExternalMemory_height = NULL;
+        cudaExternalMemory_t cudaExternalMemory_slope = NULL;
         PFN_vkGetMemoryWin32HandleKHR vkGetMemoryWin32HandleKHR_fnptr = NULL;
 
         //* Uniform Buffers
@@ -103,15 +101,22 @@ class Ocean
         VkResult vkResult;
 
         //* Ocean Parameters
-        const int MESH_SIZE = 2048;
+        const int MESH_SIZE = 1024;
+        const int SPECTRUM_SIZE_WIDTH = MESH_SIZE + 4;
+        const int SPECTRUM_SIZE_HEIGHT = MESH_SIZE + 1;
 
         // Mesh Resolution N * M
         const int N = MESH_SIZE;        
         const int M = MESH_SIZE;
 
-        // Scene Size
-        float x_length = 1000.0f;            
-        float z_length = 1000.0f; 
+        unsigned int meshSizeLimit = 1024;
+        unsigned int spectrumW = MESH_SIZE + 4;
+        unsigned int spectrumH = MESH_SIZE + 1;
+
+        float2 *device_h_twiddle_0 = nullptr;
+        float2 *host_h_twiddle_0 = nullptr;
+        float2 *device_height = nullptr;
+        float2 *device_slope = nullptr;
 
         float A = 3e-7f;                     // Phillips Spectrum Amplitude       
         float V = 30.0f;                     // Wind Speed
@@ -125,51 +130,9 @@ class Ocean
         size_t kNum;
         glm::vec2 omega_hat; 
         float lambda;
-        
-        //* Scene Light
-        glm::vec3 lightPosition = { 0.0f, 50, 0.0 };
-        glm::vec3 lightDirection = glm::normalize(glm::vec3(0, 1, -2));
-
-        //* Host Data
-        cufftComplex *host_h_twiddle_0 = nullptr;               // Host Complex Array (Size = kNum)
-        cufftComplex *host_h_twiddle_0_conjugate = nullptr;     // Conjugate Mapping
-
-        //* Device Data
-        cufftComplex *device_h_twiddle_0 = nullptr;
-        cufftComplex *device_h_twiddle_0_conjugate = nullptr;
-        cufftComplex *device_h_twiddle = nullptr;
-
-        cufftComplex *device_in_height = nullptr;
-        cufftComplex *device_in_slope_x = nullptr;
-        cufftComplex *device_in_slope_z = nullptr;
-        cufftComplex *device_in_displacement_x = nullptr;
-        cufftComplex *device_in_displacement_z = nullptr;
-
-        cufftComplex *device_out_height = nullptr;
-        cufftComplex *device_out_slope_x = nullptr;
-        cufftComplex *device_out_slope_z = nullptr;
-        cufftComplex *device_out_displacement_x = nullptr;
-        cufftComplex *device_out_displacement_z = nullptr;
-
-        //! NEW
-        std::complex<float> *h_twiddle_0 = nullptr;
-        std::complex<float> *h_twiddle_0_conjunction = nullptr;
-
-        // CUDA device buffers
-        cufftComplex* d_h0 = nullptr;
-        cufftComplex* d_h0_conj = nullptr;
-
-        cufftComplex* d_h = nullptr;
-        cufftComplex* d_slope_x = nullptr;
-        cufftComplex* d_slope_z = nullptr;
-        cufftComplex* d_disp_x = nullptr;
-        cufftComplex* d_disp_z = nullptr;
 
         cufftHandle plan2d = 0;
 
-        unsigned int* indices = nullptr;
-
-        glm::mat4 cameraMatrix;
 
     private:
 
@@ -188,6 +151,10 @@ class Ocean
         bool initializeDeviceData();
 
         //* FFT + Tessendorf Related
+        void generate_initial_spectrum();
+
+
+
         inline float omega(float k) const;
         inline float phillips_spectrum(float kx, float kz) const;
 
@@ -206,7 +173,7 @@ class Ocean
 
         VkResult initialize();
         void buildCommandBuffers(VkCommandBuffer& commandBuffer);
-        void update(glm::mat4 cameraViewMatrix);
+        void update();
         VkResult updateUniformBuffer();
         VkResult resize(int width, int height);
 };

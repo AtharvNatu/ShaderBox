@@ -49,7 +49,7 @@ echo ---------------------------------------------------------------------------
         -I%INCLUDE_PATH% ^
         -Xcompiler="/EHsc" ^
         -Wno-deprecated-gpu-targets ^
-        %SOURCE_PATH%\Test.cu ^
+        %SOURCE_PATH%\Ocean.cu ^
         %SOURCE_PATH%\Camera.cpp ^
         %SOURCE_PATH%\Vk.cpp 
         @REM %SOURCE_PATH%\Vk.cpp ^

@@ -1,120 +1,131 @@
 #include "Ocean.hpp"
 
+const float gravitationalConstant = 9.81f; // gravitational constant
+const float waveScaleFactor = 1e-7f;       // wave scale factor
+const float patchSize = 100;               // patch size
+float windSpeed = 100.0f;
+float windDir = CUDART_PI_F / 3.0f;
+float dirDepend = 0.07f;
+
 //! CUDA Kernels
+#include <cufft.h>
+#include <math_constants.h>
 
-__global__ void build_fft(
-    const cufftComplex* __restrict__ h_twiddle_0,
-    const cufftComplex* __restrict__ h_twiddle_0_conjugate,
-    cufftComplex* __restrict__ out_h_twiddle,
-    cufftComplex* __restrict__ slope_x,
-    cufftComplex* __restrict__ slope_z,
-    cufftComplex* __restrict__ displacement_x,
-    cufftComplex* __restrict__ displacement_z,
-    int N,
-    int M,
-    float time,
-    float lambda,
-    float x_length,
-    float z_length
-)
+int cuda_iDivUp(int a, int b)
 {
-    int ix = blockIdx.x * blockDim.x + threadIdx.x;
-    int iy = blockIdx.y * blockDim.y + threadIdx.y;
-    if (ix >= N || iy >= M) return;
-
-    int idx = iy * N + ix;
-
-    // Compute wave vector
-    float kx = 2.0f * M_PI * (float(ix) - float(N) * 0.5f) / x_length;
-    float kz = 2.0f * M_PI * (float(iy) - float(M) * 0.5f) / z_length;
-    float k_len = sqrtf(kx*kx + kz*kz);
-    if (k_len < 1e-6f) k_len = 1e-6f;
-
-    cufftComplex h0 = h_twiddle_0[idx];
-    cufftComplex h0_conj = h_twiddle_0_conjugate[idx];
-
-    // Angular frequency
-    float omega = sqrtf(9.8f * k_len);
-
-    float cosw = cosf(omega * time);
-    float sinw = sinf(omega * time);
-
-    // h_t(k, t) = h0 * e^{iwt} + h0* * e^{-iwt}
-    cufftComplex term1 = { h0.x * cosw - h0.y * sinw, h0.x * sinw + h0.y * cosw };
-    cufftComplex term2 = { h0_conj.x * cosw + h0_conj.y * sinw, -h0_conj.x * sinw + h0_conj.y * cosw };
-    cufftComplex h_t = { term1.x + term2.x, term1.y + term2.y };
-
-    // Checkerboard sign correction
-    int sign = ((ix + iy) & 1) ? -1 : 1;
-    h_t.x *= sign;
-    h_t.y *= sign;
-
-    // Write height spectrum
-    out_h_twiddle[idx] = h_t;
-
-    // Slopes
-    slope_x[idx].x = -kx * h_t.y;
-    slope_x[idx].y =  kx * h_t.x;
-
-    slope_z[idx].x = -kz * h_t.y;
-    slope_z[idx].y =  kz * h_t.x;
-
-    // Displacement
-    float nx = kx / k_len;
-    float nz = kz / k_len;
-
-    displacement_x[idx].x = -nx * h_t.y;
-    displacement_x[idx].y =  nx * h_t.x;
-
-    displacement_z[idx].x = -nz * h_t.y;
-    displacement_z[idx].y =  nz * h_t.x;
+  return ((a + (b - 1)) / b);
 }
 
-__global__ void copy_to_maps(
-    const cufftComplex* __restrict__ out_height,
-    const cufftComplex* __restrict__ out_slope_x,
-    const cufftComplex* __restrict__ out_slope_z,
-    const cufftComplex* __restrict__ out_displacement_x,
-    const cufftComplex* __restrict__ out_displacement_z,
-    float3* __restrict__ displacement_map,
-    float3* __restrict__ normal_map,
-    int N,
-    int M,
-    float lambda,
-    float x_length,
-    float z_length
-)
+// complex math functions
+__device__ float2 conjugate(float2 arg)
 {
-    int ix = blockIdx.x * blockDim.x + threadIdx.x;
-    int iy = blockIdx.y * blockDim.y + threadIdx.y;
-    if (ix >= N || iy >= M) return;
+  return (make_float2(arg.x, -arg.y));
+}
 
-    int idx = iy * N + ix;
+__device__ float2 complex_exp(float arg)
+{
+  return (make_float2(cosf(arg), sinf(arg)));
+}
 
-    float scale = 1.0f / (float)(N * M);
+__device__ float2 complex_add(float2 a, float2 b)
+{
+  return (make_float2(a.x + b.x, a.y + b.y));
+}
 
-    // Real part only (height field)
-    float h = out_height[idx].x * scale;
-    float sx = out_slope_x[idx].x * scale;
-    float sz = out_slope_z[idx].x * scale;
-    float dx = out_displacement_x[idx].x * scale;
-    float dz = out_displacement_z[idx].x * scale;
+__device__ float2 complex_mult(float2 ab, float2 cd)
+{
+  return (make_float2(ab.x * cd.x - ab.y * cd.y, ab.x * cd.y + ab.y * cd.x));
+}
 
-    int sign = ((ix + iy) & 1) ? -1 : 1;
+__global__ void generateSpectrumKernel(float2 *h0, float2 *ht, unsigned int in_width, unsigned int out_width, unsigned int out_height, float t, float patchSize)
+{
+  unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+  unsigned int in_index = y * in_width + x;
+  unsigned int in_mindex = (out_height - y) * in_width + (out_width - x);
+  unsigned int out_index = y * out_width + x;
 
-    // Normals
-    float nx = -sx;
-    float ny = 1.0f;
-    float nz = -sz;
-    float invlen = rsqrtf(nx*nx + ny*ny + nz*nz + 1e-12f);
-    normal_map[idx] = make_float3(nx * invlen, ny * invlen, nz * invlen);
+  // calculate wave vector
+  float2 k;
+  k.x = (-(int)out_width / 2.0f + x) * (2.0f * CUDART_PI_F / patchSize);
+  k.y = (-(int)out_width / 2.0f + y) * (2.0f * CUDART_PI_F / patchSize);
 
-    // Displacement (world-space)
-    float wx = (float(ix) - N * 0.5f) * x_length / float(N) - sign * lambda * dx;
-    float wy = sign * h;
-    float wz = (float(iy) - M * 0.5f) * z_length / float(M) - sign * lambda * dz;
+  // calculate dispersion w(k)
+  float k_len = sqrtf(k.x * k.x + k.y * k.y);
+  float w = sqrtf(9.81f * k_len);
 
-    displacement_map[idx] = make_float3(wx, wy, wz);
+  if ((x < out_width) && (y < out_height))
+  {
+    float2 h0_k = h0[in_index];
+    float2 h0_mk = h0[in_mindex];
+
+    // output frequency-space complex values
+    ht[out_index] = complex_add(complex_mult(h0_k, complex_exp(w * t)), complex_mult(conjugate(h0_mk), complex_exp(-w * t)));
+  }
+}
+
+__global__ void updateHeightmapKernel(float *heightMap, float2 *ht, unsigned int width)
+{
+  unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+  unsigned int i = y * width + x;
+
+  float sign_correction = ((x + y) & 0x01) ? -1.0f : 1.0f;
+
+  heightMap[i] = ht[i].x * sign_correction;
+}
+
+__global__ void updateHeightmapKernel_y(float *heightMap, float2 *ht, unsigned int width)
+{
+  unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+  unsigned int i = y * width + x;
+
+  float sign_correction = ((x + y) & 0x01) ? -1.0f : 1.0f;
+
+  heightMap[i] = ht[i].y * sign_correction;
+}
+
+__global__ void calculateSlopeKernel(float *h, float2 *slopeOut, unsigned int width, unsigned int height)
+{
+  unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;
+  unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;
+  unsigned int i = y * width + x;
+
+  float2 slope = make_float2(0.0f, 0.0f);
+
+  if ((x > 0) && (y > 0) && (x < width - 1) && (y < height - 1))
+  {
+    slope.x = h[i + 1] - h[i - 1];
+    slope.y = h[i + width] - h[i - width];
+  }
+
+  slopeOut[i] = slope;
+}
+
+// wrapper functions
+extern "C" void cudaGenerateSpectrumKernel(float2 *d_h0, float2 *d_ht, unsigned int in_width, unsigned int out_width, unsigned int out_height, float animTime, float patchSize)
+{
+  dim3 block(8, 8, 1);
+  dim3 grid(cuda_iDivUp(out_width, block.x), cuda_iDivUp(out_height, block.y), 1);
+
+  generateSpectrumKernel<<<grid, block>>>(d_h0, d_ht, in_width, out_width, out_height, animTime, patchSize);
+}
+
+extern "C" void cudaUpdateHeightmapKernel(float *d_heightMap, float2 *d_ht, unsigned int width, unsigned int height)
+{
+  dim3 block(8, 8, 1);
+  dim3 grid(cuda_iDivUp(width, block.x), cuda_iDivUp(height, block.y), 1);
+
+  updateHeightmapKernel<<<grid, block>>>(d_heightMap, d_ht, width);
+}
+
+extern "C" void cudaCalculateSlopeKernel(float *hptr, float2 *slopeOut, unsigned int width, unsigned int height)
+{
+  dim3 block(8, 8, 1);
+  dim3 grid2(cuda_iDivUp(width, block.x), cuda_iDivUp(height, block.y), 1);
+
+  calculateSlopeKernel<<<grid2, block>>>(hptr, slopeOut, width, height);
 }
 
 
@@ -128,13 +139,8 @@ Ocean::Ocean()
 
 VkResult Ocean::initialize()
 {
-    bool status = initializeHostData();
-    if (!status)
-        fprintf(gpFile, "%s() => initializeHostData() Failed For Ocean : %d !!!\n", __func__);
-    else
-        fprintf(gpFile, "%s() => initializeHostData() Succeeded For Ocean\n", __func__);
 
-    status = initializeDeviceData();
+    bool status = initializeDeviceData();
     if (!status)
         fprintf(gpFile, "%s() => initializeDeviceData() Failed For Ocean : %d !!!\n", __func__);
     else
@@ -185,150 +191,62 @@ VkResult Ocean::initialize()
     return vkResult;
 }
 
-bool Ocean::initializeHostData()
-{
-    // Code
-
-    //* Allocate Host Arrays
-    host_h_twiddle_0 = (cufftComplex*)malloc(sizeof(cufftComplex) * kNum);
-    if (host_h_twiddle_0 == NULL)
-    {
-        fprintf(gpFile, "%s() => malloc() Failed For host_h_twiddle_0 !!!\n", __func__);
-        return false;
-    }
-
-    host_h_twiddle_0_conjugate = (cufftComplex*)malloc(sizeof(cufftComplex) * kNum);
-    if (host_h_twiddle_0_conjugate == NULL)
-    {
-        fprintf(gpFile, "%s() => malloc() Failed For host_h_twiddle_0_conjunction !!!\n", __func__);
-        return false;
-    }
-
-    //! Compute host_h_twiddle_0 and host_h_twiddle_0_conjugate
-    compute_h_twiddle_0();
-    compute_h_twiddle_0_conjugate();
-
-    return true;
-}
-
 bool Ocean::initializeDeviceData()
 {
     // Code
 
-    //* Allocate Device Arrays
-    cudaResult = cudaMalloc(&device_h_twiddle_0, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_h_twiddle_0 !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_h_twiddle_0_conjugate, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_h_twiddle_0_conjugate !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMemcpy(device_h_twiddle_0, host_h_twiddle_0, sizeof(cufftComplex) * kNum, cudaMemcpyHostToDevice);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMemcpy() Failed For device_h_twiddle_0 !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMemcpy(device_h_twiddle_0_conjugate, host_h_twiddle_0_conjugate, sizeof(cufftComplex) * kNum, cudaMemcpyHostToDevice);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMemcpy() Failed For device_h_twiddle_0_conjugate !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_h_twiddle, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_h_twiddle !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_in_height, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_in_height !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_in_slope_x, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_in_slope_x !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_in_slope_z, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_in_slope_z !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_in_displacement_x, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_in_displacement_x !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_in_displacement_z, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_in_displacement_z !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_out_height, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_out_height !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_out_slope_x, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_out_slope_x !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_out_slope_z, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_out_slope_z !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_out_displacement_x, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_out_displacement_x !!!\n", __func__);
-        return false;
-    }
-
-    cudaResult = cudaMalloc(&device_out_displacement_z, sizeof(cufftComplex) * kNum);
-    if (cudaResult != cudaSuccess)
-    {
-        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_out_displacement_z !!!\n", __func__);
-        return false;
-    }
-
     //* Create Plan 2D Complex-To-Complex
-    fftResult = cufftPlan2d(&plan2d, M, N, CUFFT_C2C);
+    fftResult = cufftPlan2d(&plan2d, meshSizeLimit, meshSizeLimit, CUFFT_C2C);
     if (fftResult != CUFFT_SUCCESS)
     {
         fprintf(gpFile, "%s() => cufftPlan2d() Failed For Ocean !!!\n", __func__);
         return false;
     }
 
+    size_t spectrumSize = SPECTRUM_SIZE_WIDTH * SPECTRUM_SIZE_HEIGHT * sizeof(float2);
+
+    cudaResult = cudaMalloc(&device_h_twiddle_0, spectrumSize);
+    if (cudaResult != cudaSuccess)
+    {
+        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_h_twiddle_0 !!!\n", __func__);
+        return false;
+    }
+
+    host_h_twiddle_0 = (float2*)malloc(spectrumSize);
+    if (host_h_twiddle_0 == NULL)
+    {
+        fprintf(gpFile, "%s() => malloc() Failed For host_h_twiddle_0 !!!\n", __func__);
+        return false;
+    }
+
+    generate_initial_spectrum();
+    
+    cudaResult = cudaMemcpy(device_h_twiddle_0, host_h_twiddle_0, spectrumSize, cudaMemcpyHostToDevice);
+    if (cudaResult != cudaSuccess)
+    {
+        fprintf(gpFile, "%s() => cudaMemcpy() Failed For device_h_twiddle_0 !!!\n", __func__);
+        return false;
+    }
+
+    size_t outputSize = meshSizeLimit * meshSizeLimit * sizeof(float2);
+
+    cudaResult = cudaMalloc(&device_height, outputSize);
+    if (cudaResult != cudaSuccess)
+    {
+        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_height !!!\n", __func__);
+        return false;
+    }
+
+    cudaResult = cudaMalloc(&device_slope, outputSize);
+    if (cudaResult != cudaSuccess)
+    {
+        fprintf(gpFile, "%s() => cudaMalloc() Failed For device_slope !!!\n", __func__);
+        return false;
+    }
+
+    heightSize = meshSizeLimit * meshSizeLimit * sizeof(float);
+    slopeSize = meshSizeLimit * meshSizeLimit * sizeof(float2);
+    
     return true;
 
 }
@@ -343,10 +261,10 @@ VkResult Ocean::createBuffers()
     else
         fprintf(gpFile, "%s() => getMemoryWin32HandleFunction() Succeeded\n", __func__);
 
-    //! Vertex Displacement Buffer
+    //! Height Data
     //! ---------------------------------------------------------------------------------------------------------------------------------
     //* Step - 4
-    memset((void*)&vertexData_displacement, 0, sizeof(BufferData));
+    memset((void*)&vertexData_height, 0, sizeof(BufferData));
 
     VkExternalMemoryBufferCreateInfo vkExternalMemoryBufferCreateInfo;
     memset((void*)&vkExternalMemoryBufferCreateInfo, 0, sizeof(VkExternalMemoryBufferCreateInfo));
@@ -359,22 +277,22 @@ VkResult Ocean::createBuffers()
     memset((void*)&vkBufferCreateInfo, 0, sizeof(VkBufferCreateInfo));
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.flags = 0;   //! Valid Flags are used in sparse(scattered) buffers
-    vkBufferCreateInfo.size = meshSize;
-    vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    vkBufferCreateInfo.size = heightSize;
+    vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     vkBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     vkBufferCreateInfo.pNext = &vkExternalMemoryBufferCreateInfo;
 
     //* Step - 6
-    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &vertexData_displacement.vkBuffer);
+    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &vertexData_height.vkBuffer);
     if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => vkCreateBuffer() Failed For Vertex Displacement Buffer : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkCreateBuffer() Failed For Height Data : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkCreateBuffer() Succeeded For Vertex Displacement Buffer\n", __func__);
+        fprintf(gpFile, "%s() => vkCreateBuffer() Succeeded For Height Data\n", __func__);
 
     //* Step - 7
     VkMemoryRequirements vkMemoryRequirements;
     memset((void*)&vkMemoryRequirements, 0, sizeof(VkMemoryRequirements));
-    vkGetBufferMemoryRequirements(vkDevice, vertexData_displacement.vkBuffer, &vkMemoryRequirements);
+    vkGetBufferMemoryRequirements(vkDevice, vertexData_height.vkBuffer, &vkMemoryRequirements);
 
     VkExportMemoryAllocateInfo vkExportMemoryAllocateInfo;
     memset((void*)&vkExportMemoryAllocateInfo, 0, sizeof(VkExportMemoryAllocateInfo));
@@ -409,19 +327,19 @@ VkResult Ocean::createBuffers()
     }
 
     //* Step - 9
-    vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo, NULL, &vertexData_displacement.vkDeviceMemory);
+    vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo, NULL, &vertexData_height.vkDeviceMemory);
     if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => vkAllocateMemory() Failed For Vertex Displacement Buffer : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkAllocateMemory() Failed For Height Data : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkAllocateMemory() Succeeded For Vertex Displacement Buffer\n", __func__);
+        fprintf(gpFile, "%s() => vkAllocateMemory() Succeeded For Height Data\n", __func__);
 
     //* Step - 10
     //! Binds Vulkan Device Memory Object Handle with the Vulkan Buffer Object Handle
-    vkResult = vkBindBufferMemory(vkDevice, vertexData_displacement.vkBuffer, vertexData_displacement.vkDeviceMemory, 0);
+    vkResult = vkBindBufferMemory(vkDevice, vertexData_height.vkBuffer, vertexData_height.vkDeviceMemory, 0);
     if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => vkBindBufferMemory() Failed For Vertex Displacement Buffer : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkBindBufferMemory() Failed For Height Data : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Vertex Displacement Buffer\n", __func__);
+        fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Height Data\n", __func__);
 
     //* Export Memory For CUDA
     VkMemoryGetWin32HandleInfoKHR vkMemoryGetWin32HandleInfoKHR;
@@ -429,28 +347,29 @@ VkResult Ocean::createBuffers()
     vkMemoryGetWin32HandleInfoKHR.sType = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
     vkMemoryGetWin32HandleInfoKHR.pNext = NULL;
     vkMemoryGetWin32HandleInfoKHR.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
-    vkMemoryGetWin32HandleInfoKHR.memory = vertexData_displacement.vkDeviceMemory;
+    vkMemoryGetWin32HandleInfoKHR.memory = vertexData_height.vkDeviceMemory;
 
     HANDLE vkMemoryHandle = NULL;
     vkResult = vkGetMemoryWin32HandleKHR_fnptr(vkDevice, &vkMemoryGetWin32HandleInfoKHR, &vkMemoryHandle);
     if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => vkGetMemoryWin32HandleKHR_fnptr() Failed For Vertex Displacement Buffer : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkGetMemoryWin32HandleKHR_fnptr() Failed For Height Data : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkGetMemoryWin32HandleKHR_fnptr() Succeeded For Vertex Displacement Buffer\n", __func__);
+        fprintf(gpFile, "%s() => vkGetMemoryWin32HandleKHR_fnptr() Succeeded For Height Data\n", __func__);
 
     //* Import into CUDA
     cudaExternalMemoryHandleDesc cuExtMemoryHandleDesc;
     memset((void*)&cuExtMemoryHandleDesc, 0, sizeof(cudaExternalMemoryHandleDesc));
     cuExtMemoryHandleDesc.type = cudaExternalMemoryHandleTypeOpaqueWin32;
     cuExtMemoryHandleDesc.handle.win32.handle = vkMemoryHandle;
-    cuExtMemoryHandleDesc.size = (size_t)vkMemoryRequirements.size;
+    // cuExtMemoryHandleDesc.size = (size_t)vkMemoryRequirements.size;
+    cuExtMemoryHandleDesc.size = heightSize;
     cuExtMemoryHandleDesc.flags = 0;
     
-    cudaResult = cudaImportExternalMemory(&cudaExternalMemory_displacement, &cuExtMemoryHandleDesc);
+    cudaResult = cudaImportExternalMemory(&cudaExternalMemory_height, &cuExtMemoryHandleDesc);
     if (cudaResult != cudaSuccess)
-        fprintf(gpFile, "%s() => cudaImportExternalMemory() Failed For Vertex Displacement Buffer : %d !!!\n", __func__, cudaResult);
+        fprintf(gpFile, "%s() => cudaImportExternalMemory() Failed For Height Data : %d !!!\n", __func__, cudaResult);
     else
-        fprintf(gpFile, "%s() => cudaImportExternalMemory() Succeeded For Vertex Displacement Buffer\n", __func__);
+        fprintf(gpFile, "%s() => cudaImportExternalMemory() Succeeded For Height Data\n", __func__);
 
     CloseHandle(vkMemoryHandle);
 
@@ -461,17 +380,17 @@ VkResult Ocean::createBuffers()
     cuExtMemoryBufferDesc.size = (size_t)vkMemoryRequirements.size;
     cuExtMemoryBufferDesc.flags =0;
     
-    cudaResult = cudaExternalMemoryGetMappedBuffer(&displacementPtr, cudaExternalMemory_displacement, &cuExtMemoryBufferDesc);
+    cudaResult = cudaExternalMemoryGetMappedBuffer(&heightPtr, cudaExternalMemory_height, &cuExtMemoryBufferDesc);
     if (cudaResult != cudaSuccess)
-        fprintf(gpFile, "%s() => cudaExternalMemoryGetMappedBuffer() Failed For Vertex Displacement Buffer : %d !!!\n", __func__, cudaResult);
+        fprintf(gpFile, "%s() => cudaExternalMemoryGetMappedBuffer() Failed For Height Data : %d !!!\n", __func__, cudaResult);
     else
-        fprintf(gpFile, "%s() => cudaExternalMemoryGetMappedBuffer() Succeeded For Vertex Displacement Buffer\n", __func__);
+        fprintf(gpFile, "%s() => cudaExternalMemoryGetMappedBuffer() Succeeded For Height Data\n", __func__);
     //! ---------------------------------------------------------------------------------------------------------------------------------
     
-    //! Vertex Normals Buffer
+    //! Slope Data
     //! ---------------------------------------------------------------------------------------------------------------------------------
     //* Step - 4
-    memset((void*)&vertexData_normals, 0, sizeof(BufferData));
+    memset((void*)&vertexData_slope, 0, sizeof(BufferData));
 
     memset((void*)&vkExternalMemoryBufferCreateInfo, 0, sizeof(VkExternalMemoryBufferCreateInfo));
     vkExternalMemoryBufferCreateInfo.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO;
@@ -483,21 +402,21 @@ VkResult Ocean::createBuffers()
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.flags = 0;   //! Valid Flags are used in sparse(scattered) buffers
     vkBufferCreateInfo.pNext = NULL;
-    vkBufferCreateInfo.size = meshSize;
-    vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    vkBufferCreateInfo.size = slopeSize;
+    vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     vkBufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     vkBufferCreateInfo.pNext = &vkExternalMemoryBufferCreateInfo;
 
     //* Step - 6
-    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &vertexData_normals.vkBuffer);
+    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &vertexData_slope.vkBuffer);
     if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => vkCreateBuffer() Failed For Vertex Normals Buffer : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkCreateBuffer() Failed For Slope Data : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkCreateBuffer() Succeeded For Vertex Normals Buffer\n", __func__);
+        fprintf(gpFile, "%s() => vkCreateBuffer() Succeeded For Slope Data\n", __func__);
 
     //* Step - 7
     memset((void*)&vkMemoryRequirements, 0, sizeof(VkMemoryRequirements));
-    vkGetBufferMemoryRequirements(vkDevice, vertexData_normals.vkBuffer, &vkMemoryRequirements);
+    vkGetBufferMemoryRequirements(vkDevice, vertexData_slope.vkBuffer, &vkMemoryRequirements);
 
     memset((void*)&vkExportMemoryAllocateInfo, 0, sizeof(VkExportMemoryAllocateInfo));
     vkExportMemoryAllocateInfo.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
@@ -530,46 +449,47 @@ VkResult Ocean::createBuffers()
     }
 
     //* Step - 9
-    vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo, NULL, &vertexData_normals.vkDeviceMemory);
+    vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo, NULL, &vertexData_slope.vkDeviceMemory);
     if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => vkAllocateMemory() Failed For Vertex Normals Buffer : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkAllocateMemory() Failed For Slope Data : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkAllocateMemory() Succeeded For Vertex Normals Buffer\n", __func__);
+        fprintf(gpFile, "%s() => vkAllocateMemory() Succeeded For Slope Data\n", __func__);
 
     //* Step - 10
     //! Binds Vulkan Device Memory Object Handle with the Vulkan Buffer Object Handle
-    vkResult = vkBindBufferMemory(vkDevice, vertexData_normals.vkBuffer, vertexData_normals.vkDeviceMemory, 0);
+    vkResult = vkBindBufferMemory(vkDevice, vertexData_slope.vkBuffer, vertexData_slope.vkDeviceMemory, 0);
     if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => vkBindBufferMemory() Failed For Vertex Normals Buffer : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkBindBufferMemory() Failed For Slope Data : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Vertex Normals Buffer\n", __func__);
+        fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Slope Data\n", __func__);
 
     //* Export Memory For CUDA
     memset((void*)&vkMemoryGetWin32HandleInfoKHR, 0, sizeof(VkMemoryGetWin32HandleInfoKHR));
     vkMemoryGetWin32HandleInfoKHR.sType = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
     vkMemoryGetWin32HandleInfoKHR.pNext = NULL;
     vkMemoryGetWin32HandleInfoKHR.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
-    vkMemoryGetWin32HandleInfoKHR.memory = vertexData_normals.vkDeviceMemory;
+    vkMemoryGetWin32HandleInfoKHR.memory = vertexData_slope.vkDeviceMemory;
 
     vkMemoryHandle = NULL;
     vkResult = vkGetMemoryWin32HandleKHR_fnptr(vkDevice, &vkMemoryGetWin32HandleInfoKHR, &vkMemoryHandle);
     if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => vkGetMemoryWin32HandleKHR_fnptr() Failed For Vertex Normals Buffer : %d !!!\n", __func__, vkResult);
+        fprintf(gpFile, "%s() => vkGetMemoryWin32HandleKHR_fnptr() Failed For Slope Data : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => vkGetMemoryWin32HandleKHR_fnptr() Succeeded For Vertex Normals Buffer\n", __func__);
+        fprintf(gpFile, "%s() => vkGetMemoryWin32HandleKHR_fnptr() Succeeded For Slope Data\n", __func__);
 
     //* Import into CUDA
     memset((void*)&cuExtMemoryHandleDesc, 0, sizeof(cudaExternalMemoryHandleDesc));
     cuExtMemoryHandleDesc.type = cudaExternalMemoryHandleTypeOpaqueWin32;
     cuExtMemoryHandleDesc.handle.win32.handle = vkMemoryHandle;
-    cuExtMemoryHandleDesc.size = (size_t)vkMemoryRequirements.size;
+    // cuExtMemoryHandleDesc.size = (size_t)vkMemoryRequirements.size;
+    cuExtMemoryHandleDesc.size = slopeSize;
     cuExtMemoryHandleDesc.flags = 0;
     
-    cudaResult = cudaImportExternalMemory(&cudaExternalMemory_normals, &cuExtMemoryHandleDesc);
+    cudaResult = cudaImportExternalMemory(&cudaExternalMemory_slope, &cuExtMemoryHandleDesc);
     if (cudaResult != cudaSuccess)
-        fprintf(gpFile, "%s() => cudaImportExternalMemory() Failed For Vertex Normals Buffer : %d !!!\n", __func__, cudaResult);
+        fprintf(gpFile, "%s() => cudaImportExternalMemory() Failed For Slope Data : %d !!!\n", __func__, cudaResult);
     else
-        fprintf(gpFile, "%s() => cudaImportExternalMemory() Succeeded For Vertex Normals Buffer\n", __func__);
+        fprintf(gpFile, "%s() => cudaImportExternalMemory() Succeeded For Slope Data\n", __func__);
 
     CloseHandle(vkMemoryHandle);
 
@@ -579,34 +499,153 @@ VkResult Ocean::createBuffers()
     cuExtMemoryBufferDesc.size = (size_t)vkMemoryRequirements.size;
     cuExtMemoryBufferDesc.flags =0;
     
-    cudaResult = cudaExternalMemoryGetMappedBuffer(&normalsPtr, cudaExternalMemory_normals, &cuExtMemoryBufferDesc);
+    cudaResult = cudaExternalMemoryGetMappedBuffer(&slopePtr, cudaExternalMemory_slope, &cuExtMemoryBufferDesc);
     if (cudaResult != cudaSuccess)
-        fprintf(gpFile, "%s() => cudaExternalMemoryGetMappedBuffer() Failed For Vertex Normals Buffer : %d !!!\n", __func__, cudaResult);
+        fprintf(gpFile, "%s() => cudaExternalMemoryGetMappedBuffer() Failed For Slope Data : %d !!!\n", __func__, cudaResult);
     else
-        fprintf(gpFile, "%s() => cudaExternalMemoryGetMappedBuffer() Succeeded For Vertex Normals Buffer\n", __func__);
+        fprintf(gpFile, "%s() => cudaExternalMemoryGetMappedBuffer() Succeeded For Slope Data\n", __func__);
+    //! ---------------------------------------------------------------------------------------------------------------------------------
+
+    //! Vertex Position Data
+    //! ---------------------------------------------------------------------------------------------------------------------------------
+    //* Step - 4
+    memset((void*)&vertexData_position, 0, sizeof(BufferData));
+
+    //* Step - 5
+    memset((void*)&vkBufferCreateInfo, 0, sizeof(VkBufferCreateInfo));
+    vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    vkBufferCreateInfo.flags = 0;   //! Valid Flags are used in sparse(scattered) buffers
+    vkBufferCreateInfo.pNext = NULL;
+    vkBufferCreateInfo.size = meshSizeLimit * meshSizeLimit * 4 * sizeof(float);
+    vkBufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+    //* Step - 6
+    vkResult = vkCreateBuffer(vkDevice, &vkBufferCreateInfo, NULL, &vertexData_position.vkBuffer);
+    if (vkResult != VK_SUCCESS)
+        fprintf(gpFile, "%s() => vkCreateBuffer() Failed For Vertex Position Buffer : %d !!!\n", __func__, vkResult);
+    else
+        fprintf(gpFile, "%s() => vkCreateBuffer() Succeeded For Vertex Position Buffer\n", __func__);
+
+    //* Step - 7
+    memset((void*)&vkMemoryRequirements, 0, sizeof(VkMemoryRequirements));
+    vkGetBufferMemoryRequirements(vkDevice, vertexData_position.vkBuffer, &vkMemoryRequirements);
+
+    //* Step - 8
+    memset((void*)&vkMemoryAllocateInfo, 0, sizeof(VkMemoryAllocateInfo));
+    vkMemoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    vkMemoryAllocateInfo.pNext = NULL;
+    vkMemoryAllocateInfo.allocationSize = vkMemoryRequirements.size;
+    vkMemoryAllocateInfo.memoryTypeIndex = 0;
+
+    //* Step - 8.1
+    for (uint32_t i = 0; i < vkPhysicalDeviceMemoryProperties.memoryTypeCount; i++)
+    {
+        //* Step - 8.2
+        if ((vkMemoryRequirements.memoryTypeBits & 1) == 1)
+        {
+            //* Step - 8.3
+            if (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+            {
+                //* Step - 8.4
+                vkMemoryAllocateInfo.memoryTypeIndex = i;
+                break;
+            }
+        }
+
+        //* Step - 8.5
+        vkMemoryRequirements.memoryTypeBits >>= 1;
+    }
+
+    //* Step - 9
+    vkResult = vkAllocateMemory(vkDevice, &vkMemoryAllocateInfo, NULL, &vertexData_position.vkDeviceMemory);
+    if (vkResult != VK_SUCCESS)
+        fprintf(gpFile, "%s() => vkAllocateMemory() Failed For Vertex Position Buffer : %d !!!\n", __func__, vkResult);
+    else
+        fprintf(gpFile, "%s() => vkAllocateMemory() Succeeded For Vertex Position Buffer\n", __func__);
+
+    //* Step - 10
+    //! Binds Vulkan Device Memory Object Handle with the Vulkan Buffer Object Handle
+    vkResult = vkBindBufferMemory(vkDevice, vertexData_position.vkBuffer, vertexData_position.vkDeviceMemory, 0);
+    if (vkResult != VK_SUCCESS)
+        fprintf(gpFile, "%s() => vkBindBufferMemory() Failed For Vertex Position Buffer : %d !!!\n", __func__, vkResult);
+    else
+        fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Vertex Position Buffer\n", __func__);
+
+    //* Step - 11
+    void* data = NULL;
+    vkResult = vkMapMemory(vkDevice, vertexData_position.vkDeviceMemory, 0, vkMemoryAllocateInfo.allocationSize, 0, &data);
+    if (vkResult != VK_SUCCESS)
+        fprintf(gpFile, "%s() => vkMapMemory() Failed For Vertex Position Buffer : %d !!!\n", __func__, vkResult);
+    else
+        fprintf(gpFile, "%s() => vkMapMemory() Succeeded For Vertex Position Buffer\n", __func__);
+
+    float *positionBase = new float[meshSizeLimit * meshSizeLimit * 4];
+    float *position = positionBase;
+
+    for (int y = 0; y < meshSizeLimit; y++)
+    {
+        for (int x = 0; x < meshSizeLimit; x++)
+        {
+            float u = x / (float)(meshSizeLimit - 1);
+            float v = y / (float)(meshSizeLimit - 1);
+
+            *position++ = u * 2.0f - 1.0f;
+            *position++ = 0.0f;
+
+            *position++ = v * 2.0f - 1.0f;
+            *position++ = 1.0f;
+        }
+    }
+
+    fprintf(gpFile, "[DEBUG] First vertex: (%.3f, %.3f, %.3f, %.3f)\n",
+        positionBase[0], positionBase[1], positionBase[2], positionBase[3]);
+
+
+    //* Step - 12
+    memcpy(data, positionBase, meshSizeLimit * meshSizeLimit * 4 * sizeof(float));
+
+    //* Step - 13
+    vkUnmapMemory(vkDevice, vertexData_position.vkDeviceMemory);
+
+    delete[] positionBase;
+    positionBase = nullptr;
     //! ---------------------------------------------------------------------------------------------------------------------------------
     
     //! Index Buffer
     //! ---------------------------------------------------------------------------------------------------------------------------------
     
     //* Generate Indices
-    int p = 0;
-    indexCount = (N - 1) * (M - 1) * 6;
-    indices = new unsigned int[indexCount];
+    indexSize = ((meshSizeLimit * 2) + 2) * (meshSizeLimit - 1);
+    unsigned int* indices = new unsigned int[indexSize];
+    unsigned int* pIndex = indices;
 
-    for (int j = 0; j < N - 1; j++)
-    {
-        for (int i = 0; i < M - 1; i++)
-        {
-            indices[p++] = i + j * N;
-            indices[p++] = (i + 1) + j * N;
-            indices[p++] = i + (j + 1) * N;
-
-            indices[p++] = (i + 1) + j * N;
-            indices[p++] = (i + 1) + (j + 1) * N;
-            indices[p++] = i + (j + 1) * N;
-        }
+    // for (int y = 0; y < meshSizeLimit - 1; y++)
+    // {
+    //     for (int x = 0; x < meshSizeLimit; x++)
+    //     {
+    //         *pIndex++ = y * meshSizeLimit + x;
+    //         *pIndex++ = (y + 1) * meshSizeLimit + x;
+    //     }
+    //     *pIndex++ = (y + 1) * meshSizeLimit + (meshSizeLimit - 1);
+    //     *pIndex++ = (y + 1) * meshSizeLimit;
+    // }
+    
+    for (int y = 0; y < meshSizeLimit - 1; y++) {
+    if (y > 0) {
+        // Degenerate start
+        *pIndex++ = y * meshSizeLimit;
     }
+    for (int x = 0; x < meshSizeLimit; x++) {
+        *pIndex++ = y * meshSizeLimit + x;
+        *pIndex++ = (y + 1) * meshSizeLimit + x;
+    }
+    if (y < meshSizeLimit - 2) {
+        // Degenerate end
+        *pIndex++ = (y + 1) * meshSizeLimit + (meshSizeLimit - 1);
+    }
+}
+
+
     
     //* Step - 4
     memset((void*)&indexData, 0, sizeof(BufferData));
@@ -616,7 +655,7 @@ VkResult Ocean::createBuffers()
     vkBufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     vkBufferCreateInfo.flags = 0;   //! Valid Flags are used in sparse(scattered) buffers
     vkBufferCreateInfo.pNext = NULL;
-    vkBufferCreateInfo.size = indexCount * sizeof(unsigned int);
+    vkBufferCreateInfo.size = indexSize * sizeof(unsigned int);
     vkBufferCreateInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
     //* Step - 6
@@ -672,7 +711,7 @@ VkResult Ocean::createBuffers()
         fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Index Buffer\n", __func__);
 
     //* Step - 11
-    void* data = NULL;
+    data = NULL;
     vkResult = vkMapMemory(vkDevice, indexData.vkDeviceMemory, 0, vkMemoryAllocateInfo.allocationSize, 0, &data);
     if (vkResult != VK_SUCCESS)
         fprintf(gpFile, "%s() => vkMapMemory() Failed For Index Buffer : %d !!!\n", __func__, vkResult);
@@ -680,13 +719,13 @@ VkResult Ocean::createBuffers()
         fprintf(gpFile, "%s() => vkMapMemory() Succeeded For Index Buffer\n", __func__);
 
     //* Step - 12
-    memcpy(data, indices, indexCount * sizeof(unsigned int));
+    memcpy(data, indices, indexSize * sizeof(unsigned int));
+    delete[] indices;
+    indices = nullptr;
 
     //* Step - 13
     vkUnmapMemory(vkDevice, indexData.vkDeviceMemory);
 
-    delete[] indices;
-    indices = nullptr;
     //! ---------------------------------------------------------------------------------------------------------------------------------
 
     return vkResult;
@@ -864,10 +903,9 @@ VkResult Ocean::updateUniformBuffer()
     glm::mat4 translationMatrix = glm::mat4(1.0f);
     glm::mat4 scaleMatrix = glm::mat4(1.0f);
 
-    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -2.0f, -50.0f));
-    scaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(0.05f, 0.05f, 0.05f));
+    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.3f, -3.5f));
+    scaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(5.0f, 5.0f, 5.0f));
     mvpData.modelMatrix = translationMatrix * scaleMatrix;
-    mvpData.viewMatrix = cameraMatrix;
     
     glm::mat4 perspectiveProjectionMatrix = glm::mat4(1.0f);
     perspectiveProjectionMatrix = glm::perspective(
@@ -883,14 +921,13 @@ VkResult Ocean::updateUniformBuffer()
     WaterUBO waterUBO;
     memset((void*)&waterUBO, 0, sizeof(WaterUBO));
 
-    lightPosition = lightDirection * 50.0f;
-
-    waterUBO.lightPosition = glm::vec4(lightPosition, 0.0f);
-    waterUBO.lightAmbient = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
-    waterUBO.lightDiffuse = glm::vec4(1.0f, 1.0f, 1.0f, 0.0f);
-    waterUBO.lightSpecular = glm::vec4(1.0f, 0.9f, 0.7f, 0.0f);
-    waterUBO.viewPosition = glm::vec4(30.0f, 30.0f, 60.0f, 0.0f);
-    waterUBO.heightVector = glm::vec4(heightMin * 0.1, heightMax * 0.1, 0.0f, 0.0f);
+    waterUBO.heightScale = 0.25f;
+    waterUBO.choppiness = 1.0f;
+    waterUBO.size = glm::vec2((float)meshSizeLimit, (float)meshSizeLimit);
+    waterUBO.deepColor = glm::vec4(0.0f, 0.1f, 0.5f, 1.0f);
+    waterUBO.shallowColor = glm::vec4(0.1f, 0.3f, 0.3f, 1.0f);
+    waterUBO.skyColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    waterUBO.lightDirection = glm::vec4(-0.45f, 2.1f, -3.5f, 0.0f);
 
     //! Map Uniform Buffer
     void* data = NULL;
@@ -942,7 +979,7 @@ VkResult Ocean::createDescriptorSetLayout(void)
     vkDescriptorSetLayoutBinding_array[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     vkDescriptorSetLayoutBinding_array[1].binding = 1;   //! Mapped with layout(binding = 1) in fragment shader
     vkDescriptorSetLayoutBinding_array[1].descriptorCount = 1;
-    vkDescriptorSetLayoutBinding_array[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    vkDescriptorSetLayoutBinding_array[1].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     vkDescriptorSetLayoutBinding_array[1].pImmutableSamplers = NULL;
 
     //* Step - 3
@@ -1095,33 +1132,44 @@ VkResult Ocean::createPipeline(void)
     //* Code
 
     //! Vertex Input State
-    VkVertexInputBindingDescription vkVertexInputBindingDescription_array[2];
+    VkVertexInputBindingDescription vkVertexInputBindingDescription_array[3];
     memset((void*)vkVertexInputBindingDescription_array, 0, sizeof(VkVertexInputBindingDescription) * _ARRAYSIZE(vkVertexInputBindingDescription_array));
 
     //! Position
     vkVertexInputBindingDescription_array[0].binding = 0;
-    vkVertexInputBindingDescription_array[0].stride = sizeof(glm::vec3);
+    vkVertexInputBindingDescription_array[0].stride = sizeof(glm::vec4);
     vkVertexInputBindingDescription_array[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     
-    //! Normals
+    //! Height
     vkVertexInputBindingDescription_array[1].binding = 1;
-    vkVertexInputBindingDescription_array[1].stride = sizeof(glm::vec3);
+    vkVertexInputBindingDescription_array[1].stride = sizeof(float);
     vkVertexInputBindingDescription_array[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-    VkVertexInputAttributeDescription vkVertexInputAttributeDescription_array[2];
+    //! Slope
+    vkVertexInputBindingDescription_array[2].binding = 2;
+    vkVertexInputBindingDescription_array[2].stride = sizeof(glm::vec2);
+    vkVertexInputBindingDescription_array[2].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    VkVertexInputAttributeDescription vkVertexInputAttributeDescription_array[3];
     memset((void*)vkVertexInputAttributeDescription_array, 0, sizeof(VkVertexInputAttributeDescription) * _ARRAYSIZE(vkVertexInputAttributeDescription_array));
 
     //! Position
     vkVertexInputAttributeDescription_array[0].binding = 0;
     vkVertexInputAttributeDescription_array[0].location = 0;
-    vkVertexInputAttributeDescription_array[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+    vkVertexInputAttributeDescription_array[0].format = VK_FORMAT_R32G32B32A32_SFLOAT;
     vkVertexInputAttributeDescription_array[0].offset = 0;
 
-    //! Normals
+    //! Height
     vkVertexInputAttributeDescription_array[1].binding = 1;
     vkVertexInputAttributeDescription_array[1].location = 1;
-    vkVertexInputAttributeDescription_array[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+    vkVertexInputAttributeDescription_array[1].format = VK_FORMAT_R32_SFLOAT;
     vkVertexInputAttributeDescription_array[1].offset = 0;
+
+    //! Slope
+    vkVertexInputAttributeDescription_array[2].binding = 2;
+    vkVertexInputAttributeDescription_array[2].location = 2;
+    vkVertexInputAttributeDescription_array[2].format = VK_FORMAT_R32G32_SFLOAT;
+    vkVertexInputAttributeDescription_array[2].offset = 0;
 
     VkPipelineVertexInputStateCreateInfo vkPipelineVertexInputStateCreateInfo;
     memset((void*)&vkPipelineVertexInputStateCreateInfo, 0, sizeof(VkPipelineVertexInputStateCreateInfo));
@@ -1139,7 +1187,7 @@ VkResult Ocean::createPipeline(void)
     vkPipelineInputAssemblyStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     vkPipelineInputAssemblyStateCreateInfo.pNext = NULL;
     vkPipelineInputAssemblyStateCreateInfo.flags = 0;
-    vkPipelineInputAssemblyStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    vkPipelineInputAssemblyStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
 
     //! Rasterization State
     VkPipelineRasterizationStateCreateInfo vkPipelineRasterizationStateCreateInfo;
@@ -1361,24 +1409,34 @@ void Ocean::buildCommandBuffers(VkCommandBuffer& commandBuffer)
         NULL
     );
 
-    //! Bind with Vertex Displacement Buffer
+    //! Bind with Position Data
     VkDeviceSize vkDeviceSize_offset_array[1];
     memset((void*)vkDeviceSize_offset_array, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_array));
     vkCmdBindVertexBuffers(
         commandBuffer,
         0,
         1,
-        &vertexData_displacement.vkBuffer,
+        &vertexData_position.vkBuffer,
         vkDeviceSize_offset_array
     );
 
-    //! Bind with Vertex Normals Buffer
+    //! Bind with Height Data
     memset((void*)vkDeviceSize_offset_array, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_array));
     vkCmdBindVertexBuffers(
         commandBuffer,
         1,
         1,
-        &vertexData_normals.vkBuffer,
+        &vertexData_height.vkBuffer,
+        vkDeviceSize_offset_array
+    );
+
+    //! Bind with Slope Data
+    memset((void*)vkDeviceSize_offset_array, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_array));
+    vkCmdBindVertexBuffers(
+        commandBuffer,
+        2,
+        1,
+        &vertexData_slope.vkBuffer,
         vkDeviceSize_offset_array
     );
 
@@ -1393,7 +1451,7 @@ void Ocean::buildCommandBuffers(VkCommandBuffer& commandBuffer)
     //! Vulkan Drawing Function
     vkCmdDrawIndexed(
         commandBuffer,
-        indexCount,
+        indexSize,
         1,              //* Count of geometry instances
         0,              //* Starting offset of index buffer
         0,              //* Starting offset of vertex buffer
@@ -1401,164 +1459,32 @@ void Ocean::buildCommandBuffers(VkCommandBuffer& commandBuffer)
     );
 }
 
-void Ocean::update(glm::mat4 cameraViewMatrix)
+void Ocean::update()
 {
     fTime += waveSpeed;
-
-    cameraMatrix = cameraViewMatrix;
     
-    //* Build Tessendorf Mesh
-    generate_fft_data(fTime);
+    cudaGenerateSpectrumKernel(device_h_twiddle_0, device_height, spectrumW, meshSizeLimit, meshSizeLimit, fTime, patchSize);
+
+    cudaDeviceSynchronize();
+
+    cufftResult fftResult = cufftExecC2C(plan2d, device_height, device_height, CUFFT_INVERSE);
+    if (fftResult != CUFFT_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => cufftExecC2C() Failed For device_height : %d !!!\n", __func__, fftResult);
+    }
+
+    cudaUpdateHeightmapKernel((float*)heightPtr, device_height, meshSizeLimit, meshSizeLimit);
+
+    cudaDeviceSynchronize();
+
+    cudaCalculateSlopeKernel((float*)heightPtr, (float2*)slopePtr, meshSizeLimit, meshSizeLimit);
+
+    cudaDeviceSynchronize();
+
 
     updateUniformBuffer();
 }
 
-//* Tessendorf Related
-inline float Ocean::phillips_spectrum(float kx, float kz) const
-{
-    // Code
-    float k_length = sqrtf((kx * kx) + (kz * kz));
-    if (k_length < 1e-6f)
-        return 0.0f;
-
-    // Largest possible waves from continuous wind of speed V
-    float wave_length = (V * V) / G;
-
-    float kx_normalized = kx / k_length;
-    float kz_normalized = kz / k_length;
-
-    float dot = kx_normalized * omega_hat.x + kz_normalized * omega_hat.y;
-    float dot_term = dot * dot;
-
-    float exp_term = expf(-1.0f / (k_length * k_length * wave_length * wave_length));
-    float result = A * exp_term * dot_term / powf(k_length, 4.0f);
-
-    // Small-wave damping (Eq. 24) — uses constant L
-    result *= expf(-k_length * k_length * L * L);
-
-    return result;
-}
-
-void Ocean::compute_h_twiddle_0()
-{
-    // Code
-    std::default_random_engine generator((unsigned)time(nullptr));
-    std::normal_distribution<float> normal_distribution{0.0f, 1.0f}; 
-
-    for (int n = 0; n < N; n++)
-    {
-        for (int m = 0; m < M; m++)
-        {
-            int index = m * N + n;
-            
-            // K Vector (kx, kz)
-            float kx = 2.0f * M_PI * (float(n) - float(N) / 2.0f) / x_length;
-            float kz = 2.0f * M_PI * (float(m) - float(M) / 2.0f) / z_length;
-
-            float xi_real = normal_distribution(generator);
-            float xi_imag = normal_distribution(generator);
-            float spectrum = phillips_spectrum(kx, kz);
-            float mag_sqrt = sqrtf(0.5f * spectrum);
-
-            host_h_twiddle_0[index].x = mag_sqrt * xi_real;
-            host_h_twiddle_0[index].y = mag_sqrt * xi_imag;
-        }
-    }
-}
-
-void Ocean::compute_h_twiddle_0_conjugate()
-{
-    // Code
-    for (int n = 0; n < N; n++)
-    {
-        for (int m = 0; m < M; m++)
-        {
-            int index = m * N + n;
-            
-            int kn_neg = (N - n) % N;
-            int km_neg = (M - m) % M;
-
-            int index_neg = km_neg * N + kn_neg;
-
-            host_h_twiddle_0_conjugate[index].x = host_h_twiddle_0_conjugate[index_neg].x;
-            host_h_twiddle_0_conjugate[index].y = -host_h_twiddle_0_conjugate[index_neg].y;
-        }
-    }
-}
-
-//! Eqn. 19
-void Ocean::generate_fft_data(float time)
-{
-    // Variable Declarations
-    dim3 block(16, 16);
-    dim3 grid((N + block.x - 1) / block.x, (M + block.y - 1) / block.y);
-
-    float3* pDisplacement = (float3*)displacementPtr;
-    float3* pNormals = (float3*)normalsPtr;
-
-    build_fft<<<grid, block>>>(
-        device_h_twiddle_0,
-        device_h_twiddle_0_conjugate,
-        device_h_twiddle,
-        device_in_slope_x,
-        device_in_slope_z,
-        device_in_displacement_x,
-        device_in_displacement_z,
-        N,
-        M,
-        time,
-        lambda,
-        x_length,
-        z_length
-    );
-
-    //* Inverse FFTs
-    fftResult = cufftExecC2C(plan2d, device_h_twiddle, device_out_height, CUFFT_INVERSE);
-    if (fftResult != CUFFT_SUCCESS)
-        fprintf(gpFile, "%s() => cufftExecC2C() Failed For h_twiddle !!!\n", __func__);
-
-    fftResult = cufftExecC2C(plan2d, device_in_slope_x, device_out_slope_x, CUFFT_INVERSE);
-    if (fftResult != CUFFT_SUCCESS)
-        fprintf(gpFile, "%s() => cufftExecC2C() Failed For slope_x !!!\n", __func__);
-
-    fftResult = cufftExecC2C(plan2d, device_in_slope_z, device_out_slope_z, CUFFT_INVERSE);
-    if (fftResult != CUFFT_SUCCESS)
-        fprintf(gpFile, "%s() => cufftExecC2C() Failed For slope_z !!!\n", __func__);
-
-    fftResult = cufftExecC2C(plan2d, device_in_displacement_x, device_out_displacement_x, CUFFT_INVERSE);
-    if (fftResult != CUFFT_SUCCESS)
-        fprintf(gpFile, "%s() => cufftExecC2C() Failed For displacement_x !!!\n", __func__);
-
-    fftResult = cufftExecC2C(plan2d, device_in_displacement_z, device_out_displacement_z, CUFFT_INVERSE);
-    if (fftResult != CUFFT_SUCCESS)
-        fprintf(gpFile, "%s() => cufftExecC2C() Failed For displacement_z !!!\n", __func__);
-
-    copy_to_maps<<<grid, block>>>(
-        device_out_height,
-        device_out_slope_x,
-        device_out_slope_z,
-        device_out_displacement_x,
-        device_out_displacement_z,
-        pDisplacement,
-        pNormals,
-        N,
-        M,
-        lambda,
-        x_length,
-        z_length
-    );
-
-    cudaDeviceSynchronize();
-
-    cudaError_t err = cudaGetLastError();
-    if (err != cudaSuccess)
-        fprintf(gpFile, "CUDA Kernel Error: %s\n", cudaGetErrorString(err));
-
-    float3 test;
-    cudaMemcpy(&test, displacementPtr, sizeof(float3), cudaMemcpyDeviceToHost);
-    fprintf(gpFile, "Sample vertex: %.3f %.3f %.3f\n", test.x, test.y, test.z);
-
-}
 
 Ocean::~Ocean()
 {
@@ -1625,20 +1551,20 @@ Ocean::~Ocean()
         fprintf(gpFile, "%s() => vkDestroyBuffer() Succedded For uniformData_mvp.vkBuffer\n", __func__);
     }
 
-    if (cudaExternalMemory_normals)
+    if (cudaExternalMemory_slope)
     {
-        if (cudaDestroyExternalMemory(cudaExternalMemory_normals) == cudaSuccess)
-            fprintf(gpFile, "%s() => cudaDestroyExternalMemory() Succedded For cudaExternalMemory_normals\n", __func__);
-        cudaExternalMemory_normals = NULL;
-        normalsPtr = NULL;
+        if (cudaDestroyExternalMemory(cudaExternalMemory_slope) == cudaSuccess)
+            fprintf(gpFile, "%s() => cudaDestroyExternalMemory() Succedded For cudaExternalMemory_slope\n", __func__);
+        cudaExternalMemory_slope = NULL;
+        slopePtr = NULL;
     }
 
-    if (cudaExternalMemory_displacement)
+    if (cudaExternalMemory_height)
     {
-        if (cudaDestroyExternalMemory(cudaExternalMemory_displacement) == cudaSuccess)
-            fprintf(gpFile, "%s() => cudaDestroyExternalMemory() Succedded For cudaExternalMemory_displacement\n", __func__);
-        cudaExternalMemory_displacement = NULL;
-        displacementPtr = NULL;
+        if (cudaDestroyExternalMemory(cudaExternalMemory_height) == cudaSuccess)
+            fprintf(gpFile, "%s() => cudaDestroyExternalMemory() Succedded For cudaExternalMemory_height\n", __func__);
+        cudaExternalMemory_height = NULL;
+        heightPtr = NULL;
     }
 
     //* Step - 14 of Vertex Buffer
@@ -1656,116 +1582,64 @@ Ocean::~Ocean()
         fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For indexData.vkBuffer\n", __func__);
     }
 
-    if (vertexData_normals.vkDeviceMemory)
+    if (vertexData_position.vkDeviceMemory)
     {
-        vkFreeMemory(vkDevice, vertexData_normals.vkDeviceMemory, NULL);
-        vertexData_normals.vkDeviceMemory = VK_NULL_HANDLE;
-        fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vertexData_normals.vkDeviceMemory\n", __func__);
+        vkFreeMemory(vkDevice, vertexData_position.vkDeviceMemory, NULL);
+        vertexData_position.vkDeviceMemory = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vertexData_position.vkDeviceMemory\n", __func__);
     }
 
-    if (vertexData_normals.vkBuffer)
+    if (vertexData_position.vkBuffer)
     {
-        vkDestroyBuffer(vkDevice, vertexData_normals.vkBuffer, NULL);
-        vertexData_normals.vkBuffer = VK_NULL_HANDLE;
-        fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vertexData_normals.vkBuffer\n", __func__);
+        vkDestroyBuffer(vkDevice, vertexData_position.vkBuffer, NULL);
+        vertexData_position.vkBuffer = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vertexData_position.vkBuffer\n", __func__);
     }
 
-    if (vertexData_displacement.vkDeviceMemory)
+    if (vertexData_slope.vkDeviceMemory)
     {
-        vkFreeMemory(vkDevice, vertexData_displacement.vkDeviceMemory, NULL);
-        vertexData_displacement.vkDeviceMemory = VK_NULL_HANDLE;
-        fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vertexData_displacement.vkDeviceMemory\n", __func__);
+        vkFreeMemory(vkDevice, vertexData_slope.vkDeviceMemory, NULL);
+        vertexData_slope.vkDeviceMemory = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vertexData_slope.vkDeviceMemory\n", __func__);
     }
 
-    if (vertexData_displacement.vkBuffer)
+    if (vertexData_slope.vkBuffer)
     {
-        vkDestroyBuffer(vkDevice, vertexData_displacement.vkBuffer, NULL);
-        vertexData_displacement.vkBuffer = VK_NULL_HANDLE;
-        fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vertexData_displacement.vkBuffer\n", __func__);
+        vkDestroyBuffer(vkDevice, vertexData_slope.vkBuffer, NULL);
+        vertexData_slope.vkBuffer = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vertexData_slope.vkBuffer\n", __func__);
     }
 
-    if (plan2d)
+    if (vertexData_height.vkDeviceMemory)
     {
-        cufftDestroy(plan2d);
-        plan2d = 0;
+        vkFreeMemory(vkDevice, vertexData_height.vkDeviceMemory, NULL);
+        vertexData_height.vkDeviceMemory = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkFreeMemory() Succeeded For vertexData_height.vkDeviceMemory\n", __func__);
     }
 
-    if (device_out_displacement_z)
+    if (vertexData_height.vkBuffer)
     {
-        cudaFree(device_out_displacement_z);
-        device_out_displacement_z = nullptr;
+        vkDestroyBuffer(vkDevice, vertexData_height.vkBuffer, NULL);
+        vertexData_height.vkBuffer = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkDestroyBuffer() Succeeded For vertexData_height.vkBuffer\n", __func__);
     }
 
-    if (device_out_displacement_x)
+    if (device_slope)
     {
-        cudaFree(device_out_displacement_x);
-        device_out_displacement_x = nullptr;
+        cudaFree(device_slope);
+        device_slope = nullptr;
     }
 
-    if (device_out_slope_z)
+    if (device_height)
     {
-        cudaFree(device_out_slope_z);
-        device_out_slope_z = nullptr;
+        cudaFree(device_height);
+        device_height = nullptr;
     }
 
-    if (device_out_slope_x)
+    if (host_h_twiddle_0)
     {
-        cudaFree(device_out_slope_x);
-        device_out_slope_x = nullptr;
-    }
-
-    if (device_out_height)
-    {
-        cudaFree(device_out_height);
-        device_out_height = nullptr;
-    }
-
-    if (device_out_height)
-    {
-        cudaFree(device_out_height);
-        device_out_height = nullptr;
-    }
-
-    if (device_in_displacement_z)
-    {
-        cudaFree(device_in_displacement_z);
-        device_in_displacement_z = nullptr;
-    }
-
-    if (device_in_displacement_x)
-    {
-        cudaFree(device_in_displacement_x);
-        device_in_displacement_x = nullptr;
-    }
-
-    if (device_in_slope_z)
-    {
-        cudaFree(device_in_slope_z);
-        device_in_slope_z = nullptr;
-    }
-
-    if (device_in_slope_x)
-    {
-        cudaFree(device_in_slope_x);
-        device_in_slope_x = nullptr;
-    }
-
-    if (device_in_height)
-    {
-        cudaFree(device_in_height);
-        device_in_height = nullptr;
-    }
-
-    if (device_h_twiddle)
-    {
-        cudaFree(device_h_twiddle);
-        device_h_twiddle = nullptr;
-    }
-
-    if (device_h_twiddle_0_conjugate)
-    {
-        cudaFree(device_h_twiddle_0_conjugate);
-        device_h_twiddle_0_conjugate = nullptr;
+        free(host_h_twiddle_0);
+        host_h_twiddle_0 = nullptr;
     }
 
     if (device_h_twiddle_0)
@@ -1774,15 +1648,98 @@ Ocean::~Ocean()
         device_h_twiddle_0 = nullptr;
     }
 
-    if (host_h_twiddle_0_conjugate)
+    if (plan2d)
     {
-        free(host_h_twiddle_0_conjugate);
-        host_h_twiddle_0_conjugate = nullptr;
+        cufftDestroy(plan2d);
+        plan2d = 0;
     }
 
-    if (host_h_twiddle_0)
+}
+
+
+
+// Phillips spectrum
+// (Kx, Ky) - normalized wave vector
+// Vdir - wind angle in radians
+// V - wind speed
+// waveScaleFactor - constant
+float phillips(float Kx, float Ky, float Vdir, float V, float waveScaleFactor, float dir_depend)
+{
+    float k_squared = Kx * Kx + Ky * Ky;
+
+    if (k_squared == 0.0f)
     {
-        free(host_h_twiddle_0);
-        host_h_twiddle_0 = nullptr;
+        return (0.0f);
+    }
+
+    // largest possible wave from constant wind of velocity v
+    float L = V * V / gravitationalConstant;
+
+    float k_x = Kx / sqrtf(k_squared);
+    float k_y = Ky / sqrtf(k_squared);
+    float w_dot_k = k_x * cosf(Vdir) + k_y * sinf(Vdir);
+
+    float phillips = waveScaleFactor * expf(-1.0f / (k_squared * L * L)) / (k_squared * k_squared) * w_dot_k * w_dot_k;
+
+    // filter out waves moving opposite to wind
+    if (w_dot_k < 0.0f)
+    {
+        phillips *= dir_depend;
+    }
+
+    // damp out waves with very small length w << l
+    // float w = L / 10000;
+    // phillips *= expf(-k_squared * w * w);
+
+    return (phillips);
+}
+
+float urand(void)
+{
+    return (rand() / (float)RAND_MAX);
+}
+
+float gauss()
+{
+    float u1 = urand();
+    float u2 = urand();
+
+    if (u1 < 1e-6f)
+    {
+        u1 = 1e-6f;
+    }
+
+    return (sqrtf(-2 * logf(u1)) * cosf(2 * CUDART_PI_F * u2));
+}
+
+
+void Ocean::generate_initial_spectrum()
+{
+    for (unsigned int y = 0; y <= meshSizeLimit; y++)
+    {
+        for (unsigned int x = 0; x <= meshSizeLimit; x++)
+        {
+            float kx = (-(int)meshSizeLimit / 2.0f + x) * (2.0f * CUDART_PI_F / patchSize);
+            float ky = (-(int)meshSizeLimit / 2.0f + y) * (2.0f * CUDART_PI_F / patchSize);
+
+            float P = sqrtf(phillips(kx, ky, windDir, windSpeed, waveScaleFactor, dirDepend));
+
+            if (kx == 0.0f && ky == 0.0f)
+            {
+                P = 0.0f;
+            }
+
+            // float Er = urand()*2.0f-1.0f;
+            // float Ei = urand()*2.0f-1.0f;
+            float Er = gauss();
+            float Ei = gauss();
+
+            float h0_re = Er * P * CUDART_SQRT_HALF_F;
+            float h0_im = Ei * P * CUDART_SQRT_HALF_F;
+
+            int i = y * spectrumW + x;
+            host_h_twiddle_0[i].x = h0_re;
+            host_h_twiddle_0[i].y = h0_im;
+        }
     }
 }
