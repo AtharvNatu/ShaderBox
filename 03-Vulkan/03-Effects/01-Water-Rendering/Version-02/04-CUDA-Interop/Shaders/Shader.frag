@@ -31,8 +31,6 @@ void main()
 
     vec4 waterColor = oceanUbo.deepColor;
 
-    // FragColor = waterColor * diffuse + oceanUbo.skyColor * fresnel;
-    FragColor = vec4(1.0, 0.0, 0.0, 0.0);
+    FragColor = waterColor * diffuse + oceanUbo.skyColor * fresnel;
 }
-
 

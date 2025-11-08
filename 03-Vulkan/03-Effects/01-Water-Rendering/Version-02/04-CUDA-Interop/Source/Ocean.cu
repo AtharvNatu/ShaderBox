@@ -597,10 +597,6 @@ VkResult Ocean::createBuffers()
         }
     }
 
-    fprintf(gpFile, "[DEBUG] First vertex: (%.3f, %.3f, %.3f, %.3f)\n",
-        positionBase[0], positionBase[1], positionBase[2], positionBase[3]);
-
-
     //* Step - 12
     memcpy(data, positionBase, meshSizeLimit * meshSizeLimit * 4 * sizeof(float));
 
@@ -903,9 +899,10 @@ VkResult Ocean::updateUniformBuffer()
     glm::mat4 translationMatrix = glm::mat4(1.0f);
     glm::mat4 scaleMatrix = glm::mat4(1.0f);
 
-    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.3f, -3.5f));
-    scaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(5.0f, 5.0f, 5.0f));
+    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f, -3.5f));
+    scaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, 1.0f, 1.0f));
     mvpData.modelMatrix = translationMatrix * scaleMatrix;
+    mvpData.viewMatrix = glm::mat4(1.0f);
     
     glm::mat4 perspectiveProjectionMatrix = glm::mat4(1.0f);
     perspectiveProjectionMatrix = glm::perspective(
@@ -1188,6 +1185,7 @@ VkResult Ocean::createPipeline(void)
     vkPipelineInputAssemblyStateCreateInfo.pNext = NULL;
     vkPipelineInputAssemblyStateCreateInfo.flags = 0;
     vkPipelineInputAssemblyStateCreateInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+    vkPipelineInputAssemblyStateCreateInfo.primitiveRestartEnable = VK_FALSE;
 
     //! Rasterization State
     VkPipelineRasterizationStateCreateInfo vkPipelineRasterizationStateCreateInfo;
@@ -1480,7 +1478,6 @@ void Ocean::update()
     cudaCalculateSlopeKernel((float*)heightPtr, (float2*)slopePtr, meshSizeLimit, meshSizeLimit);
 
     cudaDeviceSynchronize();
-
 
     updateUniformBuffer();
 }

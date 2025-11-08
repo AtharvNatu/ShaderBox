@@ -101,7 +101,7 @@ class Ocean
         VkResult vkResult;
 
         //* Ocean Parameters
-        const int MESH_SIZE = 1024;
+        const int MESH_SIZE = 256;
         const int SPECTRUM_SIZE_WIDTH = MESH_SIZE + 4;
         const int SPECTRUM_SIZE_HEIGHT = MESH_SIZE + 1;
 
@@ -109,7 +109,7 @@ class Ocean
         const int N = MESH_SIZE;        
         const int M = MESH_SIZE;
 
-        unsigned int meshSizeLimit = 1024;
+        unsigned int meshSizeLimit = 256;
         unsigned int spectrumW = MESH_SIZE + 4;
         unsigned int spectrumH = MESH_SIZE + 1;
 
