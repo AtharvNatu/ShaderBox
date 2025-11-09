@@ -29,6 +29,8 @@ extern VkViewport vkViewport;
 extern VkRect2D vkRect2D_scissor;
 extern VkExtent2D vkExtent2D_swapchain;
 extern int winWidth, winHeight;
+extern VkCommandPool vkCommandPool;
+extern VkQueue vkQueue;
 
 class Ocean
 {
@@ -45,6 +47,14 @@ class Ocean
             VkBuffer vkBuffer;
             VkDeviceMemory vkDeviceMemory;
         } UniformData;
+
+        typedef struct
+        {
+            VkImage vkImage;
+            VkDeviceMemory vkDeviceMemory;
+            VkImageView vkImageView;
+            VkSampler vkSampler;
+        } Texture;
 
         typedef struct
         {
@@ -70,6 +80,9 @@ class Ocean
         BufferData vertexData_position, vertexData_height, vertexData_slope;
         BufferData indexData;
         VkDeviceSize heightSize, slopeSize, indicesSize;
+
+        //* Texture Related Variables
+        Texture bubblesTexture, foamIntensityTexture;
         
         //* Host h_twiddle_0
         float2 *host_h_twiddle_0 = nullptr;
@@ -104,7 +117,7 @@ class Ocean
         VkResult vkResult;
 
         //* Ocean Parameters
-        int MESH_SIZE = 512;
+        int MESH_SIZE = 1024;
         int SPECTRUM_SIZE_WIDTH = MESH_SIZE + 4;
         int SPECTRUM_SIZE_HEIGHT = MESH_SIZE + 1;
 
@@ -112,13 +125,13 @@ class Ocean
         const float waveScaleFactor = 1e-7f;       // Wave Scale Factor
         const float patchSize = 100;               // Patch Size
 
-        float windSpeed = 100.0f;
+        float windSpeed = 50.0f;
         float windDirection = CUDART_PI_F / 3.0f;
         float waveDirectionStrength = 0.07f;
 
         // Wave Animation
         float fTime = 0.0f;
-        const float waveSpeed = 0.008f;
+        const float waveSpeed = 0.005f;
 
         //* Camera Debug
         glm::mat4 cameraViewMatrix;
@@ -131,7 +144,7 @@ class Ocean
         VkResult getMemoryWin32HandleFunction();
         float* getPositionData();
         uint32_t* generateIndices(VkDeviceSize* indexCount);
-
+        VkResult createTexture(const char* textureFileName, Texture& texture);
         VkResult createUniformBuffer();
         VkResult updateUniformBuffer();
         VkResult createDescriptorSetLayout();
