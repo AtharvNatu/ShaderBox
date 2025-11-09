@@ -10,9 +10,6 @@ set VULKAN_BIN_PATH="C:\\VulkanSDK\\Vulkan\\Bin"
 set CUDA_INCLUDE_PATH="C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.8\\include"
 set CUDA_LIB_PATH="C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.8\\lib\\x64"
 
-set IMGUI_PATH=ImGui
-set IMGUI_BACKENDS=%IMGUI_PATH%\backends
-
 set SOURCE_PATH=Source
 set INCLUDE_PATH=Include
 set IMAGES_PATH=Assets\Images
@@ -34,28 +31,21 @@ if %DEBUG% == 1 (
 
 echo ***** DEBUG MODE *****
 echo ----------------------------------------------------------------------------------------------------------------
-echo Compiling %API% and Win32 Source Code ...
+echo Compiling %API%, CUDA and Win32 Source Code ...
 echo ----------------------------------------------------------------------------------------------------------------
         nvcc ^
         -std=c++17 ^
         -c ^
+        -w ^
         -I%CUDA_INCLUDE_PATH% ^
         -I%VULKAN_INCLUDE_PATH% ^
         -I%VULKAN_INCLUDE_PATH%\glm ^
-        -I%IMGUI_PATH% ^
-        -I%IMGUI_BACKENDS% ^
         -I%INCLUDE_PATH% ^
         -Xcompiler="/EHsc" ^
         -Wno-deprecated-gpu-targets ^
+        %SOURCE_PATH%\Ocean.cu ^
         %SOURCE_PATH%\Camera.cpp ^
-        %SOURCE_PATH%\Water.cu ^
-        %SOURCE_PATH%\Vk.cpp ^
-        %IMGUI_PATH%\imgui.cpp ^
-        %IMGUI_PATH%\imgui_draw.cpp ^
-        %IMGUI_PATH%\imgui_widgets.cpp ^
-        %IMGUI_PATH%\imgui_tables.cpp ^
-        %IMGUI_BACKENDS%\imgui_impl_win32.cpp ^
-        %IMGUI_BACKENDS%\imgui_impl_vulkan.cpp
+        %SOURCE_PATH%\Vk.cpp
 
 if errorlevel 1 (
         @echo:
@@ -87,10 +77,10 @@ if %SPV% == 1 (
     echo Compiling Shader Files To SPIR-V Binaries ...
     echo ----------------------------------------------------------------------------------------------------------------
     cd Shaders
-    %VULKAN_BIN_PATH%\glslangValidator.exe -V -H -o Shader.vert.spv Shader.vert
-    %VULKAN_BIN_PATH%\glslangValidator.exe -V -H -o Shader.frag.spv Shader.frag
-    move Shader.vert.spv ../Bin
-    move Shader.frag.spv ../Bin
+    %VULKAN_BIN_PATH%\glslangValidator.exe -V -H -o Ocean.vert.spv Ocean.vert
+    %VULKAN_BIN_PATH%\glslangValidator.exe -V -H -o Ocean.frag.spv Ocean.frag
+    move Ocean.vert.spv ../Bin
+    move Ocean.frag.spv ../Bin
     cd ..
     if errorlevel 1 (
         @echo:
@@ -110,7 +100,7 @@ link.exe ^
         %BIN_DIR%\Vk.res ^
         /LIBPATH:%VULKAN_LIB_PATH% ^
         /LIBPATH:%CUDA_LIB_PATH% ^
-        user32.lib gdi32.lib cufft.lib cudart.lib ^
+        user32.lib gdi32.lib cudart.lib cufft.lib ^
         /SUBSYSTEM:WINDOWS
 
 if errorlevel 1 (
