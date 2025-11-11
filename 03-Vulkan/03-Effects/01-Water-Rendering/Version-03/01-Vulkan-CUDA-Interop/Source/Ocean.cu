@@ -1906,8 +1906,13 @@ VkResult Ocean::updateUniformBuffer()
     glm::mat4 scaleMatrix = glm::mat4(1.0f);
 
     // translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f, -1.5f));
-    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f, 0.0f));
+    translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f, -0.5f));
     scaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(5.0f, 5.0f, 5.0f));
+
+    // translationMatrix = glm_translationMatrix;
+    // scaleMatrix = glm_scaleMatrix;
+
+
     mvpData.modelMatrix = translationMatrix * scaleMatrix;
 
     if (useCamera)
@@ -1929,13 +1934,21 @@ VkResult Ocean::updateUniformBuffer()
     OceanSurfaceUBO waterUBO;
     memset((void*)&waterUBO, 0, sizeof(OceanSurfaceUBO));
 
-    waterUBO.heightScale = 0.1f;
-    waterUBO.choppiness = 0.2f;
-    waterUBO.size = glm::vec2((float)MESH_SIZE, (float)MESH_SIZE);
-    waterUBO.deepColor = glm::vec4(0.02f, 0.05f, 0.1f, 1.0f);
-    waterUBO.shallowColor = glm::vec4(0.0f, 0.64f, 0.68f, 1.0f);
-    waterUBO.skyColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    waterUBO.lightDirection = glm::vec4(-0.45f, 2.1f, -3.5f, 0.0f);
+    // waterUBO.heightScale = 0.1f;
+    // waterUBO.choppiness = 0.2f;
+    // waterUBO.size = glm::vec2((float)MESH_SIZE, (float)MESH_SIZE);
+    // waterUBO.deepColor = glm::vec4(0.02f, 0.05f, 0.1f, 1.0f);
+    // waterUBO.shallowColor = glm::vec4(0.0f, 0.64f, 0.68f, 1.0f);
+    // waterUBO.skyColor = glm::vec4(0.65f, 0.80f, 0.95f, 1.0f);
+    // waterUBO.lightDirection = glm::vec4(-0.45f, 2.1f, -3.5f, 0.0f);
+
+    waterUBO.heightScale = heightScale;
+    waterUBO.choppiness = choppiness;
+    waterUBO.size = glm::vec2((float)meshSize, (float)meshSize);
+    waterUBO.deepColor = glm::vec4(deepColor.x, deepColor.y, deepColor.z, 1.0f);
+    waterUBO.shallowColor = glm::vec4(shallowColor.x, shallowColor.y, shallowColor.z, 1.0f);
+    waterUBO.skyColor = glm::vec4(skyColor.x, skyColor.y, skyColor.z, 1.0f);
+    waterUBO.lightDirection = glm::vec4(lightDirection.x, lightDirection.y, lightDirection.z, lightDirection.w);
 
     //! Map Uniform Buffer
     void* data = NULL;
@@ -2058,7 +2071,8 @@ VkResult Ocean::createDescriptorPool()
     vkDescriptorPoolSize_array[0].descriptorCount = 2;
 
     vkDescriptorPoolSize_array[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    vkDescriptorPoolSize_array[1].descriptorCount = 2;
+    // vkDescriptorPoolSize_array[1].descriptorCount = 2;
+    vkDescriptorPoolSize_array[1].descriptorCount = IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE;
 
     //* Create the pool
     VkDescriptorPoolCreateInfo vkDescriptorPoolCreateInfo;
@@ -2068,7 +2082,10 @@ VkResult Ocean::createDescriptorPool()
     vkDescriptorPoolCreateInfo.flags = 0;
     vkDescriptorPoolCreateInfo.poolSizeCount = _ARRAYSIZE(vkDescriptorPoolSize_array);
     vkDescriptorPoolCreateInfo.pPoolSizes = vkDescriptorPoolSize_array;
-    vkDescriptorPoolCreateInfo.maxSets = 2;
+    // vkDescriptorPoolCreateInfo.maxSets = 2;
+
+    for (int i = 0; i < _ARRAYSIZE(vkDescriptorPoolSize_array); i++)
+        vkDescriptorPoolCreateInfo.maxSets = vkDescriptorPoolCreateInfo.maxSets + vkDescriptorPoolSize_array[i].descriptorCount;
 
     vkResult = vkCreateDescriptorPool(vkDevice, &vkDescriptorPoolCreateInfo, NULL, &vkDescriptorPool_ocean);
     if (vkResult != VK_SUCCESS)

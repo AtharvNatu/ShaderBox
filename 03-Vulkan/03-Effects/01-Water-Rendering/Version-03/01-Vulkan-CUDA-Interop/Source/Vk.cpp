@@ -13,6 +13,11 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+//! ImGui
+#include "imgui.h"
+#include "imgui_impl_vulkan.h"
+#include "imgui_impl_win32.h"
+
 #include "Vk.h"
 #include "helper_timer.h"
 #include "Camera.hpp"
@@ -152,6 +157,11 @@ StopWatchInterface* timer = nullptr;
 
 //? -----------------------------------------------------------------------
 
+
+ImFont* font;
+const float fontSize = 24.0f;
+
+
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
 {
@@ -281,6 +291,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
 
 }
 
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 // Callback Function
 LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -289,125 +301,128 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
     VkResult resize(int, int);
     void uninitialize(void);
 
+    if (ImGui_ImplWin32_WndProcHandler(hwnd, iMsg, wParam, lParam))
+        return true;
+
     // Code
     switch (iMsg)
     {
-    case WM_CREATE:
-        memset((void*)&wpPrev, 0, sizeof(WINDOWPLACEMENT));
-        wpPrev.length = sizeof(WINDOWPLACEMENT);
-        break;
-
-    case WM_SETFOCUS:
-        gbActiveWindow = TRUE;
-        break;
-
-    case WM_KILLFOCUS:
-        gbActiveWindow = FALSE;
-        break;
-
-    case WM_SIZE:
-        if (wParam == SIZE_MINIMIZED)
-            gbWindowMinimized = TRUE;
-        else
-        {
-            gbWindowMinimized = FALSE;
-            resize(LOWORD(lParam), HIWORD(lParam));
-        }
-        break;
-
-    case WM_KEYDOWN:
-        switch(wParam)
-        {
-            case 'F':
-            case 'f':
-                ToggleFullScreen();
-            break;
-            
-            case 'W':
-            case 'w':
-                camera.processKeyboard(FORWARD, deltaTime);
-            break;
-            
-            case 'S':
-            case 's':
-                camera.processKeyboard(BACKWARD, deltaTime);
-            break;
-            
-            case 'A':
-            case 'a':
-                camera.processKeyboard(LEFT, deltaTime);
-            break;
-            
-            case 'D':
-            case 'd':
-                camera.processKeyboard(RIGHT, deltaTime);
+        case WM_CREATE:
+            memset((void*)&wpPrev, 0, sizeof(WINDOWPLACEMENT));
+            wpPrev.length = sizeof(WINDOWPLACEMENT);
             break;
 
-            case VK_UP:
-                camera.processKeyboard(UP, deltaTime);
-            break;
-            case VK_DOWN:
-                camera.processKeyboard(DOWN, deltaTime);
+        case WM_SETFOCUS:
+            gbActiveWindow = TRUE;
             break;
 
-            case VK_SPACE:
-                mouseInput = !mouseInput;
+        case WM_KILLFOCUS:
+            gbActiveWindow = FALSE;
             break;
 
-            case 27:
-                DestroyWindow(hwnd);
-            break;
-
-            default:
-            break;
-        }
-    break;
-    
-    case WM_MOUSEWHEEL:
-    {
-        if (mouseInput)
-        {
-            float yOffset = GET_WHEEL_DELTA_WPARAM(wParam) / static_cast<float>(WHEEL_DELTA);
-            camera.processMouseScroll(yOffset);
-        }
-    }  
-    break;
-
-    case WM_MOUSEMOVE:
-    {
-        if (mouseInput)
-        {
-            float xPosition = static_cast<float>(GET_X_LPARAM(lParam));
-            float yPosition = static_cast<float>(GET_Y_LPARAM(lParam));
-
-            if (firstMouse)
+        case WM_SIZE:
+            if (wParam == SIZE_MINIMIZED)
+                gbWindowMinimized = TRUE;
+            else
             {
+                gbWindowMinimized = FALSE;
+                resize(LOWORD(lParam), HIWORD(lParam));
+            }
+            break;
+
+        case WM_KEYDOWN:
+            switch(wParam)
+            {
+                case 'F':
+                case 'f':
+                    ToggleFullScreen();
+                break;
+                
+                case 'W':
+                case 'w':
+                    camera.processKeyboard(FORWARD, deltaTime);
+                break;
+                
+                case 'S':
+                case 's':
+                    camera.processKeyboard(BACKWARD, deltaTime);
+                break;
+                
+                case 'A':
+                case 'a':
+                    camera.processKeyboard(LEFT, deltaTime);
+                break;
+                
+                case 'D':
+                case 'd':
+                    camera.processKeyboard(RIGHT, deltaTime);
+                break;
+
+                case VK_UP:
+                    camera.processKeyboard(UP, deltaTime);
+                break;
+                case VK_DOWN:
+                    camera.processKeyboard(DOWN, deltaTime);
+                break;
+
+                case VK_SPACE:
+                    mouseInput = !mouseInput;
+                break;
+
+                case 27:
+                    DestroyWindow(hwnd);
+                break;
+
+                default:
+                break;
+            }
+        break;
+        
+        case WM_MOUSEWHEEL:
+        {
+            if (mouseInput)
+            {
+                float yOffset = GET_WHEEL_DELTA_WPARAM(wParam) / static_cast<float>(WHEEL_DELTA);
+                camera.processMouseScroll(yOffset);
+            }
+        }  
+        break;
+
+        case WM_MOUSEMOVE:
+        {
+            if (mouseInput)
+            {
+                float xPosition = static_cast<float>(GET_X_LPARAM(lParam));
+                float yPosition = static_cast<float>(GET_Y_LPARAM(lParam));
+
+                if (firstMouse)
+                {
+                    lastX = xPosition;
+                    lastY = yPosition;
+                    firstMouse = false;
+                }
+
+                float xOffset = xPosition - lastX;
+                float yOffset = lastY - yPosition;
+
                 lastX = xPosition;
                 lastY = yPosition;
-                firstMouse = false;
+
+                camera.processMouseMovement(xOffset, yOffset);
             }
-
-            float xOffset = xPosition - lastX;
-            float yOffset = lastY - yPosition;
-
-            lastX = xPosition;
-            lastY = yPosition;
-
-            camera.processMouseMovement(xOffset, yOffset);
         }
-    }
-    break;
-
-    case WM_CLOSE:
-        DestroyWindow(hwnd);
         break;
 
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        break;
+        case WM_CLOSE:
+            DestroyWindow(hwnd);
+            break;
 
-    default:
-        break;
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            break;
+
+        default:
+            break;
     }
 
     return DefWindowProc(hwnd, iMsg, wParam, lParam);
@@ -482,6 +497,7 @@ VkResult initialize(void)
     VkResult createSemaphores(void);
     VkResult createFences(void);
     VkResult buildCommandBuffers(void);
+    void initializeImGui(const char* fontFile, float fontSize);
 
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -637,15 +653,18 @@ VkResult initialize(void)
     //! Ocean
     ocean = new Ocean();
 
-    vkResult = buildCommandBuffers();
-    if (vkResult != VK_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => buildCommandBuffers() Failed\n", __func__);
-        vkResult = VK_ERROR_INITIALIZATION_FAILED;
-        return vkResult;
-    }
-    else
-        fprintf(gpFile, "%s() => buildCommandBuffers() Succeeded\n", __func__);
+    //! Initialize ImGui
+    initializeImGui("ImGui\\Poppins-Regular.ttf", fontSize);
+
+    // vkResult = buildCommandBuffers();
+    // if (vkResult != VK_SUCCESS)
+    // {
+    //     fprintf(gpFile, "%s() => buildCommandBuffers() Failed\n", __func__);
+    //     vkResult = VK_ERROR_INITIALIZATION_FAILED;
+    //     return vkResult;
+    // }
+    // else
+    //     fprintf(gpFile, "%s() => buildCommandBuffers() Succeeded\n", __func__);
 
     //! Initialization Completed
     bInitialized = TRUE;
@@ -840,6 +859,8 @@ VkResult display(void)
 {
     // Function Declarations
     VkResult resize(int, int);
+    void renderImGui(void);
+    VkResult recordCommandBuffer(uint32_t imageIndex);
 
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -877,6 +898,17 @@ VkResult display(void)
     if (vkResult != VK_SUCCESS)
     {
         fprintf(gpFile, "%s() => vkResetFences() Failed : %d\n", __func__, vkResult);
+        return vkResult;
+    }
+
+    //! ImGui Render
+    renderImGui();
+
+    //! RECORD COMMANDS FOR CURRENT IMAGE
+    vkResult = recordCommandBuffer(currentImageIndex);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => recordCommandBuffer() Failed : %d\n", __func__, vkResult);
         return vkResult;
     }
 
@@ -945,6 +977,7 @@ void uninitialize(void)
 {
     // Function Declarations
     void ToggleFullScreen(void);
+    void uninitializeImGui(void);
 
     // Code
     if (gbFullScreen)
@@ -963,6 +996,8 @@ void uninitialize(void)
         vkDeviceWaitIdle(vkDevice);
         fprintf(gpFile, "%s() => vkDeviceWaitIdle() Succeeded\n", __func__);
     }
+
+    uninitializeImGui();
 
     if (timer)
     {
@@ -2918,6 +2953,86 @@ VkResult buildCommandBuffers(void)
     return vkResult;
 }
 
+VkResult recordCommandBuffer(uint32_t imageIndex)
+{
+    // Variable Declarations
+    VkResult vkResult = VK_SUCCESS;
+
+    // Code
+    VkCommandBuffer commandBuffer = vkCommandBuffer_array[imageIndex];
+
+    //* Step - 1 => Reset Command Buffer
+    vkResult = vkResetCommandBuffer(commandBuffer, 0);   //! 0 specifies not to release the resources
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkResetCommandBuffer() Failed : %d\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+
+    //* Step - 2
+    VkCommandBufferBeginInfo vkCommandBufferBeginInfo;
+    memset((void*)&vkCommandBufferBeginInfo, 0, sizeof(VkCommandBufferBeginInfo));
+    vkCommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    vkCommandBufferBeginInfo.pNext = NULL;
+    vkCommandBufferBeginInfo.flags = 0;     //! 0 specifies that we will use only the primary command buffer, and not going to use this command buffer simultaneously between multiple threads
+
+    //* Step - 3
+    vkResult = vkBeginCommandBuffer(commandBuffer, &vkCommandBufferBeginInfo);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkBeginCommandBuffer() Failed : %d\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+
+    //* Step - 4 => Set Clear Value
+    VkClearValue vkClearValue_array[2];
+    memset((void*)vkClearValue_array, 0, sizeof(VkClearValue) * _ARRAYSIZE(vkClearValue_array));
+    vkClearValue_array[0].color = vkClearColorValue;
+    vkClearValue_array[1].depthStencil = vkClearDepthStencilValue;
+
+    //* Step - 5
+    VkRenderPassBeginInfo vkRenderPassBeginInfo;
+    memset((void*)&vkRenderPassBeginInfo, 0, sizeof(VkRenderPassBeginInfo));
+    vkRenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    vkRenderPassBeginInfo.pNext = NULL;
+    vkRenderPassBeginInfo.renderPass = vkRenderPass;
+    vkRenderPassBeginInfo.renderArea.offset.x = 0;
+    vkRenderPassBeginInfo.renderArea.offset.y = 0;
+    vkRenderPassBeginInfo.renderArea.extent.width = vkExtent2D_swapchain.width;
+    vkRenderPassBeginInfo.renderArea.extent.height = vkExtent2D_swapchain.height;
+    vkRenderPassBeginInfo.clearValueCount = _ARRAYSIZE(vkClearValue_array);
+    vkRenderPassBeginInfo.pClearValues = vkClearValue_array;
+    vkRenderPassBeginInfo.framebuffer = vkFramebuffer_array[imageIndex];
+
+    //* Step - 6
+    vkCmdBeginRenderPass(commandBuffer, &vkRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    {
+        ocean->buildCommandBuffers(commandBuffer);
+
+        ImDrawData* imDrawData = ImGui::GetDrawData();
+        if (imDrawData != nullptr && imDrawData->TotalVtxCount > 0)
+        {
+            ImGui_ImplVulkan_RenderDrawData(imDrawData, commandBuffer);
+        }
+
+    }
+    //* Step - 7
+    vkCmdEndRenderPass(commandBuffer);
+
+    //* Step - 8
+    vkResult = vkEndCommandBuffer(commandBuffer);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkEndCommandBuffer() Failed : %d\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+
+    return vkResult;
+}
+
 VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
     VkDebugReportFlagsEXT vkDebugReportFlagsEXT,
     VkDebugReportObjectTypeEXT vkDebugReportObjectTypeEXT,
@@ -2932,4 +3047,117 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
     // Code
     fprintf(gpFile, "ADN_VALIDATION : debugReportCallback() => %s(%d) = %s\n", pLayerPrefix, messageCode, pMessage);
     return VK_FALSE;
+}
+
+
+
+//! ImGui Related Functions
+void initializeImGui(const char* fontFile, float fontSize)
+{
+    //! Setup ImGui Context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+
+    //! Setup ImGui Style
+    ImGui::StyleColorsDark();
+
+    //! Setup Platform / Renderer Backends
+    ImGui_ImplWin32_Init(ghwnd);
+    ImGui_ImplVulkan_InitInfo imgui_vulkan_init_info;
+    memset((void*)&imgui_vulkan_init_info, 0, sizeof(ImGui_ImplVulkan_InitInfo));
+    imgui_vulkan_init_info.Instance = vkInstance;
+    imgui_vulkan_init_info.Device = vkDevice;
+    imgui_vulkan_init_info.PhysicalDevice = vkPhysicalDevice_selected;
+    imgui_vulkan_init_info.QueueFamily = graphicsQueueFamilyIndex_selected;
+    imgui_vulkan_init_info.Queue = vkQueue;
+    imgui_vulkan_init_info.PipelineCache = VK_NULL_HANDLE;
+    imgui_vulkan_init_info.DescriptorPool = ocean->vkDescriptorPool_ocean;
+    imgui_vulkan_init_info.RenderPass = vkRenderPass;
+    imgui_vulkan_init_info.Subpass = 0;
+    imgui_vulkan_init_info.MinImageCount = 2;
+    imgui_vulkan_init_info.ImageCount = swapchainImageCount;
+    imgui_vulkan_init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+    imgui_vulkan_init_info.Allocator = NULL;
+    imgui_vulkan_init_info.CheckVkResultFn = NULL;
+
+    bool imguiStatus = ImGui_ImplVulkan_Init(&imgui_vulkan_init_info);
+    if (imguiStatus == false)
+    {
+        fprintf(gpFile, "%s() => ImGui_ImplVulkan_Init() Failed !!!\n", __func__);
+        return;
+    }
+
+    io.Fonts->AddFontFromFileTTF(fontFile, fontSize, NULL, io.Fonts->GetGlyphRangesDefault());
+}
+
+void renderImGui(void)
+{
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+
+    ImGui::SetWindowSize(ImVec2(450, 250));
+    ImGui::Begin("Vulkan-CUDA Interop");
+    ImGui::PushFont(font);
+    {
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::SliderFloat("Height Scale", &ocean->heightScale, 0.05f, 0.9f);
+        ImGui::SliderFloat("Choppiness", &ocean->choppiness, 0.001f, 10.0f);
+
+        // Mesh Size
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::Spacing();
+        static const int values[] = { 64, 128, 256, 512, 1024, 2048, 4096 };
+        static int currentIndex = 3;
+        char label[32];
+        snprintf(label, sizeof(label), "Mesh Size: %d", values[currentIndex]);
+        if (ImGui::SliderInt(label, &currentIndex, 0, IM_ARRAYSIZE(values) - 1, "%d"))
+        {
+            ocean->meshSize = values[currentIndex];
+            ImGui::Text("Mesh Size = %d", ocean->meshSize);
+        }
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::ColorEdit3("Deep Color", (float*)&ocean->deepColor);
+        ImGui::ColorEdit3("Shallow Color", (float*)&ocean->shallowColor);
+        ImGui::ColorEdit3("Sky Color", (float*)&ocean->skyColor);
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::InputFloat4("Light Direction", (float*)&ocean->lightDirection);
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::InputFloat4("Translation", (float*)&ocean->glm_translationMatrix);
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::InputFloat4("Scale", (float*)&ocean->glm_scaleMatrix);
+    }
+    ImGui::PopFont();
+    ImGui::End();
+
+    ImGui::Render();
+}
+
+void uninitializeImGui(void)
+{
+    // Code
+    ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
 }
