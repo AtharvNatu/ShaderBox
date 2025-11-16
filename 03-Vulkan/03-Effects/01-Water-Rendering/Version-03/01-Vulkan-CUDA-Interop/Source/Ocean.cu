@@ -1943,7 +1943,7 @@ VkResult Ocean::updateUniformBuffer()
     // waterUBO.lightDirection = glm::vec4(-0.45f, 2.1f, -3.5f, 0.0f);
 
     waterUBO.heightScale = heightScale;
-    waterUBO.choppiness = choppiness;
+    waterUBO.choppiness = 0.2f;
     waterUBO.size = glm::vec2((float)meshSize, (float)meshSize);
     waterUBO.deepColor = glm::vec4(deepColor.x, deepColor.y, deepColor.z, 1.0f);
     waterUBO.shallowColor = glm::vec4(shallowColor.x, shallowColor.y, shallowColor.z, 1.0f);
@@ -2079,7 +2079,7 @@ VkResult Ocean::createDescriptorPool()
     memset((void*)&vkDescriptorPoolCreateInfo, 0, sizeof(VkDescriptorPoolCreateInfo));
     vkDescriptorPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     vkDescriptorPoolCreateInfo.pNext = NULL;
-    vkDescriptorPoolCreateInfo.flags = 0;
+    vkDescriptorPoolCreateInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
     vkDescriptorPoolCreateInfo.poolSizeCount = _ARRAYSIZE(vkDescriptorPoolSize_array);
     vkDescriptorPoolCreateInfo.pPoolSizes = vkDescriptorPoolSize_array;
     // vkDescriptorPoolCreateInfo.maxSets = 2;

@@ -3106,7 +3106,7 @@ void renderImGui(void)
         ImGui::Spacing();
         ImGui::Spacing();
         ImGui::SliderFloat("Height Scale", &ocean->heightScale, 0.05f, 0.9f);
-        ImGui::SliderFloat("Choppiness", &ocean->choppiness, 0.001f, 10.0f);
+        ImGui::SliderFloat("Wave Speed", &ocean->waveSpeed, 0.0001f, 0.01f);
 
         // Mesh Size
         ImGui::Spacing();

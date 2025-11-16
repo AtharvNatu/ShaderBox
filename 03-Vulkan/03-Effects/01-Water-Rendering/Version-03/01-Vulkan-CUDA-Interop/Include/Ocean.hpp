@@ -139,7 +139,6 @@ class Ocean
 
         // Wave Animation
         float fTime = 0.0f;
-        const float waveSpeed = 0.005f;
 
         //* Camera Debug
         glm::mat4 cameraViewMatrix;
@@ -176,14 +175,14 @@ class Ocean
         VkDescriptorPool vkDescriptorPool_ocean;
         
         float heightScale = 0.0075f;
-        float choppiness = 0.2f;
+        float waveSpeed = 0.005f;
         int meshSize = 512;
 
         ImVec4 deepColor = ImVec4(0.588f, 0.823f, 1.0f, 1.0f);
         ImVec4 shallowColor = ImVec4(0.274f, 0.627f, 1.0f, 1.0f);
         ImVec4 skyColor = ImVec4(0.988f, 0.878f, 0.678f, 1.0f);
-        ImVec4 lightDirection = ImVec4(-0.4f, 0.0f, -2.0f, 0.0f);
-        
+        ImVec4 lightDirection = ImVec4(-0.4f, -0.1f, -2.0f, 0.0f);
+
         glm::mat4 glm_translationMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.5f, 0.0f));
         glm::mat4 glm_scaleMatrix = glm::scale(glm::mat4(1.0f), glm::vec3(5.0f, 5.0f, 5.0f));
 
