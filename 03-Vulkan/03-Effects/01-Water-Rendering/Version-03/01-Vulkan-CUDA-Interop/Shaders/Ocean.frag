@@ -125,7 +125,8 @@ void main()
     //-------------------------------------------------------
     float streak = computeSunStreak(N_world, V_eye, L) * streakStrength;
 
-    vec3 streakColor = vec3(1.0, 0.40, 0.08); // realistic glowing sunset orange
+    // vec3 streakColor = vec3(1.0, 0.40, 0.08); // realistic glowing sunset orange
+    vec3 streakColor = vec3(0.40, 0.65, 0.85); // realistic glowing sunset orange
 
     finalColor += streak * streakColor;
 
