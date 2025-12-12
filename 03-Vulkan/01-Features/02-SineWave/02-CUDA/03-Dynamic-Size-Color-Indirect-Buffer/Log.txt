@@ -24,6 +24,8 @@ fillInstanceExtensionNames() => Vulkan Instance Extension Name : VK_LUNARG_direc
 fillInstanceExtensionNames() => VK_KHR_SURFACE_EXTENSION_NAME Extension Found
 fillInstanceExtensionNames() => VK_KHR_WIN32_SURFACE_EXTENSION_NAME Extension Found
 fillInstanceExtensionNames() => VALIDATION ON : VK_EXT_DEBUG_REPORT_EXTENSION_NAME Extension Supported
+fillInstanceExtensionNames() => VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME Extension Found
+fillInstanceExtensionNames() => Enabled Vulkan Instance Extension Name : VK_KHR_external_memory_capabilities
 fillInstanceExtensionNames() => Enabled Vulkan Instance Extension Name : VK_KHR_surface
 fillInstanceExtensionNames() => Enabled Vulkan Instance Extension Name : VK_KHR_win32_surface
 fillInstanceExtensionNames() => Enabled Vulkan Instance Extension Name : VK_EXT_debug_report
@@ -328,7 +330,7 @@ fillDeviceExtensionNames() => Vulkan Device Extension Count : 247
 ------------------------------------------------------------------------------------------------
 
 fillDeviceExtensionNames() => VK_KHR_SWAPCHAIN_EXTENSION_NAME Extension Found
-fillDeviceExtensionNames() => VK_KHR_external_memory_win32 Extension Found
+fillDeviceExtensionNames() => VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME Extension Found
 fillDeviceExtensionNames() => Enabled Vulkan Device Extensions : VK_KHR_external_memory_win32
 fillDeviceExtensionNames() => Enabled Vulkan Device Extensions : VK_KHR_swapchain
 createVulkanDevice() => fillDeviceExtensionNames() Succeeded
@@ -372,7 +374,8 @@ createVertexBuffer() => vkAllocateMemory() Succeeded For Vertex Position CPU Buf
 createVertexBuffer() => vkBindBufferMemory() Succeeded For Vertex Position CPU Buffer
 createVertexBuffer() => vkMapMemory() Succeeded For Vertex Position CPU Buffer
 initialize() => createVertexBuffer() Succeeded
-createExternalBuffer() => vkGetDeviceProcAddr() Succeeded To Get Function Pointer For vkGetMemoryWin32HandleKHR
+getMemoryWin32HandleFunction() => vkGetDeviceProcAddr() Succeeded To Get Function Pointer For vkGetMemoryWin32HandleKHR
+createExternalBuffer() => getMemoryWin32HandleFunction() Succeeded
 createExternalBuffer() => vkCreateBuffer() Succeeded For Vertex Position GPU Buffer
 createExternalBuffer() => vkAllocateMemory() Succeeded For Vertex Position GPU Buffer
 createExternalBuffer() => vkBindBufferMemory() Succeeded For Vertex Position GPU Buffer
@@ -380,6 +383,11 @@ createExternalBuffer() => vkGetMemoryWin32HandleKHR_fnptr() Succeeded For Vertex
 createExternalBuffer() => cudaImportExternalMemory() Succeeded For Vertex Position GPU Buffer
 createExternalBuffer() => cudaExternalMemoryGetMappedBuffer() Succeeded For Vertex Position GPU Buffer
 initialize() => createExternalBuffer() Succeeded
+createIndirectDrawBuffer() => vkCreateBuffer() Succeeded For Mesh Size Indirect Buffer
+createIndirectDrawBuffer() => vkAllocateMemory() Succeeded For Mesh Size Indirect Buffer
+createIndirectDrawBuffer() => vkBindBufferMemory() Succeeded For Mesh Size Indirect Buffer
+createIndirectDrawBuffer() => vkMapMemory() Succeeded For Mesh Size Indirect Buffer
+initialize() => createIndirectDrawBuffer() Succeeded
 createUniformBuffer() => vkCreateBuffer() Succeeded For Uniform Data
 createUniformBuffer() => vkAllocateMemory() Succeeded For Uniform Data
 createUniformBuffer() => vkBindBufferMemory() Succeeded For Uniform Data
@@ -409,6 +417,8 @@ initialize() => createDescriptorSet() Succeeded
 createRenderPass() => vkCreateRenderPass() Succeeded
 initialize() => createRenderPass() Succeeded
 createPipeline() => vkCreatePipelineCache() Succeeded
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-VkGraphicsPipelineCreateInfo-topology-08773 ] Object 0: handle = 0x9fde6b0000000014, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0x70f9fb25 | vkCreateGraphicsPipelines(): pCreateInfos[0].pStages[0] SPIR-V (Vertex) PointSize is not written to, but Pipeline topology is set to VK_PRIMITIVE_TOPOLOGY_POINT_LIST.
+The Vulkan spec states: If the pipeline is being created with a Vertex Execution Model and no TessellationEvaluation or Geometry Execution Model, and the topology member of pInputAssembly is VK_PRIMITIVE_TOPOLOGY_POINT_LIST, and either VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY dynamic state is not enabled or dynamicPrimitiveTopologyUnrestricted is VK_FALSE, a PointSize decorated variable must be written to if the maintenance5 feature is not enabled (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-VkGraphicsPipelineCreateInfo-topology-08773)
 createPipeline() => vkCreateGraphicsPipelines() Succeeded
 createPipeline() => vkDestroyPipelineCache() Succeeded
 initialize() => createPipeline() Succeeded
@@ -417,6 +427,13 @@ initialize() => createSemaphores() Succeeded
 createFences() => vkCreateFence() Succeeded For Index : 0
 createFences() => vkCreateFence() Succeeded For Index : 1
 initialize() => createFences() Succeeded
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
+buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
+buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
+initialize() => buildCommandBuffers() Succeeded
 initialize() => Initialization Completed Successfully
 WinMain() => initialize() Succeeded
 getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 1 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
@@ -424,7 +441,7 @@ getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 2 : vkGetPhysicalDeviceSur
 getPhysicalDeviceSurfaceFormatAndColorSpace() => free() Succeeded For vkSurfaceFormatKHR_array
 createSwapchain() => getPhysicalDeviceSurfaceFormatAndColorSpace() Succeeded
 createSwapchain() => vkGetPhysicalDeviceSurfaceCapabilitiesKHR() Succeeded
-createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 2048 x 1152
+createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 1536 x 960
 getPhysicalDevicePresentMode() => Call 1 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
 getPhysicalDevicePresentMode() => Call 2 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
 
@@ -447,6 +464,8 @@ createImagesAndImageViews() => vkCreateImageView() Succeeded For Depth
 createRenderPass() => vkCreateRenderPass() Succeeded
 createPipelineLayout() => vkCreatePipelineLayout() Succeeded
 createPipeline() => vkCreatePipelineCache() Succeeded
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-VkGraphicsPipelineCreateInfo-topology-08773 ] Object 0: handle = 0x9fde6b0000000014, type = VK_OBJECT_TYPE_SHADER_MODULE; | MessageID = 0x70f9fb25 | vkCreateGraphicsPipelines(): pCreateInfos[0].pStages[0] SPIR-V (Vertex) PointSize is not written to, but Pipeline topology is set to VK_PRIMITIVE_TOPOLOGY_POINT_LIST.
+The Vulkan spec states: If the pipeline is being created with a Vertex Execution Model and no TessellationEvaluation or Geometry Execution Model, and the topology member of pInputAssembly is VK_PRIMITIVE_TOPOLOGY_POINT_LIST, and either VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY dynamic state is not enabled or dynamicPrimitiveTopologyUnrestricted is VK_FALSE, a PointSize decorated variable must be written to if the maintenance5 feature is not enabled (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-VkGraphicsPipelineCreateInfo-topology-08773)
 createPipeline() => vkCreateGraphicsPipelines() Succeeded
 createPipeline() => vkDestroyPipelineCache() Succeeded
 createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 0
@@ -476,6 +495,8 @@ uninitialize() => vkDestroyShaderModule() Succeeded For Vertex Shader
 uninitialize() => vkFreeMemory() Succeeded For uniformData.vkDeviceMemory
 uninitialize() => vkDestroyBuffer() Succedded For uniformData.vkBuffer
 uninitialize() => cudaDestroyExternalMemory() Succedded
+uninitialize() => vkFreeMemory() Succeeded For indirectBuffer.vkDeviceMemory
+uninitialize() => vkDestroyBuffer() Succeeded For indirectBuffer.vkBuffer
 uninitialize() => vkFreeMemory() Succeeded For vertexData_gpu.vkDeviceMemory
 uninitialize() => vkDestroyBuffer() Succeeded For vertexData_gpu.vkBuffer
 uninitialize() => vkFreeMemory() Succeeded For vertexData_cpu.vkDeviceMemory
