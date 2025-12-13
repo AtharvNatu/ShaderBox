@@ -496,6 +496,7 @@ VkResult initialize(void)
     VkResult getPhysicalDevice(void);
     VkResult printVkInfo(void);
     VkResult createVulkanDevice(void);
+    int getCudaDevice(void);
     void getDeviceQueue(void);
     VkResult createSwapchain(VkBool32);
     VkResult createImagesAndImageViews(void);
@@ -554,6 +555,17 @@ VkResult initialize(void)
         fprintf(gpFile, "%s() => createVulkanDevice() Failed : %d !!!\n", __func__, vkResult);
     else
         fprintf(gpFile, "%s() => createVulkanDevice() Succeeded\n", __func__);
+
+    //! Get CUDA Device
+    int result = getCudaDevice();
+    if (result == cudaInvalidDeviceId)
+    {
+        fprintf(gpFile, "%s() => getCudaDevice() Failed : %d !!!\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+    else
+        fprintf(gpFile, "%s() => getCudaDevice() Succeeded\n", __func__);
 
     //! Get Device Queue
     getDeviceQueue();
@@ -2316,6 +2328,53 @@ VkResult createVulkanDevice(void)
         fprintf(gpFile, "%s() => vkCreateDevice() Succeeded\n", __func__);
 
     return vkResult;
+}
+
+int getCudaDevice(void)
+{
+    // Variable Declarations
+    int device = 0;
+
+    // Code
+    VkPhysicalDeviceIDProperties vkPhysicalDeviceIDProperties;
+    memset((void*)&vkPhysicalDeviceIDProperties, 0, sizeof(VkPhysicalDeviceIDProperties));
+    vkPhysicalDeviceIDProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
+    vkPhysicalDeviceIDProperties.pNext = NULL;
+
+    VkPhysicalDeviceProperties2 vkPhysicalDeviceProperties2;
+    memset((void*)&vkPhysicalDeviceProperties2, 0, sizeof(VkPhysicalDeviceProperties2));
+    vkPhysicalDeviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    vkPhysicalDeviceProperties2.pNext = &vkPhysicalDeviceIDProperties;
+
+    vkGetPhysicalDeviceProperties2(vkPhysicalDevice_selected, &vkPhysicalDeviceProperties2);
+
+    int cudaDeviceCount;
+    cudaResult = cudaGetDeviceCount(&cudaDeviceCount);
+    if (cudaResult != cudaSuccess)
+    {
+        fprintf(gpFile, "%s() => cudaGetDeviceCount() Failed : %d !!!\n", __func__, cudaResult);
+        return -1;
+    }
+    else if (cudaDeviceCount == 0)
+    {
+        fprintf(gpFile, "%s() => cudaGetDeviceCount() Returned 0 CUDA Supported Devices !!!\n", __func__);
+        return -1;
+    }
+
+    for (int i = 0; i < cudaDeviceCount; i++)
+    {
+        cudaDeviceProp deviceProperties;
+        cudaGetDeviceProperties(&deviceProperties, i);
+        if (memcmp(&deviceProperties.uuid, vkPhysicalDeviceIDProperties.deviceUUID, VK_UUID_SIZE) == 0)
+        {
+            device = i;
+            break;
+        }
+        else
+            device = cudaInvalidDeviceId;
+    }
+
+    return device;
 }
 
 void getDeviceQueue(void)

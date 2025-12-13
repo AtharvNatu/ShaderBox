@@ -12,13 +12,16 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-//! CUDA Header Files
-#include <cuda_runtime.h>
+//! OpenCL Header File
+#include <CL/opencl.h>
 
 #include "Vk.h"
 
 //! Vulkan Related Libraries
 #pragma comment(lib, "vulkan-1.lib")
+
+//! OpenCL Library
+#pragma comment(lib, "OpenCL.lib")
 
 #define WIN_WIDTH   800
 #define WIN_HEIGHT  600
@@ -223,33 +226,16 @@ int selectedColor = 1;
 
 //* CUDA Related Variables
 VertexData vertexData_gpu;
-cudaError_t cudaResult;
-cudaExternalMemory_t cudaExternalMemory = NULL;
-void *cudaDevicePtr = NULL;
+cl_context oclContext;
+cl_command_queue oclCommandQueue;
+cl_program oclProgram;
+cl_kernel oclKernel;
+// cl_khr_external_memory cudaExternalMemory = NULL;
+void *oclDevicePtr = NULL;
 PFN_vkGetMemoryWin32HandleKHR vkGetMemoryWin32HandleKHR_fnptr = NULL;
 
 float fAnimationSpeed = 0.0f;
 bool useGPU = false;
-
-// CUDA Kernel
-__global__ void sineWaveKernel(float4* pos, unsigned int width, unsigned int height, float time)
-{
-    // Code
-   unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-   unsigned int j = blockIdx.y * blockDim.y + threadIdx.y;
-
-   float u = (float)i / (float)width;
-   float v = (float)j / (float)height;
-
-   u = u * 2.0f - 1.0f;
-   v = v * 2.0f - 1.0f;
-
-   float frequency = 4.0f;
-
-   float w = sinf(u * frequency + time) * cosf(v * frequency + time) * 0.5;
-
-   pos[j * width + i] = make_float4(u, w, v, 1.0f);
-}
 
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
@@ -557,7 +543,7 @@ VkResult initialize(void)
     VkResult getPhysicalDevice(void);
     VkResult printVkInfo(void);
     VkResult createVulkanDevice(void);
-    int getCudaDevice(void);
+    cl_int initializeOpenCL();
     void getDeviceQueue(void);
     VkResult createSwapchain(VkBool32);
     VkResult createImagesAndImageViews(void);
@@ -618,16 +604,12 @@ VkResult initialize(void)
     else
         fprintf(gpFile, "%s() => createVulkanDevice() Succeeded\n", __func__);
 
-    //! Get CUDA Device
-    int result = getCudaDevice();
-    if (result == cudaInvalidDeviceId)
-    {
-        fprintf(gpFile, "%s() => getCudaDevice() Failed : %d !!!\n", __func__, vkResult);
-        vkResult = VK_ERROR_INITIALIZATION_FAILED;
-        return vkResult;
-    }
+    //! OpenCL Initialization
+    cl_int oclResult = initializeOpenCL();
+    if (oclResult == CL_SUCCESS)
+        fprintf(gpFile, "%s() => initializeOpenCL() Failed : %d !!!\n", __func__, vkResult);
     else
-        fprintf(gpFile, "%s() => getCudaDevice() Succeeded\n", __func__);
+        fprintf(gpFile, "%s() => initializeOpenCL() Succeeded\n", __func__);
 
     //! Get Device Queue
     getDeviceQueue();
@@ -2626,12 +2608,28 @@ VkResult createVulkanDevice(void)
     return vkResult;
 }
 
-int getCudaDevice(void)
+cl_int initializeOpenCL(void)
 {
     // Variable Declarations
-    int device = 0;
+    cl_platform_id oclPlatformID;
+    cl_uint devCount;
+    cl_device_id *oclDeviceIDs = NULL;
+    cl_device_id oclDeviceID;
+    cl_int oclResult;
+    cl_uchar uuid[CL_UUID_SIZE_KHR];
+    BOOL uuidMatch = FALSE;
 
-    // Code
+    // Step - 1 : Get Platform ID
+    oclResult = clGetPlatformIDs(1, &oclPlatformID, NULL);
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => OpenCL Error : clGetPlatformIDs() Failed : %d !!!\n", __func__, oclResult);
+        return oclResult;
+    }
+
+    // Step - 2 : Get GPU Device ID
+    // --------------------------------------------------------------------------------------------------------------------
+    // Step - 2.1 : Get Vulkan Device UUID
     VkPhysicalDeviceIDProperties vkPhysicalDeviceIDProperties;
     memset((void*)&vkPhysicalDeviceIDProperties, 0, sizeof(VkPhysicalDeviceIDProperties));
     vkPhysicalDeviceIDProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
@@ -2644,34 +2642,140 @@ int getCudaDevice(void)
 
     vkGetPhysicalDeviceProperties2(vkPhysicalDevice_selected, &vkPhysicalDeviceProperties2);
 
-    int cudaDeviceCount;
-    cudaResult = cudaGetDeviceCount(&cudaDeviceCount);
-    if (cudaResult != cudaSuccess)
+    //* Step - 2.2 : Get Total GPU Device Count
+    oclResult = clGetDeviceIDs(oclPlatformID, CL_DEVICE_TYPE_GPU, 0, NULL, &devCount);
+    if (oclResult != CL_SUCCESS)
     {
-        fprintf(gpFile, "%s() => cudaGetDeviceCount() Failed : %d !!!\n", __func__, cudaResult);
-        return -1;
+        fprintf(gpFile, "%s() => OpenCL Error : clGetPlatformIDs() Failed : %d !!!\n", __func__, oclResult);
+        return oclResult;
     }
-    else if (cudaDeviceCount == 0)
+    else if (devCount == 0)
     {
-        fprintf(gpFile, "%s() => cudaGetDeviceCount() Returned 0 CUDA Supported Devices !!!\n", __func__);
-        return -1;
+        fprintf(gpFile, "%s() => No OpenCL Supported Device Found On This System !!!\n", __func__);
+        return oclResult;
     }
 
-    for (int i = 0; i < cudaDeviceCount; i++)
+    //* Step - 2.3 : Allocate Memory To Hold Device IDs
+    oclDeviceIDs = (cl_device_id *)malloc(sizeof(cl_device_id) * devCount);
+    if (oclDeviceIDs == NULL)
     {
-        cudaDeviceProp deviceProperties;
-        cudaGetDeviceProperties(&deviceProperties, i);
-        if (memcmp(&deviceProperties.uuid, vkPhysicalDeviceIDProperties.deviceUUID, VK_UUID_SIZE) == 0)
+        fprintf(gpFile, "%s() => Failed To Allocate Memory To oclDeviceIDs !!!\n", __func__);
+        return oclResult;
+    }
+
+    //* Step - 2.4 : Get IDs Into Allocated Buffer
+    oclResult = clGetDeviceIDs(oclPlatformID, CL_DEVICE_TYPE_GPU, devCount, oclDeviceIDs, NULL);
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => OpenCL Error : clGetDeviceIDs() Failed : %d !!!\n", __func__, oclResult);
+        return oclResult;
+    }
+
+    //* Step - 2.5 : Iterate Over All IDs and Check For Vulkan Matching UUID
+    for (int i = 0; i < devCount; i++)
+    {
+        oclResult = clGetDeviceInfo(oclDeviceIDs[i], CL_DEVICE_UUID_KHR, sizeof(uuid), &uuid, NULL);
+        if (oclResult != CL_SUCCESS)
         {
-            device = i;
-            break;
+            fprintf(gpFile, "%s() => OpenCL Error : clGetDeviceInfo() Failed For Index : %d, Reason : %d !!!\n", __func__, i, oclResult);
+            return oclResult;
         }
-        else
-            device = cudaInvalidDeviceId;
+
+        for (uint32_t j = 0; j < CL_UUID_SIZE_KHR; j++)
+        {
+            if (uuid[j] != vkPhysicalDeviceIDProperties.deviceUUID[i])
+            {
+                uuidMatch = FALSE;
+                break;
+            }
+        }
+
+        if (uuidMatch == FALSE)
+            continue;
+
+        oclDeviceID = oclDeviceIDs[i];
+        break;
     }
 
-    return device;
+    //* Step - 2.6 : Free oclDeviceIDs
+    free(oclDeviceIDs);
+    oclDeviceIDs = NULL;
+    // --------------------------------------------------------------------------------------------------------------------
+
+    // Step - 3 : Create OpenCL Context
+    oclContext = clCreateContext(NULL, 1, &oclDeviceID, NULL, NULL, &oclResult);
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => OpenCL Error : clCreateContext() Failed : %d !!!\n", __func__, oclResult);
+        return oclResult;
+    }
+
+    // Step - 4 : Create OpenCL Command Queue
+    oclCommandQueue = clCreateCommandQueue(oclContext, oclDeviceID, 0, &oclResult);
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => OpenCL Error : clCreateCommandQueue() Failed : %d !!!\n", __func__, oclResult);
+        return oclResult;
+    }
+
+    // Step - 5 : Create OpenCL Program From OpenCL Kernel Source Code
+    // --------------------------------------------------------------------------------------------------------------------
+    
+    // Step - 5.1 : OpenCL Kernel Source Code
+    const char* oclKernelSourceCode = 
+        "__kernel void sineWaveKernel(__global float4* pos, unsigned int width, unsigned int height, float time)"
+        "{" \
+            "unsigned int i = get_global_id(0);" \
+            "unsigned int j = get_global_id(1);" \
+
+            "float u = (float)i / (float)width;" \
+            "float v = (float)j / (float)height;" \
+
+            "u = u * 2.0f - 1.0f;" \
+            "v = v * 2.0f - 1.0f;" \
+
+            "float frequency = 4.0f;" \
+
+            "float w = sin(u * frequency + time) * cos(v * frequency + time) * 0.5;" \
+
+            "pos[j * width + i] = (float4)(u, w, v, 1.0f);" \
+        "}";
+
+    // Step - 5.2 : Create OpenCL Progam From Above Source Code
+    oclProgram = clCreateProgramWithSource(oclContext, 1, (const char**)&oclKernelSourceCode, NULL, &oclResult);
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => OpenCL Error : clCreateProgramWithSource() Failed : %d !!!\n", __func__, oclResult);
+        return oclResult;
+    }
+    // --------------------------------------------------------------------------------------------------------------------
+
+    // Step - 6 : Build OpenCL Program
+    oclResult = clBuildProgram(oclProgram, 0, NULL, "-cl-fast-relaxed-math", NULL, NULL);
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => OpenCL Error : clBuildProgram() Failed : %d !!!\n", __func__, oclResult);
+
+        size_t length;
+		char buffer[1024];
+
+        oclResult = clGetProgramBuildInfo(oclProgram, oclDeviceID, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &length);
+        
+        fprintf(gpFile, "\nOpenCL Program Build Log : %s\n", buffer);
+
+        return oclResult;
+    }
+
+    // Step - 7 : Create OpenCl Kernel
+    oclKernel = clCreateKernel(oclProgram, "sineWaveKernel", &oclResult);
+    {
+        fprintf(gpFile, "%s() => OpenCL Error : clCreateKernel() Failed : %d !!!\n", __func__, oclResult);
+        return oclResult;
+    }
+
+    return oclResult;
 }
+
 
 void getDeviceQueue(void)
 {
@@ -3447,7 +3551,8 @@ VkResult createExternalBuffer(void)
     else
         fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Vertex Position GPU Buffer\n", __func__);
 
-    //* Export Memory For CUDA
+    //* Export Memory For OpenCL
+    // VkExportMemoryWin32HandleInfoKHR 
     VkMemoryGetWin32HandleInfoKHR vkMemoryGetWin32HandleInfoKHR;
     memset((void*)&vkMemoryGetWin32HandleInfoKHR, 0, sizeof(VkMemoryGetWin32HandleInfoKHR));
     vkMemoryGetWin32HandleInfoKHR.sType = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
