@@ -240,11 +240,7 @@ cl_kernel oclKernel;
 
 VertexData vertexData_gpu;
 cl_mem oclPosition = NULL;
-
-// cl_khr_external_memory cudaExternalMemory = NULL;
-void *oclDevicePtr = NULL;
 PFN_vkGetMemoryWin32HandleKHR vkGetMemoryWin32HandleKHR_fnptr = NULL;
-
 VkExternalMemoryHandleTypeFlagBits vkExternalMemoryHandleTypeFlagBits;
 
 float fAnimationSpeed = 0.0f;
@@ -1863,6 +1859,7 @@ void uninitialize(void)
 {
     // Function Declarations
     void ToggleFullScreen(void);
+    void uninitializeOpenCL(void);
 
     // Code
     if (gbFullScreen)
@@ -1992,11 +1989,8 @@ void uninitialize(void)
         fprintf(gpFile, "%s() => vkDestroyBuffer() Succedded For uniformData.vkBuffer\n", __func__);
     }
 
-    if (oclPosition)
-    {
-        clReleaseMemObject(oclPosition);
-        oclPosition = NULL;
-    }
+    //* Uninitialize OpenCL
+    uninitializeOpenCL();
 
     if (indirectBuffer.vkDeviceMemory)
     {
@@ -2160,6 +2154,40 @@ void uninitialize(void)
         fprintf(gpFile, "%s() => Program Terminated Successfully\n", __func__);
         fclose(gpFile);
         gpFile = NULL;
+    }
+}
+
+void uninitializeOpenCL(void)
+{
+    // Code
+    if (oclPosition)
+    {
+        clReleaseMemObject(oclPosition);
+        oclPosition = NULL;
+    }
+
+    if (oclKernel)
+    {
+        clReleaseKernel(oclKernel);
+        oclKernel = NULL;
+    }
+
+    if (oclProgram)
+    {
+        clReleaseProgram(oclProgram);
+        oclProgram = NULL;
+    }
+
+    if (oclCommandQueue)
+    {
+        clReleaseCommandQueue(oclCommandQueue);
+        oclCommandQueue = NULL;
+    }
+
+    if (oclContext)
+    {
+        clReleaseContext(oclContext);
+        oclContext = NULL;
     }
 }
 
