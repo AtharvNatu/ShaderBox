@@ -12,8 +12,13 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-//! OpenCL Header File
+//! OpenCL Headers
+#define CL_TARGET_OPENCL_VERSION    300
 #include <CL/opencl.h>
+
+//* CL_MEM_DEVICE_HANDLE_LIST_KHR
+//* CL_MEM_DEVICE_HANDLE_LIST_END_KHR
+#include <CL/cl_ext.h>
 
 #include "Vk.h"
 
@@ -224,15 +229,23 @@ float position_4096[mesh_width_4096][mesh_width_4096][4];
 int meshSize = 64;
 int selectedColor = 1;
 
-//* CUDA Related Variables
-VertexData vertexData_gpu;
+//* OpenCL Related Variables
+cl_int oclResult;
+cl_platform_id oclPlatformId;
+cl_device_id oclDeviceId;
 cl_context oclContext;
 cl_command_queue oclCommandQueue;
 cl_program oclProgram;
 cl_kernel oclKernel;
+
+VertexData vertexData_gpu;
+cl_mem oclPosition = NULL;
+
 // cl_khr_external_memory cudaExternalMemory = NULL;
 void *oclDevicePtr = NULL;
 PFN_vkGetMemoryWin32HandleKHR vkGetMemoryWin32HandleKHR_fnptr = NULL;
+
+VkExternalMemoryHandleTypeFlagBits vkExternalMemoryHandleTypeFlagBits;
 
 float fAnimationSpeed = 0.0f;
 bool useGPU = false;
@@ -543,7 +556,6 @@ VkResult initialize(void)
     VkResult getPhysicalDevice(void);
     VkResult printVkInfo(void);
     VkResult createVulkanDevice(void);
-    cl_int initializeOpenCL();
     void getDeviceQueue(void);
     VkResult createSwapchain(VkBool32);
     VkResult createImagesAndImageViews(void);
@@ -565,6 +577,10 @@ VkResult initialize(void)
     VkResult createFences(void);
     VkResult buildCommandBuffers(void);
     void initializeSinewavePosition(void);
+
+    //! OpenCL Related Function Declarations
+    cl_int initializeOpenCL(void);
+    const char* oclGetErrorString(cl_int);
 
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -604,15 +620,19 @@ VkResult initialize(void)
     else
         fprintf(gpFile, "%s() => createVulkanDevice() Succeeded\n", __func__);
 
-    //! OpenCL Initialization
-    cl_int oclResult = initializeOpenCL();
-    if (oclResult == CL_SUCCESS)
-        fprintf(gpFile, "%s() => initializeOpenCL() Failed : %d !!!\n", __func__, vkResult);
-    else
-        fprintf(gpFile, "%s() => initializeOpenCL() Succeeded\n", __func__);
-
     //! Get Device Queue
     getDeviceQueue();
+
+    //! Initialize OpenCL
+    oclResult = initializeOpenCL();
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => initializeOpenCL() Failed : %s !!!\n", __func__, oclGetErrorString(oclResult));
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    } 
+    else
+        fprintf(gpFile, "%s() => initializeOpenCL() Succeeded\n", __func__);
 
     //! Create Swapchain
     vkResult = createSwapchain(VK_FALSE);
@@ -843,6 +863,426 @@ VkResult initialize(void)
     
     return vkResult;
 }
+
+cl_int initializeOpenCL(void)
+{
+    // Function Declarations
+    BOOL openCLPlatformSupportsRequiredExtensions(cl_platform_id);
+    const char* oclGetErrorString(cl_int);
+
+    // Variable Declarations
+    cl_uint platformCount;
+    cl_platform_id* oclPlatformIDs = NULL;
+    cl_device_id* oclDeviceIDs = NULL;
+    cl_uint deviceCount;
+    BOOL bSupportsExtensions = FALSE;
+    
+    //* Code
+
+    // Step - 1 : Get Number of OpenCL Supported Platforms
+    oclResult = clGetPlatformIDs(0, NULL, &platformCount);
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => OpenCL Error : Call 1 : clGetPlatformIDs() Failed : %s !!!\n", __func__, oclGetErrorString(oclResult));
+        return oclResult;
+    }
+    else if (platformCount == 0)
+    {
+        fprintf(gpFile, "%s() => clGetPlatformIDs() Returned 0 OpenCL Supported Plaforms !!!\n", __func__);
+        return oclResult;
+    }
+    
+    //* We have 1 or more platforms, fetch them into an array
+    oclPlatformIDs = (cl_platform_id*)malloc(platformCount * sizeof(cl_platform_id));
+    if (oclPlatformIDs == NULL)
+    {
+        fprintf(gpFile, "%s() => Failed To Allocate Memory To oclPlatformIds !!!\n", __func__);
+        return oclResult;
+    }
+
+    oclResult = clGetPlatformIDs(platformCount, oclPlatformIDs, NULL);
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => OpenCL Error : Call 2 : clGetPlatformIDs() Failed : %s !!!\n", __func__, oclGetErrorString(oclResult));
+        return oclResult;
+    }
+
+    //* Iterate over array to check for device
+    int interopPlatformFound = -1;
+    for (cl_uint i = 0; i < platformCount; i++)
+    {
+        //* Get number of devices for platform
+        oclResult = clGetDeviceIDs(oclPlatformIDs[i], CL_DEVICE_TYPE_GPU, 0, NULL, &deviceCount);
+        if (oclResult != CL_SUCCESS)
+            continue;
+        else if (deviceCount == 0)
+            continue;
+
+        //* Check whether the GPU found at ith platform supports required extensions
+        //*     1) cl_khr_device_uuid
+        //*     2) cl_khr_external_memory
+        if (openCLPlatformSupportsRequiredExtensions(oclPlatformIDs[i]) == FALSE)
+            continue;
+        else
+            bSupportsExtensions = TRUE;
+
+        //* Required Platform Found
+        //* --------------------------------------------------------------------------------------------------------
+        oclPlatformId = oclPlatformIDs[i];
+
+        //* Print properties of selected platform
+        size_t infoSize;
+        char* oclPlatformInfo = NULL;
+        clGetPlatformInfo(oclPlatformId, CL_PLATFORM_NAME, 0, NULL, &infoSize);
+
+        oclPlatformInfo = (char*)malloc(infoSize * sizeof(char));
+        if (oclPlatformInfo == NULL)
+        {
+            fprintf(gpFile, "%s() => Failed To Allocate Memory To oclPlatformInfo !!!\n", __func__);
+            return oclResult;
+        }
+
+        clGetPlatformInfo(oclPlatformId, CL_PLATFORM_NAME, infoSize, oclPlatformInfo, NULL);
+        fprintf(gpFile, "*******************************************************************************\n");
+        fprintf(gpFile, "Selected OpenCL Platform : %s\n", oclPlatformInfo);
+
+        if (bSupportsExtensions)
+            fprintf(gpFile, "Supported Extensions For Interop : cl_khr_device_uuid, cl_khr_external_memory\n");
+
+        free(oclPlatformInfo);
+        oclPlatformInfo = NULL;
+
+        interopPlatformFound = 1;
+        break;
+        //* --------------------------------------------------------------------------------------------------------
+    } 
+    
+    free(oclPlatformIDs);
+    oclPlatformIDs = NULL;
+
+    if (interopPlatformFound == -1)
+    {
+        fprintf(gpFile, "%s() => No OpenCL Supported Platform with GPU Found !!!\n", __func__);
+        return -32; //* Value for invalid OpenCL platform
+    }
+
+    //* Allocate memory for 1 or more GPU devices in found supported platform
+    oclDeviceIDs = (cl_device_id*)malloc(deviceCount * sizeof(cl_device_id));
+    if (oclDeviceIDs == NULL)
+    {
+        fprintf(gpFile, "%s() => Failed To Allocate Memory To oclDeviceIDs !!!\n", __func__);
+        return oclResult;
+    }
+
+    //* Get IDs Into Allocated Buffer
+    oclResult = clGetDeviceIDs(oclPlatformId, CL_DEVICE_TYPE_GPU, deviceCount, oclDeviceIDs, NULL);
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => OpenCL Error : clGetDeviceIDs() Failed : %s !!!\n", __func__, oclGetErrorString(oclResult));
+        return oclResult;
+    }
+
+    //* Check UUID between Vulkan and OpenCL
+    VkPhysicalDeviceIDProperties vkPhysicalDeviceIDProperties;
+    memset((void*)&vkPhysicalDeviceIDProperties, 0, sizeof(VkPhysicalDeviceIDProperties));
+    vkPhysicalDeviceIDProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
+    vkPhysicalDeviceIDProperties.pNext = NULL;
+
+    VkPhysicalDeviceProperties2 vkPhysicalDeviceProperties2;
+    memset((void*)&vkPhysicalDeviceProperties2, 0, sizeof(VkPhysicalDeviceProperties2));
+    vkPhysicalDeviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+    vkPhysicalDeviceProperties2.pNext = &vkPhysicalDeviceIDProperties;
+
+    vkGetPhysicalDeviceProperties2(vkPhysicalDevice_selected, &vkPhysicalDeviceProperties2);
+
+    cl_uchar cl_uuid[CL_UUID_SIZE_KHR];
+    int interopDeviceFound = -1;
+
+    //* Iterate Over All IDs and Check For Vulkan Matching UUID
+    for (cl_uint i = 0; i < deviceCount; i++)
+    {
+        //* Get OpenCL Capable Device's UUID
+        oclResult = clGetDeviceInfo(oclDeviceIDs[i], CL_DEVICE_UUID_KHR, CL_UUID_SIZE_KHR, &cl_uuid, NULL);
+        if (oclResult != CL_SUCCESS)
+        {
+            fprintf(gpFile, "%s() => OpenCL Error : clGetDeviceInfo() Failed For Index : %d, Reason : %s !!!\n", __func__, i, oclGetErrorString(oclResult));
+            return oclResult;
+        }
+
+        //* Compare OpenCL Device UUID with Vulkan Device UUID
+        BOOL uuidMatch = TRUE;
+        for (uint32_t j = 0; j < CL_UUID_SIZE_KHR; j++)
+        {
+            if (cl_uuid[j] != vkPhysicalDeviceIDProperties.deviceUUID[j])
+            {
+                uuidMatch = FALSE;
+                break;
+            }
+        }
+
+        if (uuidMatch == FALSE)
+            continue;
+        
+        //* Required Device Found
+        //* --------------------------------------------------------------------------------------------------------
+        oclDeviceId = oclDeviceIDs[i];
+
+        //* Print properties of selected device
+        size_t infoSize;
+        char* oclDeviceInfo = NULL;
+
+        clGetDeviceInfo(oclDeviceId, CL_DEVICE_NAME, 0, NULL, &infoSize);
+
+        oclDeviceInfo = (char*)malloc(infoSize * sizeof(char));
+        if (oclDeviceInfo == NULL)
+        {
+            fprintf(gpFile, "%s() => Failed To Allocate Memory To oclDeviceInfo !!!\n", __func__);
+            return oclResult;
+        }
+
+        clGetDeviceInfo(oclDeviceId, CL_DEVICE_NAME, infoSize, oclDeviceInfo, NULL);
+        fprintf(gpFile, "Selected OpenCL Device : %s\n", oclDeviceInfo);
+        fprintf(gpFile, "*******************************************************************************\n\n");
+
+        free(oclDeviceInfo);
+        oclDeviceInfo = NULL;
+
+        interopDeviceFound = 1;
+        break;
+        //* --------------------------------------------------------------------------------------------------------
+    }
+
+    free(oclDeviceIDs);
+    oclDeviceIDs = NULL;
+
+    if (interopDeviceFound == -1)
+    {
+        fprintf(gpFile, "%s() => No OpenCL Supported Device Found !!!\n", __func__);
+        return -2; //* Value for unavailable device
+    }
+
+    //* Create OpenCL Context
+    oclContext = clCreateContext(NULL, 1, &oclDeviceId, NULL, NULL, &oclResult);
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => OpenCL Error : clCreateContext() Failed : %s !!!\n", __func__, oclGetErrorString(oclResult));
+        return oclResult;
+    }
+
+    //* Create OpenCL Command Queue
+    oclCommandQueue = clCreateCommandQueueWithProperties(oclContext, oclDeviceId, 0, &oclResult);
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => OpenCL Error : clCreateCommandQueueWithProperties() Failed : %s !!!\n", __func__, oclGetErrorString(oclResult));
+        return oclResult;
+    }
+
+    //* Create OpenCL Program From OpenCL Kernel Source Code
+
+    // OpenCL Kernel Source Code
+    const char* oclKernelSourceCode = 
+        "__kernel void sineWaveKernel(__global float4* pos, unsigned int width, unsigned int height, float time)" \
+        "{" \
+            "unsigned int i = get_global_id(0);" \
+            "unsigned int j = get_global_id(1);" \
+
+            "float u = (float)i / (float)width;" \
+            "float v = (float)j / (float)height;" \
+
+            "u = u * 2.0f - 1.0f;" \
+            "v = v * 2.0f - 1.0f;" \
+
+            "float frequency = 4.0f;" \
+
+            "float w = sin(u * frequency + time) * cos(v * frequency + time) * 0.5f;" \
+
+            "pos[j * width + i] = (float4)(u, w, v, 1.0f);" \
+        "}";
+
+    //* Create OpenCL Progam From Above Source Code
+    oclProgram = clCreateProgramWithSource(oclContext, 1, (const char**)&oclKernelSourceCode, NULL, &oclResult);
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => OpenCL Error : clCreateProgramWithSource() Failed : %s !!!\n", __func__, oclGetErrorString(oclResult));
+        return oclResult;
+    }
+
+    //* Build OpenCL Program
+    oclResult = clBuildProgram(oclProgram, 0, NULL, "-cl-fast-relaxed-math", NULL, NULL);
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => OpenCL Error : clBuildProgram() Failed : %s !!!\n", __func__, oclGetErrorString(oclResult));
+
+        size_t length;
+		char buffer[1024];
+
+        oclResult = clGetProgramBuildInfo(oclProgram, oclDeviceId, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &length);
+        
+        fprintf(gpFile, "\nOpenCL Program Build Log : %s\n", buffer);
+
+        return oclResult;
+    }
+
+    //* Create OpenCl Kernel
+    oclKernel = clCreateKernel(oclProgram, "sineWaveKernel", &oclResult);
+    if (oclResult != CL_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => OpenCL Error : clCreateKernel() Failed : %s !!!\n", __func__, oclGetErrorString(oclResult));
+        return oclResult;
+    }
+
+    // Assumption : Using OS greater than Windows 8.1 and Win32 Application (Not Win64 UWP Application)
+    vkExternalMemoryHandleTypeFlagBits = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+
+    return CL_SUCCESS;
+}
+
+BOOL openCLPlatformSupportsRequiredExtensions(cl_platform_id ocl_platform_id)
+{
+    // Variable Declarations
+    size_t extensionSize;
+    char* oclPlatformExtensions = NULL;
+
+    // Code
+
+    //* List Current Platform's Extensions
+    clGetPlatformInfo(ocl_platform_id, CL_PLATFORM_EXTENSIONS, 0, NULL, &extensionSize);
+
+    oclPlatformExtensions = (char*)malloc(extensionSize * sizeof(char));
+    if (oclPlatformExtensions == NULL)
+    {
+        fprintf(gpFile, "%s() => Failed To Allocate Memory To oclPlatformExtensions !!!\n", __func__);
+        return FALSE;
+    }
+
+    clGetPlatformInfo(ocl_platform_id, CL_PLATFORM_EXTENSIONS, extensionSize, oclPlatformExtensions, NULL);
+
+    char* oclPlatformExtensions_copy_for_strtok = NULL;
+    oclPlatformExtensions_copy_for_strtok = (char*)malloc(extensionSize * sizeof(char));
+    if (oclPlatformExtensions_copy_for_strtok == NULL)
+    {
+        fprintf(gpFile, "%s() => Failed To Allocate Memory To oclPlatformExtensions_copy_for_strtok !!!\n", __func__);
+        return FALSE;
+    }
+
+    strcpy(oclPlatformExtensions_copy_for_strtok, oclPlatformExtensions);
+
+    //* Check No. Of Extensions Found
+    char* token = strtok(oclPlatformExtensions_copy_for_strtok, " ");
+    int i = 0;
+    while (token != NULL)
+    {
+        i++;
+        token = strtok(NULL, " ");
+    }
+    int extensionCount = i;
+    fprintf(gpFile, "\nNo. Of OpenCL Extensions Found = %d\n", extensionCount);
+
+    //* Create array of lengths of names of each found extension
+    int* extensionLengths_array = NULL;
+    extensionLengths_array = (int*)malloc(extensionCount * sizeof(int));
+    if (extensionLengths_array == NULL)
+    {
+        fprintf(gpFile, "%s() => Failed To Allocate Memory To extensionLengths_array !!!\n", __func__);
+        return FALSE;
+    }
+
+    strcpy(oclPlatformExtensions_copy_for_strtok, oclPlatformExtensions);
+
+    token = strtok(oclPlatformExtensions_copy_for_strtok, " ");
+    i = 0;
+    while (token != NULL)
+    {
+        extensionLengths_array[i] = strlen(token) + 1;
+        token = strtok(NULL, " ");
+        i++;
+    }
+
+    //* Accordingly allocate a string array, such that it will hold strings equal to extension count and each string will be of required length
+    //* and each string will be of required length, taken from extensionLengths_array
+    char** clExtensions_array = NULL;
+    clExtensions_array = (char**)malloc(extensionCount * sizeof(char*));
+    if (clExtensions_array == NULL)
+    {
+        fprintf(gpFile, "%s() => Failed To Allocate Memory To clExtensions_array !!!\n", __func__);
+        return FALSE;
+    }
+
+    for (i = 0; i < extensionCount; i++)
+    {
+        clExtensions_array[i] = (char*)malloc(extensionLengths_array[i] * sizeof(char));
+        if (clExtensions_array[i] == NULL)
+        {
+            fprintf(gpFile, "%s() => Failed To Allocate Memory To clExtensions_array[i], Index = %d !!!\n", __func__, i);
+            return FALSE;
+        }
+    }
+
+    //* Populate extensions into the above 2D array
+    strcpy(oclPlatformExtensions_copy_for_strtok, oclPlatformExtensions);
+
+    token = strtok(oclPlatformExtensions_copy_for_strtok, " ");
+    i = 0;
+    while (token != NULL)
+    {
+        memcpy(clExtensions_array[i], token, extensionLengths_array[i]);
+        token = strtok(NULL, " ");
+        i++;
+    }
+
+    free(oclPlatformExtensions_copy_for_strtok);
+    oclPlatformExtensions_copy_for_strtok = NULL;
+
+    //* Print all supported OpenCL Extensions
+    fprintf(gpFile, "-------------------------------------------------------------------------------\n");
+    for (i = 0; i < extensionCount; i++)
+        fprintf(gpFile, "%s\n", clExtensions_array[i]);
+    fprintf(gpFile, "-------------------------------------------------------------------------------\n");
+
+    fflush(gpFile);
+
+    //* Check whether the following extensions are present
+        //*     1) cl_khr_device_uuid
+        //*     2) cl_khr_external_memory
+    BOOL bDeviceUuidExtensionFound = FALSE;
+    BOOL bExternalMemoryExtensionFound = FALSE;
+
+    for (i = 0; i < extensionCount; i++)
+    {   
+        //* For cl_khr_device_uuid Extension
+        if (strcmp(clExtensions_array[i], "cl_khr_device_uuid") == 0)
+            bDeviceUuidExtensionFound = TRUE;
+
+        //* For cl_khr_external_memory Extension
+        if (strcmp(clExtensions_array[i], "cl_khr_external_memory") == 0)
+            bExternalMemoryExtensionFound = TRUE;
+    }
+
+    //! Free Memory
+    for (int i = 0; i < extensionCount; i++)
+    {
+        free(clExtensions_array[i]);
+        clExtensions_array[i] = NULL;
+    }
+
+    free(clExtensions_array);
+    clExtensions_array = NULL;
+
+    free(token);
+    token = NULL;
+
+    free(extensionLengths_array);
+    extensionLengths_array = NULL;
+
+    free(oclPlatformExtensions);
+    oclPlatformExtensions = NULL;
+
+    if (bDeviceUuidExtensionFound == TRUE && bExternalMemoryExtensionFound == TRUE)
+        return TRUE;
+    
+    return FALSE;
+}
+
 
 VkResult resize(int width, int height)
 {
@@ -1160,6 +1600,9 @@ VkResult display(void)
 void update(void)
 {
     void sineWave(unsigned int, unsigned int, float);
+    const char* oclGetErrorString(cl_int);
+
+    cl_mem pPosition = NULL;
 
     // Code
     fAnimationSpeed += 0.02f;
@@ -1172,59 +1615,85 @@ void update(void)
 
     if (useGPU)
     {
-        float4* pPosition = (float4*)cudaDevicePtr;
+        pPosition = oclPosition;
 
-        dim3 block(8, 8, 1);
-
-        dim3 grid_64(mesh_width_64 / block.x, mesh_height_64 / block.y, 1);
-        dim3 grid_128(mesh_width_128 / block.x, mesh_height_128 / block.y, 1);
-        dim3 grid_256(mesh_width_256 / block.x, mesh_height_256 / block.y, 1);
-        dim3 grid_512(mesh_width_512 / block.x, mesh_height_512 / block.y, 1);
-        dim3 grid_1024(mesh_width_1024 / block.x, mesh_height_1024 / block.y, 1);
-        dim3 grid_2048(mesh_width_2048 / block.x, mesh_height_2048 / block.y, 1);
-        dim3 grid_4096(mesh_width_4096 / block.x, mesh_height_4096 / block.y, 1);
-
-
-        switch (meshSize)
+        //* Arg 0
+        oclResult = clSetKernelArg(oclKernel, 0, sizeof(cl_mem), (void*)&pPosition);
+        if (oclResult != CL_SUCCESS)
         {
-            case 64:               
-                sineWaveKernel<<< grid_64, block >>>(pPosition, mesh_width_64, mesh_height_64, fAnimationSpeed);
-                vkDrawIndirectCommand.vertexCount = mesh_width_64 * mesh_height_64;
-            break;
-
-            case 128:                
-                sineWaveKernel<<< grid_128, block >>>(pPosition, mesh_width_128, mesh_height_128, fAnimationSpeed);
-                vkDrawIndirectCommand.vertexCount = mesh_width_128 * mesh_height_128;
-            break;
-
-            case 256:                
-                sineWaveKernel<<< grid_256, block >>>(pPosition, mesh_width_256, mesh_height_256, fAnimationSpeed);
-                vkDrawIndirectCommand.vertexCount = mesh_width_256 * mesh_height_256;
-            break;
-
-            case 512:               
-                sineWaveKernel<<< grid_512, block >>>(pPosition, mesh_width_512, mesh_height_512, fAnimationSpeed);
-                vkDrawIndirectCommand.vertexCount = mesh_width_512 * mesh_height_512;
-            break;
-
-            case 1024:                
-                sineWaveKernel<<< grid_1024, block >>>(pPosition, mesh_width_1024, mesh_height_1024, fAnimationSpeed);
-                vkDrawIndirectCommand.vertexCount = mesh_width_1024 * mesh_height_1024;
-            break;
-
-            case 2048:               
-                sineWaveKernel<<< grid_2048, block >>>(pPosition, mesh_width_2048, mesh_height_2048, fAnimationSpeed);
-                vkDrawIndirectCommand.vertexCount = mesh_width_2048 * mesh_height_2048;
-            break;
-
-            case 4096:               
-                sineWaveKernel<<< grid_4096, block >>>(pPosition, mesh_width_4096, mesh_height_4096, fAnimationSpeed);
-                vkDrawIndirectCommand.vertexCount = mesh_width_4096 * mesh_height_4096;
-            break;
+            fprintf(gpFile, "%s() => OpenCL Error : clSetKernelArg() Failed For 0th Argument : %s !!!\n", __func__, oclGetErrorString(oclResult));
+            return;
         }
 
-        cudaDeviceSynchronize();
+        //* Arg 1
+        oclResult = clSetKernelArg(oclKernel, 1, sizeof(unsigned int), (void*)&meshSize);
+        if (oclResult != CL_SUCCESS)
+        {
+            fprintf(gpFile, "%s() => OpenCL Error : clSetKernelArg() Failed For 1st Argument : %s !!!\n", __func__, oclGetErrorString(oclResult));
+            return;
+        }
 
+        //* Arg 2
+        oclResult = clSetKernelArg(oclKernel, 2, sizeof(unsigned int), (void*)&meshSize);
+        if (oclResult != CL_SUCCESS)
+        {
+            fprintf(gpFile, "%s() => OpenCL Error : clSetKernelArg() Failed For 2nd Argument : %s !!!\n", __func__, oclGetErrorString(oclResult));
+            return;
+        }
+
+        //* Arg 3
+        oclResult = clSetKernelArg(oclKernel, 3, sizeof(float), (void*)&fAnimationSpeed);
+        if (oclResult != CL_SUCCESS)
+        {
+            fprintf(gpFile, "%s() => OpenCL Error : clSetKernelArg() Failed For 3rd Argument : %s !!!\n", __func__, oclGetErrorString(oclResult));
+            return;
+        }
+
+        //! Map Vulkan Buffer For Writing By OpenCL
+        clEnqueueAcquireExternalMemObjectsKHR_fn clEnqueueAcquireExternalMemObjectsKHR = NULL;
+        clEnqueueAcquireExternalMemObjectsKHR = (clEnqueueAcquireExternalMemObjectsKHR_fn)clGetExtensionFunctionAddressForPlatform(oclPlatformId, "clEnqueueAcquireExternalMemObjectsKHR");
+        if (clEnqueueAcquireExternalMemObjectsKHR == NULL)
+        {
+            fprintf(gpFile, "%s() => OpenCL Error : clGetExtensionFunctionAddressForPlatform() Failed For clEnqueueAcquireExternalMemObjectsKHR : %s !!!\n", __func__, oclGetErrorString(oclResult));
+            return;
+        }
+        oclResult = clEnqueueAcquireExternalMemObjectsKHR(oclCommandQueue, 1, &pPosition, 0, NULL, NULL);
+        if (oclResult != CL_SUCCESS)
+        {
+            fprintf(gpFile, "%s() => OpenCL Error : clEnqueueAcquireExternalMemObjectsKHR() Failed  : %s !!!\n", __func__, oclGetErrorString(oclResult));
+            return;
+        }
+
+        //! Run OpenCL Kernel
+        size_t globalWorkSize[2];
+        globalWorkSize[0] = meshSize;
+        globalWorkSize[1] = meshSize;
+
+        vkDrawIndirectCommand.vertexCount = meshSize * meshSize;
+
+        oclResult = clEnqueueNDRangeKernel(oclCommandQueue, oclKernel, 2, NULL, globalWorkSize, NULL, NULL, NULL, NULL);
+        if (oclResult != CL_SUCCESS)
+        {
+            fprintf(gpFile, "%s() => OpenCL Error : clEnqueueNDRangeKernel() Failed : %s !!!\n", __func__, oclGetErrorString(oclResult));
+            return;
+        }
+
+        //! Release Enqueued OpenCL Buffer back to Vulkan
+        clEnqueueReleaseExternalMemObjectsKHR_fn clEnqueueReleaseExternalMemObjectsKHR = NULL;
+        clEnqueueReleaseExternalMemObjectsKHR = (clEnqueueReleaseExternalMemObjectsKHR_fn)clGetExtensionFunctionAddressForPlatform(oclPlatformId, "clEnqueueReleaseExternalMemObjectsKHR");
+        if (clEnqueueReleaseExternalMemObjectsKHR == NULL)
+        {
+            fprintf(gpFile, "%s() => OpenCL Error : clGetExtensionFunctionAddressForPlatform() Failed For clEnqueueReleaseExternalMemObjectsKHR : %s !!!\n", __func__, oclGetErrorString(oclResult));
+            return;
+        }
+        oclResult = clEnqueueReleaseExternalMemObjectsKHR(oclCommandQueue, 1, &pPosition, 0, NULL, NULL);
+        if (oclResult != CL_SUCCESS)
+        {
+            fprintf(gpFile, "%s() => OpenCL Error : clEnqueueReleaseExternalMemObjectsKHR() Failed  : %s !!!\n", __func__, oclGetErrorString(oclResult));
+            return;
+        }
+
+        clFinish(oclCommandQueue);
        
     }
     else
@@ -1523,12 +1992,10 @@ void uninitialize(void)
         fprintf(gpFile, "%s() => vkDestroyBuffer() Succedded For uniformData.vkBuffer\n", __func__);
     }
 
-    if (cudaExternalMemory)
+    if (oclPosition)
     {
-        if (cudaDestroyExternalMemory(cudaExternalMemory) == cudaSuccess)
-            fprintf(gpFile, "%s() => cudaDestroyExternalMemory() Succedded\n", __func__);
-        cudaExternalMemory = NULL;
-        cudaDevicePtr = NULL;
+        clReleaseMemObject(oclPosition);
+        oclPosition = NULL;
     }
 
     if (indirectBuffer.vkDeviceMemory)
@@ -2608,175 +3075,6 @@ VkResult createVulkanDevice(void)
     return vkResult;
 }
 
-cl_int initializeOpenCL(void)
-{
-    // Variable Declarations
-    cl_platform_id oclPlatformID;
-    cl_uint devCount;
-    cl_device_id *oclDeviceIDs = NULL;
-    cl_device_id oclDeviceID;
-    cl_int oclResult;
-    cl_uchar uuid[CL_UUID_SIZE_KHR];
-    BOOL uuidMatch = FALSE;
-
-    // Step - 1 : Get Platform ID
-    oclResult = clGetPlatformIDs(1, &oclPlatformID, NULL);
-    if (oclResult != CL_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => OpenCL Error : clGetPlatformIDs() Failed : %d !!!\n", __func__, oclResult);
-        return oclResult;
-    }
-
-    // Step - 2 : Get GPU Device ID
-    // --------------------------------------------------------------------------------------------------------------------
-    // Step - 2.1 : Get Vulkan Device UUID
-    VkPhysicalDeviceIDProperties vkPhysicalDeviceIDProperties;
-    memset((void*)&vkPhysicalDeviceIDProperties, 0, sizeof(VkPhysicalDeviceIDProperties));
-    vkPhysicalDeviceIDProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
-    vkPhysicalDeviceIDProperties.pNext = NULL;
-
-    VkPhysicalDeviceProperties2 vkPhysicalDeviceProperties2;
-    memset((void*)&vkPhysicalDeviceProperties2, 0, sizeof(VkPhysicalDeviceProperties2));
-    vkPhysicalDeviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-    vkPhysicalDeviceProperties2.pNext = &vkPhysicalDeviceIDProperties;
-
-    vkGetPhysicalDeviceProperties2(vkPhysicalDevice_selected, &vkPhysicalDeviceProperties2);
-
-    //* Step - 2.2 : Get Total GPU Device Count
-    oclResult = clGetDeviceIDs(oclPlatformID, CL_DEVICE_TYPE_GPU, 0, NULL, &devCount);
-    if (oclResult != CL_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => OpenCL Error : clGetPlatformIDs() Failed : %d !!!\n", __func__, oclResult);
-        return oclResult;
-    }
-    else if (devCount == 0)
-    {
-        fprintf(gpFile, "%s() => No OpenCL Supported Device Found On This System !!!\n", __func__);
-        return oclResult;
-    }
-
-    //* Step - 2.3 : Allocate Memory To Hold Device IDs
-    oclDeviceIDs = (cl_device_id *)malloc(sizeof(cl_device_id) * devCount);
-    if (oclDeviceIDs == NULL)
-    {
-        fprintf(gpFile, "%s() => Failed To Allocate Memory To oclDeviceIDs !!!\n", __func__);
-        return oclResult;
-    }
-
-    //* Step - 2.4 : Get IDs Into Allocated Buffer
-    oclResult = clGetDeviceIDs(oclPlatformID, CL_DEVICE_TYPE_GPU, devCount, oclDeviceIDs, NULL);
-    if (oclResult != CL_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => OpenCL Error : clGetDeviceIDs() Failed : %d !!!\n", __func__, oclResult);
-        return oclResult;
-    }
-
-    //* Step - 2.5 : Iterate Over All IDs and Check For Vulkan Matching UUID
-    for (int i = 0; i < devCount; i++)
-    {
-        oclResult = clGetDeviceInfo(oclDeviceIDs[i], CL_DEVICE_UUID_KHR, sizeof(uuid), &uuid, NULL);
-        if (oclResult != CL_SUCCESS)
-        {
-            fprintf(gpFile, "%s() => OpenCL Error : clGetDeviceInfo() Failed For Index : %d, Reason : %d !!!\n", __func__, i, oclResult);
-            return oclResult;
-        }
-
-        for (uint32_t j = 0; j < CL_UUID_SIZE_KHR; j++)
-        {
-            if (uuid[j] != vkPhysicalDeviceIDProperties.deviceUUID[i])
-            {
-                uuidMatch = FALSE;
-                break;
-            }
-        }
-
-        if (uuidMatch == FALSE)
-            continue;
-
-        oclDeviceID = oclDeviceIDs[i];
-        break;
-    }
-
-    //* Step - 2.6 : Free oclDeviceIDs
-    free(oclDeviceIDs);
-    oclDeviceIDs = NULL;
-    // --------------------------------------------------------------------------------------------------------------------
-
-    // Step - 3 : Create OpenCL Context
-    oclContext = clCreateContext(NULL, 1, &oclDeviceID, NULL, NULL, &oclResult);
-    if (oclResult != CL_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => OpenCL Error : clCreateContext() Failed : %d !!!\n", __func__, oclResult);
-        return oclResult;
-    }
-
-    // Step - 4 : Create OpenCL Command Queue
-    oclCommandQueue = clCreateCommandQueue(oclContext, oclDeviceID, 0, &oclResult);
-    if (oclResult != CL_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => OpenCL Error : clCreateCommandQueue() Failed : %d !!!\n", __func__, oclResult);
-        return oclResult;
-    }
-
-    // Step - 5 : Create OpenCL Program From OpenCL Kernel Source Code
-    // --------------------------------------------------------------------------------------------------------------------
-    
-    // Step - 5.1 : OpenCL Kernel Source Code
-    const char* oclKernelSourceCode = 
-        "__kernel void sineWaveKernel(__global float4* pos, unsigned int width, unsigned int height, float time)"
-        "{" \
-            "unsigned int i = get_global_id(0);" \
-            "unsigned int j = get_global_id(1);" \
-
-            "float u = (float)i / (float)width;" \
-            "float v = (float)j / (float)height;" \
-
-            "u = u * 2.0f - 1.0f;" \
-            "v = v * 2.0f - 1.0f;" \
-
-            "float frequency = 4.0f;" \
-
-            "float w = sin(u * frequency + time) * cos(v * frequency + time) * 0.5;" \
-
-            "pos[j * width + i] = (float4)(u, w, v, 1.0f);" \
-        "}";
-
-    // Step - 5.2 : Create OpenCL Progam From Above Source Code
-    oclProgram = clCreateProgramWithSource(oclContext, 1, (const char**)&oclKernelSourceCode, NULL, &oclResult);
-    if (oclResult != CL_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => OpenCL Error : clCreateProgramWithSource() Failed : %d !!!\n", __func__, oclResult);
-        return oclResult;
-    }
-    // --------------------------------------------------------------------------------------------------------------------
-
-    // Step - 6 : Build OpenCL Program
-    oclResult = clBuildProgram(oclProgram, 0, NULL, "-cl-fast-relaxed-math", NULL, NULL);
-    if (oclResult != CL_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => OpenCL Error : clBuildProgram() Failed : %d !!!\n", __func__, oclResult);
-
-        size_t length;
-		char buffer[1024];
-
-        oclResult = clGetProgramBuildInfo(oclProgram, oclDeviceID, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &length);
-        
-        fprintf(gpFile, "\nOpenCL Program Build Log : %s\n", buffer);
-
-        return oclResult;
-    }
-
-    // Step - 7 : Create OpenCl Kernel
-    oclKernel = clCreateKernel(oclProgram, "sineWaveKernel", &oclResult);
-    {
-        fprintf(gpFile, "%s() => OpenCL Error : clCreateKernel() Failed : %d !!!\n", __func__, oclResult);
-        return oclResult;
-    }
-
-    return oclResult;
-}
-
-
 void getDeviceQueue(void)
 {
     // Code
@@ -3460,6 +3758,7 @@ VkResult createExternalBuffer(void)
 {
     // Function Declarations
     VkResult getMemoryWin32HandleFunction(void);
+    const char* oclGetErrorString(cl_int);
 
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -3552,7 +3851,6 @@ VkResult createExternalBuffer(void)
         fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Vertex Position GPU Buffer\n", __func__);
 
     //* Export Memory For OpenCL
-    // VkExportMemoryWin32HandleInfoKHR 
     VkMemoryGetWin32HandleInfoKHR vkMemoryGetWin32HandleInfoKHR;
     memset((void*)&vkMemoryGetWin32HandleInfoKHR, 0, sizeof(VkMemoryGetWin32HandleInfoKHR));
     vkMemoryGetWin32HandleInfoKHR.sType = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
@@ -3567,34 +3865,28 @@ VkResult createExternalBuffer(void)
     else
         fprintf(gpFile, "%s() => vkGetMemoryWin32HandleKHR_fnptr() Succeeded For Vertex Position GPU Buffer\n", __func__);
 
-    //* Import into CUDA
-    cudaExternalMemoryHandleDesc cuExtMemoryHandleDesc;
-    memset((void*)&cuExtMemoryHandleDesc, 0, sizeof(cudaExternalMemoryHandleDesc));
-    cuExtMemoryHandleDesc.type = cudaExternalMemoryHandleTypeOpaqueWin32;
-    cuExtMemoryHandleDesc.handle.win32.handle = vkMemoryHandle;
-    cuExtMemoryHandleDesc.size = (size_t)vkMemoryRequirements.size;
-    cuExtMemoryHandleDesc.flags = 0;
-    
-    cudaResult = cudaImportExternalMemory(&cudaExternalMemory, &cuExtMemoryHandleDesc);
-    if (cudaResult != cudaSuccess)
-        fprintf(gpFile, "%s() => cudaImportExternalMemory() Failed For Vertex Position GPU Buffer : %d !!!\n", __func__, cudaResult);
-    else
-        fprintf(gpFile, "%s() => cudaImportExternalMemory() Succeeded For Vertex Position GPU Buffer\n", __func__);
+    cl_mem_properties externalMemoryProperties[] = 
+    {
+        (cl_mem_properties) CL_EXTERNAL_MEMORY_HANDLE_OPAQUE_WIN32_KHR,
+        (cl_mem_properties) vkMemoryHandle,
+        (cl_mem_properties) CL_MEM_DEVICE_HANDLE_LIST_KHR,
+        (cl_mem_properties) oclDeviceId,
+        (cl_mem_properties) CL_MEM_DEVICE_HANDLE_LIST_END_KHR,
+        0
+    };
 
-    CloseHandle(vkMemoryHandle);
-
-    //* Map to CUDA Pointer
-    cudaExternalMemoryBufferDesc cuExtMemoryBufferDesc;
-    memset((void*)&cuExtMemoryBufferDesc, 0, sizeof(cudaExternalMemoryBufferDesc));
-    cuExtMemoryBufferDesc.offset = 0;
-    cuExtMemoryBufferDesc.size = (size_t)vkMemoryRequirements.size;
-    cuExtMemoryBufferDesc.flags =0;
-    
-    cudaResult = cudaExternalMemoryGetMappedBuffer(&cudaDevicePtr, cudaExternalMemory, &cuExtMemoryBufferDesc);
-    if (cudaResult != cudaSuccess)
-        fprintf(gpFile, "%s() => cudaExternalMemoryGetMappedBuffer() Failed For Vertex Position GPU Buffer : %d !!!\n", __func__, cudaResult);
+    oclPosition = clCreateBufferWithProperties(
+        oclContext,
+        externalMemoryProperties,
+        CL_MEM_READ_WRITE,
+        (size_t)vkMemoryRequirements.size,
+        NULL,
+        &oclResult
+    );  
+    if (oclResult != CL_SUCCESS)
+        fprintf(gpFile, "%s() => clCreateBufferWithProperties() Failed For Vertex Position GPU Buffer : %s !!!\n", __func__, oclGetErrorString(oclResult));
     else
-        fprintf(gpFile, "%s() => cudaExternalMemoryGetMappedBuffer() Succeeded For Vertex Position GPU Buffer\n", __func__);
+        fprintf(gpFile, "%s() => clCreateBufferWithProperties() Succeeded For Vertex Position GPU Buffer\n", __func__);
 
     //! -------------------------------------------------------------------------------------------------------------------------------------
     
@@ -3892,7 +4184,7 @@ VkResult createShaders(void)
     //! Vertex Shader
     //! ---------------------------------------------------------------------------------------------------------------------------
     //* Step - 6
-    const char* szFileName = "Bin/Shader.vert.spv";
+    const char* szFileName = "Shader.vert.spv";
     FILE *fp = NULL;
     size_t size;
 
@@ -3969,7 +4261,7 @@ VkResult createShaders(void)
 
     //! Fragment Shader
     //! ---------------------------------------------------------------------------------------------------------------------------
-    szFileName = "Bin/Shader.frag.spv";
+    szFileName = "Shader.frag.spv";
 
     fp = NULL;
     fp = fopen(szFileName, "rb");
@@ -4731,5 +5023,88 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(
     // Code
     fprintf(gpFile, "ADN_VALIDATION : debugReportCallback() => %s(%d) = %s\n", pLayerPrefix, messageCode, pMessage);
     return VK_FALSE;
+}
+
+
+//! OpenCL Helper Function
+const char* oclGetErrorString(cl_int error)
+{
+    // Code
+    switch (error)
+    {
+        // Run-time and JIT Errors
+        case 0: return "CL_SUCCESS";
+        case -1: return "CL_DEVICE_NOT_FOUND";
+        case -2: return "CL_DEVICE_NOT_AVAILABLE";
+        case -3: return "CL_COMPILER_NOT_AVAILABLE";
+        case -4: return "CL_MEM_OBJECT_ALLOCATION_FAILURE";
+        case -5: return "CL_OUT_OF_RESOURCES";
+        case -6: return "CL_OUT_OF_HOST_MEMORY";
+        case -7: return "CL_PROFILING_INFO_NOT_AVAILABLE";
+        case -8: return "CL_MEM_COPY_OVERLAP";
+        case -9: return "CL_IMAGE_FORMAT_MISMATCH";
+        case -10: return "CL_IMAGE_FORMAT_NOT_SUPPORTED";
+        case -11: return "CL_BUILD_PROGRAM_FAILURE";
+        case -12: return "CL_MAP_FAILURE";
+        case -13: return "CL_MISALIGNED_SUB_BUFFER_OFFSET";
+        case -14: return "CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST";
+        case -15: return "CL_COMPILE_PROGRAM_FAILURE";
+        case -16: return "CL_LINKER_NOT_AVAILABLE";
+        case -17: return "CL_LINK_PROGRAM_FAILURE";
+        case -18: return "CL_DEVICE_PARTITION_FAILED";
+        case -19: return "CL_KERNEL_ARG_INFO_NOT_AVAILABLE";
+
+        // Compile-time errors
+        case -30: return "CL_INVALID_VALUE";
+        case -31: return "CL_INVALID_DEVICE_TYPE";
+        case -32: return "CL_INVALID_PLATFORM";
+        case -33: return "CL_INVALID_DEVICE";
+        case -34: return "CL_INVALID_CONTEXT";
+        case -35: return "CL_INVALID_QUEUE_PROPERTIES";
+        case -36: return "CL_INVALID_COMMAND_QUEUE";
+        case -37: return "CL_INVALID_hostPtr";
+        case -38: return "CL_INVALID_MEM_OBJECT";
+        case -39: return "CL_INVALID_IMAGE_FORMAT_DESCRIPTOR";
+        case -40: return "CL_INVALID_IMAGE_SIZE";
+        case -41: return "CL_INVALID_SAMPLER";
+        case -42: return "CL_INVALID_BINARY";
+        case -43: return "CL_INVALID_BUILD_OPTIONS";
+        case -44: return "CL_INVALID_PROGRAM";
+        case -45: return "CL_INVALID_PROGRAM_EXECUTABLE";
+        case -46: return "CL_INVALID_KERNEL_NAME";
+        case -47: return "CL_INVALID_KERNEL_DEFINITION";
+        case -48: return "CL_INVALID_KERNEL";
+        case -49: return "CL_INVALID_ARG_INDEX";
+        case -50: return "CL_INVALID_ARG_VALUE";
+        case -51: return "CL_INVALID_ARG_SIZE";
+        case -52: return "CL_INVALID_KERNEL_ARGS";
+        case -53: return "CL_INVALID_WORK_DIMENSION";
+        case -54: return "CL_INVALID_WORK_GROUP_SIZE";
+        case -55: return "CL_INVALID_WORK_ITEM_SIZE";
+        case -56: return "CL_INVALID_GLOBAL_OFFSET";
+        case -57: return "CL_INVALID_EVENT_WAIT_LIST";
+        case -58: return "CL_INVALID_EVENT";
+        case -59: return "CL_INVALID_OPERATION";
+        case -60: return "CL_INVALID_GL_OBJECT";
+        case -61: return "CL_INVALID_BUFFER_SIZE";
+        case -62: return "CL_INVALID_MIP_LEVEL";
+        case -63: return "CL_INVALID_GLOBAL_WORK_SIZE";
+        case -64: return "CL_INVALID_PROPERTY";
+        case -65: return "CL_INVALID_IMAGE_DESCRIPTOR";
+        case -66: return "CL_INVALID_COMPILER_OPTIONS";
+        case -67: return "CL_INVALID_LINKER_OPTIONS";
+        case -68: return "CL_INVALID_DEVICE_PARTITION_COUNT";
+
+        // Extension Errors
+        case -1000: return "CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR";
+        case -1001: return "CL_PLATFORM_NOT_FOUND_KHR";
+        case -1002: return "CL_INVALID_D3D10_DEVICE_KHR";
+        case -1003: return "CL_INVALID_D3D10_RESOURCE_KHR";
+        case -1004: return "CL_D3D10_RESOURCE_ALREADY_ACQUIRED_KHR";
+        case -1005: return "CL_D3D10_RESOURCE_NOT_ACQUIRED_KHR";
+
+        default:
+            return "Unknown OpenCL error !!!";
+    }
 }
 

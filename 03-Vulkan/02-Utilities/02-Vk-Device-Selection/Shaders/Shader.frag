@@ -3,15 +3,14 @@
 
 layout(location = 0) out vec4 FragColor;
 
-layout(binding = 0) uniform mvpData 
+layout(binding = 0) uniform uniformData 
 { 
     mat4 mvpMatrix;
     vec4 color;
-    int useGPU;
 } ubo;
 
 void main(void)
 {
     // Code
-    FragColor = ubo.color;
+    FragColor = vec4(ubo.color);
 }
