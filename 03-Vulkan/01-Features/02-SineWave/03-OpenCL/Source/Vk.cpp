@@ -946,9 +946,6 @@ cl_int initializeOpenCL(void)
         fprintf(gpFile, "*******************************************************************************\n");
         fprintf(gpFile, "Selected OpenCL Platform : %s\n", oclPlatformInfo);
 
-        if (bSupportsExtensions)
-            fprintf(gpFile, "Supported Extensions For Interop : cl_khr_device_uuid, cl_khr_external_memory\n");
-
         free(oclPlatformInfo);
         oclPlatformInfo = NULL;
 
@@ -1042,6 +1039,9 @@ cl_int initializeOpenCL(void)
 
         clGetDeviceInfo(oclDeviceId, CL_DEVICE_NAME, infoSize, oclDeviceInfo, NULL);
         fprintf(gpFile, "Selected OpenCL Device : %s\n", oclDeviceInfo);
+        if (bSupportsExtensions)
+            fprintf(gpFile, "Supported Extensions For Interop : cl_khr_device_uuid, cl_khr_external_memory\n");
+
         fprintf(gpFile, "*******************************************************************************\n\n");
 
         free(oclDeviceInfo);
@@ -2811,11 +2811,14 @@ VkResult printVkInfo(void)
 
     // Code
     fprintf(gpFile, "\nVULKAN INFORMATION\n");
-    fprintf(gpFile, "------------------------------------------------------------------------------------------------\n");
+    fprintf(gpFile, "------------------------------------------------------------------------------------------------");
     
     //* Step - 3.1
     for (uint32_t i = 0; i < physicalDeviceCount; i++)
     {
+        fprintf(gpFile, "\nDevice Number : %d\n", i);
+        fprintf(gpFile, "*******************************************************\n");
+        
         //* Step - 3.2
         VkPhysicalDeviceProperties vkPhysicalDeviceProperties;
         memset((void*)&vkPhysicalDeviceProperties, 0, sizeof(VkPhysicalDeviceProperties));
@@ -2859,10 +2862,97 @@ VkResult printVkInfo(void)
         }
 
         //* Step - 3.6
-        fprintf(gpFile, "Vendor ID : 0x%4x\n", vkPhysicalDeviceProperties.vendorID);
+        fprintf(gpFile, "Device ID : 0x%4x\n", vkPhysicalDeviceProperties.deviceID);
 
         //* Step - 3.7
-        fprintf(gpFile, "Device ID : 0x%4x\n", vkPhysicalDeviceProperties.deviceID);
+        fprintf(gpFile, "Vendor ID : 0x%4x\n", vkPhysicalDeviceProperties.vendorID);
+
+        switch(vkPhysicalDeviceProperties.vendorID)
+        {
+            case 0x10DE: fprintf(gpFile, "Vendor Name : NVIDIA\n"); break;
+            case 0x1002: fprintf(gpFile, "Vendor Name : AMD\n"); break;
+            case 0x8086: fprintf(gpFile, "Vendor Name : Intel\n"); break;
+            default: fprintf(gpFile, "Vendor Name : Unknown (0x%4x)\n", vkPhysicalDeviceProperties.vendorID);
+        }
+
+        //* Additional Properties
+        uint32_t queueCount = UINT32_MAX;
+        vkGetPhysicalDeviceQueueFamilyProperties(vkPhysicalDevice_array[i], &queueCount, NULL);
+        fprintf(gpFile, "\nNo. of Queue Families: %d\n", queueCount);
+
+        VkQueueFamilyProperties* vkQueueFamilyProperties_array = NULL;
+        vkQueueFamilyProperties_array = (VkQueueFamilyProperties*)malloc(queueCount * sizeof(VkQueueFamilyProperties));
+        if (vkQueueFamilyProperties_array == NULL)
+        {
+            fprintf(gpFile, "%s() => malloc() Failed For vkQueueFamilyProperties_array !!!\n", __func__);
+            return VK_ERROR_OUT_OF_HOST_MEMORY;
+        }
+
+        vkGetPhysicalDeviceQueueFamilyProperties(vkPhysicalDevice_array[i], &queueCount, vkQueueFamilyProperties_array);
+
+        VkBool32* isQueueSurfaceSupported_array = NULL;
+        isQueueSurfaceSupported_array = (VkBool32*)malloc(queueCount * sizeof(VkBool32));
+        if (isQueueSurfaceSupported_array == NULL)
+        {
+            fprintf(gpFile, "%s() => malloc() Failed For isQueueSurfaceSupported_array\n", __func__);
+            return VK_ERROR_OUT_OF_HOST_MEMORY;
+        }
+
+        for (uint32_t j = 0; j < queueCount; j++)
+            vkGetPhysicalDeviceSurfaceSupportKHR(vkPhysicalDevice_array[i], j, vkSurfaceKHR, &isQueueSurfaceSupported_array[j]);
+
+        for (uint32_t j = 0; j < queueCount; j++)
+        {
+
+            fprintf(gpFile, "\nQueue Family : %d\n", j);
+            fprintf(gpFile, "****************************************\n");
+
+            if (vkQueueFamilyProperties_array[j].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+                fprintf(gpFile, "Supports Graphics : Yes\n");
+            else
+                fprintf(gpFile, "Supports Graphics : No\n");
+
+            if (vkQueueFamilyProperties_array[j].queueFlags & VK_QUEUE_COMPUTE_BIT)
+                fprintf(gpFile, "Supports Compute : Yes\n");
+            else
+                fprintf(gpFile, "Supports Compute : No\n");
+
+            if (vkQueueFamilyProperties_array[j].queueFlags & VK_QUEUE_TRANSFER_BIT)
+                fprintf(gpFile, "Supports Transfer Operations : Yes\n");
+            else
+                fprintf(gpFile, "Supports Transfer Operations : No\n");
+
+            if (vkQueueFamilyProperties_array[j].queueFlags & VK_QUEUE_VIDEO_ENCODE_BIT_KHR)
+                fprintf(gpFile, "Supports Video Encoding : Yes\n");
+            else
+                fprintf(gpFile, "Supports Video Encoding : No\n");
+
+            if (vkQueueFamilyProperties_array[j].queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR)
+                fprintf(gpFile, "Supports Video Decoding : Yes\n");
+            else
+                fprintf(gpFile, "Supports Video Decoding : No\n");
+
+            if (isQueueSurfaceSupported_array[j] == VK_TRUE)
+                fprintf(gpFile, "Supports Presentation : Yes\n");
+            else
+                fprintf(gpFile, "Supports Presentation : No\n");
+                
+            fprintf(gpFile, "****************************************\n\n");
+        }
+
+        if (isQueueSurfaceSupported_array)
+        {
+            free(isQueueSurfaceSupported_array);
+            isQueueSurfaceSupported_array = NULL;
+        }
+
+        if (vkQueueFamilyProperties_array)
+        {
+            free(vkQueueFamilyProperties_array);
+            vkQueueFamilyProperties_array = NULL;
+        }
+
+        fprintf(gpFile, "*******************************************************\n");
     }
 
     fprintf(gpFile, "------------------------------------------------------------------------------------------------\n\n");
