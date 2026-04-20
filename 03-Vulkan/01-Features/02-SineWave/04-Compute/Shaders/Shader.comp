@@ -1,0 +1,39 @@
+#version 460 core
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+//* Output Buffer
+layout(std430, binding = 0) buffer positionBuffer
+{
+    vec4 position[];
+};
+
+//* Push Constants
+layout(push_constant) uniform PushConstants
+{
+    int width;
+    int height;
+    float time;
+} pushData;
+
+void main()
+{
+    // Code
+    uint i = gl_GlobalInvocationID.x;
+    uint j = gl_GlobalInvocationID.y;
+
+    if (i >= pushData.width || j >= pushData.height)
+        return;
+
+    float u = float(i) / float(pushData.width);
+    float v = float(j) / float(pushData.height);
+
+    u = u * 2.0 - 1.0;
+    v = v * 2.0 - 1.0;
+
+    float frequency = 4.0;
+
+    float w = sin(u * frequency + pushData.time) * cos(v * frequency + pushData.time) * 0.5;
+
+    position[j * pushData.width + i] = vec4(u, w, v, 1.0);
+}
