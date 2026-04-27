@@ -7,8 +7,8 @@ set VULKAN_INCLUDE_PATH="C:\\VulkanSDK\\Vulkan\\Include"
 set VULKAN_LIB_PATH="C:\\VulkanSDK\Vulkan\\Lib"
 set VULKAN_BIN_PATH="C:\\VulkanSDK\\Vulkan\\Bin"
 
-set OPENCL_INCLUDE_PATH="C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.8\\include"
-set OPENCL_LIB_PATH="C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.8\\lib\\x64"
+set OPENCL_INCLUDE_PATH="C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v13.1\\include"
+set OPENCL_LIB_PATH="C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v13.1\\lib\\x64"
 
 set SOURCE_PATH=Source
 set INCLUDE_PATH=Include
@@ -31,6 +31,7 @@ echo ---------------------------------------------------------------------------
         
 cl.exe  /c ^
         /EHsc ^
+        /fsanitize=address /Zi ^
         /I %VULKAN_INCLUDE_PATH% ^
         /I %VULKAN_INCLUDE_PATH%\glm ^
         /I %OPENCL_INCLUDE_PATH% ^
@@ -85,6 +86,7 @@ echo Linking Libraries and Resources...
 echo Creating Executable...
 echo ----------------------------------------------------------------------------------------------------------------
 link.exe ^
+        /DEBUG ^
         /OUT:%BIN_DIR%\Vk.exe ^
         %BIN_DIR%\*.obj ^
         %BIN_DIR%\Vk.res ^

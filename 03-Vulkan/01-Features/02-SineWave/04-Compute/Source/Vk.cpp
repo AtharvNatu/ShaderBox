@@ -184,11 +184,11 @@ float position_1024_graphics[1024][1024][4];
 VertexData vertexData_position_1024x1024_graphics;
 VkCommandBuffer* vkCommandBuffer_1024x1024_graphics_array = NULL;
 
-BOOL bMesh64Chosen = TRUE;
+BOOL bMesh64Chosen = FALSE;
 BOOL bMesh128Chosen = FALSE;
 BOOL bMesh256Chosen = FALSE;
 BOOL bMesh512Chosen = FALSE;
-BOOL bMesh1024Chosen = FALSE;
+BOOL bMesh1024Chosen = TRUE;
 BOOL bMesh2048Chosen = FALSE;
 BOOL bMesh4096Chosen = FALSE;
 
@@ -1296,9 +1296,7 @@ VkResult display(void)
     //! Render color attachment
     const VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-    VkCommandBuffer vkCommandBufferArr[2] = { vkCommandBuffer_compute, vkCommandBuffer_array[currentImageIndex] };
-
-     //! Declare and initialize VkSubmitInfo stucture
+    //! Declare and initialize VkSubmitInfo stucture
     VkSubmitInfo vkSubmitInfo;
     memset((void*)&vkSubmitInfo, 0, sizeof(VkSubmitInfo));
     vkSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1311,14 +1309,14 @@ VkResult display(void)
 
     if (bUseCompute)
     {
-        VkCommandBuffer submitBuffers[2] =
+        VkCommandBuffer vkCommandBuffers[2] =
         {
             vkCommandBuffer_compute,
             vkCommandBuffer_array[currentImageIndex]
         };
 
         vkSubmitInfo.commandBufferCount = 2;
-        vkSubmitInfo.pCommandBuffers = submitBuffers;
+        vkSubmitInfo.pCommandBuffers = vkCommandBuffers;
     }
     else
     {
@@ -2290,7 +2288,7 @@ VkResult getPhysicalDevice(void)
         //* Step - 5.7
         for (uint32_t j = 0; j < queueCount; j++)
         {
-            if (vkQueueFamilyProperties_array[j].queueFlags & (VK_QUEUE_GRAPHICS_BIT && VK_QUEUE_COMPUTE_BIT))
+            if (vkQueueFamilyProperties_array[j].queueFlags & (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT))
             {
                 if (isQueueSurfaceSupported_array[j] == VK_TRUE)
                 {
