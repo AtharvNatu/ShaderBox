@@ -83,7 +83,6 @@ echo Linking Libraries and Resources...
 echo Creating Executable...
 echo ----------------------------------------------------------------------------------------------------------------
 link.exe ^
-        /DEBUG ^
         /OUT:%BIN_DIR%\Vk.exe ^
         %BIN_DIR%\*.obj ^
         %BIN_DIR%\Vk.res ^

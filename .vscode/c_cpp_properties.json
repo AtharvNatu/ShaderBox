@@ -1,10 +1,9 @@
 {
     "configurations": [
         {
-            "name": "Win32",
+            "name": "Windows",
             "includePath": [
                 "${workspaceFolder}/**",
-                "C:\\glew\\include",
                 "C:\\VulkanSDK\\Vulkan\\Include",
                 "C:\\VulkanSDK\\Vulkan\\Include\\glslang",
                 "C:\\VulkanSDK\\Vulkan\\Include\\glm",
@@ -20,6 +19,73 @@
             "cStandard": "c17",
             "cppStandard": "c++17",
             "intelliSenseMode": "windows-msvc-x64"
+        },
+        {
+            "name": "Android-NDK",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "C:\\Users\\Atharv\\AppData\\Local\\Android\\Sdk\\ndk\\29.0.14206865\\sources\\android\\native_app_glue",
+                "C:\\Users\\Atharv\\AppData\\Local\\Android\\Sdk\\ndk\\29.0.14206865\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\include",
+                "C:\\Users\\Atharv\\AppData\\Local\\Android\\Sdk\\ndk\\29.0.14206865\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\include\\aarch64-linux-android",
+                "C:\\Users\\Atharv\\AppData\\Local\\Android\\Sdk\\ndk\\29.0.14206865\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\include\\c++\\v1"
+            ],
+            "defines": [
+                "GLM_FORCE_RADIANS",
+                "GLM_FORCE_DEPTH_ZERO_TO_ONE"
+            ],
+            "compilerArgs": [
+                "-std=c++17",
+                "-D__ANDROID__",
+                "--target=aarch64-linux-android29"
+            ],
+            "compilerPath": "C:\\Users\\Atharv\\AppData\\Local\\Android\\Sdk\\ndk\\29.0.14206865\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-clang-x64"
+        },
+        {
+            "name": "Linux",
+            "includePath": [
+                "/home/atharv/Desktop/Workspace/ARTR/**",
+                "/home/atharv/VulkanSDK/Vulkan/x86_64/include",
+                "/home/atharv/VulkanSDK/Vulkan/x86_64/include/glslang",
+                "/home/atharv/Desktop/Workspace/ARTR/01-Vulkan/02-Linux/External/glm",
+                "/usr/include/glslang",
+                "/opt/cuda/include"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "compilerPath": "/usr/bin/g++",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "linux-gcc-x64",
+            "mergeConfigurations": false,
+            "recursiveIncludes": {},
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true
+            }
+        },
+        {
+            "name": "macOS",
+            "includePath": [
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "compilerPath": "/usr/bin/clang++",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "macos-clang-arm64",
+            "mergeConfigurations": false,
+            "recursiveIncludes": {},
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true
+            }
         }
     ],
     "version": 4
