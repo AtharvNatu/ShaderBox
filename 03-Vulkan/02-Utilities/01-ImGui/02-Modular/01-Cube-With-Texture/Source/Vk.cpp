@@ -188,6 +188,7 @@ float fAngle = 0.0f;
 //! ImGui Overlay Related
 // ImFont* font;
 Overlay *overlay = nullptr;
+BOOL bShowOverlay = TRUE;
 
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
@@ -416,6 +417,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
                 case 'F':
                 case 'f':
                     ToggleFullScreen();
+                break;
+
+                case 'O':
+                case 'o':
+                    bShowOverlay = !bShowOverlay;
                 break;
 
                 default:
@@ -757,7 +763,6 @@ VkResult initialize(void)
     vkClearDepthStencilValue.stencil = 0;
 
     //! Initialize ImGui
-    // initializeImGui("ImGui\\Poppins-Regular.ttf", 24.0f);
     overlay = new Overlay();
     overlay->initialize(410, 200);
 
@@ -1094,7 +1099,8 @@ void update(void)
     fAngle += fAnimationSpeed;
     if (fAngle >= 360.0f)
         fAngle = 0.0f;
-
+    
+    overlay->data.cubeAnimationSpeed = fAnimationSpeed;
 }
 
 void uninitialize(void)
@@ -5166,9 +5172,12 @@ VkResult buildCommandBuffers(void)
         vkRenderPassBeginInfo.pClearValues = vkClearValue_array;
         vkRenderPassBeginInfo.framebuffer = vkFramebuffer_array[i];
 
-        overlay->newFrame(false);
-        overlay->updateBuffers();
-        
+        if (bShowOverlay)
+        {
+            overlay->newFrame(false);
+            overlay->updateBuffers();
+        }
+       
         //* Step - 6
         vkCmdBeginRenderPass(vkCommandBuffer_array[i], &vkRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
         {
@@ -5212,7 +5221,8 @@ VkResult buildCommandBuffers(void)
             //! Vulkan Drawing Function
             vkCmdDraw(vkCommandBuffer_array[i], 36, 1, 0, 0);
 
-            overlay->drawFrame(vkCommandBuffer_array[i]);
+            if (bShowOverlay)
+                overlay->drawFrame(vkCommandBuffer_array[i]);
         }
         //* Step - 7
         vkCmdEndRenderPass(vkCommandBuffer_array[i]);

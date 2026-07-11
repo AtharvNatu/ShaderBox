@@ -12,6 +12,53 @@ Overlay::Overlay()
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    io.Fonts->AddFontFromFileTTF("ImGui\\Poppins-Regular.ttf", 24.0f, NULL, io.Fonts->GetGlyphRangesDefault());
+}
+
+void Overlay::addMouseMoveHandler(LPARAM lParam)
+{
+    // Code
+    ImGui::GetIO().AddMousePosEvent((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
+}
+
+void Overlay::addMouseButtonHandler(int buttonIndex, bool status)
+{
+    // Code
+    ImGui::GetIO().AddMouseButtonEvent(buttonIndex, status);
+}
+
+void Overlay::addMouseWheelHandler(WPARAM wParam)
+{
+    // Code
+    ImGui::GetIO().AddMouseWheelEvent(0.0f, GET_WHEEL_DELTA_WPARAM(wParam) / (float)WHEEL_DELTA);
+}
+
+void Overlay::addKeyboardHandler(WPARAM wParam)
+{
+    // Code
+    ImGuiIO& io = ImGui::GetIO();
+
+    io.AddKeyEvent(ImGuiKey_ModCtrl,  (GetKeyState(VK_CONTROL) & 0x8000) != 0);
+    io.AddKeyEvent(ImGuiKey_ModShift, (GetKeyState(VK_SHIFT) & 0x8000) != 0);
+    io.AddKeyEvent(ImGuiKey_ModAlt,   (GetKeyState(VK_MENU) & 0x8000) != 0);
+
+    ImGuiKey key = ImGuiKey_None;
+
+    switch (wParam)
+    {
+        case VK_TAB:    key = ImGuiKey_Tab; break;
+        case VK_LEFT:   key = ImGuiKey_LeftArrow; break;
+        case VK_RIGHT:  key = ImGuiKey_RightArrow; break;
+        case VK_UP:     key = ImGuiKey_UpArrow; break;
+        case VK_DOWN:   key = ImGuiKey_DownArrow; break;
+        case VK_ESCAPE: key = ImGuiKey_Escape; break;
+        case VK_RETURN: key = ImGuiKey_Enter; break;
+        case VK_SPACE:  key = ImGuiKey_Space; break;
+    }
+
+    if (key != ImGuiKey_None)
+        io.AddKeyEvent(key, true);
 }
 
 VkResult Overlay::initialize(float width, float height)
@@ -1671,11 +1718,12 @@ void Overlay::newFrame(bool updateFrameGraph, float deltaTime)
 
     ImGui::NewFrame();
 
-    ImGui::SetWindowSize(ImVec2(410, 200));
+    ImGui::SetWindowSize(ImVec2(overlayWidth, overlayHeight));
 
     ImGui::Begin("Vulkan : ImGui");
     {
         ImGui::Text("Cube Rotation Speed");
+        ImGui::SliderFloat("##", (float*)&data.cubeAnimationSpeed, 0.001f, 0.1f);
     }
     ImGui::End();
 
@@ -1825,51 +1873,6 @@ void Overlay::drawFrame(VkCommandBuffer commandBuffer)
             vertexOffset += cmdList->VtxBuffer.Size;
         }
     }
-}
-
-void Overlay::addMouseMoveHandler(LPARAM lParam)
-{
-    // Code
-    ImGui::GetIO().AddMousePosEvent((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
-}
-
-void Overlay::addMouseButtonHandler(int buttonIndex, bool status)
-{
-    // Code
-    ImGui::GetIO().AddMouseButtonEvent(buttonIndex, status);
-}
-
-void Overlay::addMouseWheelHandler(WPARAM wParam)
-{
-    // Code
-    ImGui::GetIO().AddMouseWheelEvent(0.0f, GET_WHEEL_DELTA_WPARAM(wParam) / (float)WHEEL_DELTA);
-}
-
-void Overlay::addKeyboardHandler(WPARAM wParam)
-{
-    // Code
-    ImGuiIO& io = ImGui::GetIO();
-
-    io.AddKeyEvent(ImGuiKey_ModCtrl,  (GetKeyState(VK_CONTROL) & 0x8000) != 0);
-    io.AddKeyEvent(ImGuiKey_ModShift, (GetKeyState(VK_SHIFT) & 0x8000) != 0);
-    io.AddKeyEvent(ImGuiKey_ModAlt,   (GetKeyState(VK_MENU) & 0x8000) != 0);
-
-    ImGuiKey key = ImGuiKey_None;
-
-    switch (wParam)
-    {
-        case VK_TAB:    key = ImGuiKey_Tab; break;
-        case VK_LEFT:   key = ImGuiKey_LeftArrow; break;
-        case VK_RIGHT:  key = ImGuiKey_RightArrow; break;
-        case VK_UP:     key = ImGuiKey_UpArrow; break;
-        case VK_DOWN:   key = ImGuiKey_DownArrow; break;
-        case VK_ESCAPE: key = ImGuiKey_Escape; break;
-        case VK_RETURN: key = ImGuiKey_Enter; break;
-        case VK_SPACE:  key = ImGuiKey_Space; break;
-    }
-
-    if (key != ImGuiKey_None)
-        io.AddKeyEvent(key, true);
 }
 
 Overlay::~Overlay()

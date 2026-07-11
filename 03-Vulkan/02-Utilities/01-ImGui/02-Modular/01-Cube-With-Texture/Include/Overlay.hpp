@@ -35,6 +35,13 @@ class Overlay
             void *mapped = nullptr;
         };
 
+        struct PushConstants
+        {
+            glm::vec2 scale;
+            glm::vec2 translate;
+
+        } pushData;
+
         BufferData vertexBuffer;
         BufferData indexBuffer;
         int32_t vertexCount = 0;
@@ -72,24 +79,26 @@ class Overlay
     
     public:
 
-        struct PushConstants
+        struct OverlayData
         {
-            glm::vec2 scale;
-            glm::vec2 translate;
+            // Scene-wise uniforms / variables
+            float cubeAnimationSpeed;
+        };
 
-        } pushData;
+        OverlayData data;
         
         Overlay();
         ~Overlay();
+
+        void addMouseMoveHandler(LPARAM lParam);
+        void addMouseButtonHandler(int buttonIndex, bool status);
+        void addMouseWheelHandler(WPARAM wParam);
+        void addKeyboardHandler(WPARAM wParam);
 
         VkResult initialize(float width, float height);
         void updateBuffers();
         void drawFrame(VkCommandBuffer commandBuffer);
         void newFrame(bool updateFrameGraph, float deltaTime = 0.0f);
-        void addMouseMoveHandler(LPARAM lParam);
-        void addMouseButtonHandler(int buttonIndex, bool status);
-        void addMouseWheelHandler(WPARAM wParam);
-        void addKeyboardHandler(WPARAM wParam);
 };
 
 
