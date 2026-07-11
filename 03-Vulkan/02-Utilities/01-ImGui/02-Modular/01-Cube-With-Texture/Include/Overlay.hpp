@@ -1,8 +1,9 @@
 #ifndef IMGUI_HPP
 #define IMGUI_HPP
 
+#define NOMINMAX
 #include <cstdio>
-#include <array>
+#include <algorithm>
 
 //! GLM Related Macros and Header Files
 #define GLM_FORCE_RADIANS
@@ -18,26 +19,21 @@ extern VkPhysicalDeviceMemoryProperties vkPhysicalDeviceMemoryProperties;
 extern VkCommandPool vkCommandPool;
 extern VkQueue vkQueue;
 extern VkRenderPass vkRenderPass;
-extern VkViewport vkViewport;
-extern VkRect2D vkRect2D_scissor;
 extern VkExtent2D vkExtent2D_swapchain;
 extern FILE* gpFile;
 extern int winWidth, winHeight;
 
-
-class ImGUI
+class Overlay
 {   
     private:
 
         //* Vulkan Resources for rendering the UI
         struct BufferData
         {
-            VkBuffer vkBuffer;
-            VkDeviceMemory vkDeviceMemory;
+            VkBuffer vkBuffer = VK_NULL_HANDLE;
+            VkDeviceMemory vkDeviceMemory = VK_NULL_HANDLE;
             void *mapped = nullptr;
         };
-
-        VkMemoryAllocateInfo vkMemoryAllocateInfo;
 
         BufferData vertexBuffer;
         BufferData indexBuffer;
@@ -57,6 +53,9 @@ class ImGUI
         VkDescriptorPool vkDescriptorPool_imgui = VK_NULL_HANDLE;
         VkPipeline vkPipeline_imgui = VK_NULL_HANDLE;
         VkPipelineLayout vkPipelineLayout_imgui = VK_NULL_HANDLE;
+
+        float overlayWidth = 0.0f;
+        float overlayHeight = 0.0f;
 
         VkResult createBuffer(BufferData* bufferData, VkBufferUsageFlagBits bufferUsageFlagBits, VkDeviceSize bufferSize);
         VkResult mapBufferMemory(BufferData* bufferData);
@@ -80,13 +79,17 @@ class ImGUI
 
         } pushData;
         
-        ImGUI();
-        ~ImGUI();
+        Overlay();
+        ~Overlay();
 
         VkResult initialize(float width, float height);
         void updateBuffers();
         void drawFrame(VkCommandBuffer commandBuffer);
-        void newFrame(bool updateFrameGraph);
+        void newFrame(bool updateFrameGraph, float deltaTime = 0.0f);
+        void addMouseMoveHandler(LPARAM lParam);
+        void addMouseButtonHandler(int buttonIndex, bool status);
+        void addMouseWheelHandler(WPARAM wParam);
+        void addKeyboardHandler(WPARAM wParam);
 };
 
 

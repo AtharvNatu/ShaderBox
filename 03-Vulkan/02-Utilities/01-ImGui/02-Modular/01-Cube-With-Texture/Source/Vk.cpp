@@ -187,8 +187,7 @@ float fAngle = 0.0f;
 
 //! ImGui Overlay Related
 // ImFont* font;
-// ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-ImGUI *imGUI = nullptr;
+Overlay *overlay = nullptr;
 
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
@@ -319,7 +318,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
 
 }
 
-// extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // Callback Function
 LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
@@ -330,9 +328,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
     void uninitialize(void);
 
     // Code
-    // if (ImGui_ImplWin32_WndProcHandler(hwnd, iMsg, wParam, lParam))
-    //     return true;
-
     switch(iMsg)
     {
         case WM_CREATE:
@@ -348,6 +343,44 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
             gbActiveWindow = FALSE;
         break;
 
+        case WM_MOUSEMOVE:
+            overlay->addMouseMoveHandler(lParam);
+        break;
+
+        case WM_LBUTTONDOWN:
+            SetCapture(hwnd);
+            overlay->addMouseButtonHandler(0, true);
+        break;
+
+        case WM_LBUTTONUP:
+            ReleaseCapture();
+            overlay->addMouseButtonHandler(0, false);
+        break;
+
+        case WM_RBUTTONDOWN:
+            SetCapture(hwnd);
+            overlay->addMouseButtonHandler(1, true);
+        break;
+
+        case WM_RBUTTONUP:
+            ReleaseCapture();
+            overlay->addMouseButtonHandler(1, false);
+        break;
+
+        case WM_MBUTTONDOWN:
+            SetCapture(hwnd);
+            overlay->addMouseButtonHandler(2, true);
+        break;
+
+        case WM_MBUTTONUP:
+            ReleaseCapture();
+            overlay->addMouseButtonHandler(2, false);
+        break;
+
+        case WM_MOUSEHWHEEL:
+            overlay->addMouseWheelHandler(wParam);
+        break;
+
         case WM_SIZE:
             if (wParam == SIZE_MINIMIZED)
                 gbWindowMinimized = TRUE;
@@ -359,9 +392,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
         break;
 
         case WM_KEYDOWN:
+        case WM_SYSKEYDOWN:
 
             switch(wParam)
             {
+                overlay->addKeyboardHandler(wParam);
+
                 case 27:
                     DestroyWindow(hwnd);
                 break;
@@ -371,6 +407,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
             }
 
         break;
+        
 
         case WM_CHAR:
 
@@ -721,18 +758,8 @@ VkResult initialize(void)
 
     //! Initialize ImGui
     // initializeImGui("ImGui\\Poppins-Regular.ttf", 24.0f);
-    imGUI = new ImGUI();
-    imGUI->initialize(410, 200);
-
-    // vkResult = buildCommandBuffers();
-    // if (vkResult != VK_SUCCESS)
-    // {
-    //     fprintf(gpFile, "%s() => buildCommandBuffers() Failed\n", __func__);
-    //     vkResult = VK_ERROR_INITIALIZATION_FAILED;
-    //     return vkResult;
-    // }
-    // else
-    //     fprintf(gpFile, "%s() => buildCommandBuffers() Succeeded\n", __func__);
+    overlay = new Overlay();
+    overlay->initialize(410, 200);
 
     //! Initialization Completed
     bInitialized = TRUE;
@@ -1093,8 +1120,8 @@ void uninitialize(void)
         fprintf(gpFile, "%s() => vkDeviceWaitIdle() Succeeded\n", __func__);
     }
 
-    delete imGUI;
-    imGUI = nullptr;
+    delete overlay;
+    overlay = nullptr;
 
     //* Step - 7 of Fences and Semaphores
     for (uint32_t i = 0; i < swapchainImageCount; i++)
@@ -5102,8 +5129,6 @@ VkResult buildCommandBuffers(void)
             vkResult = VK_ERROR_INITIALIZATION_FAILED;
             return vkResult;
         }
-        else
-            fprintf(gpFile, "%s() => vkResetCommandBuffer() Succeeded For Index : %d\n", __func__, i);
 
         //* Step - 2
         VkCommandBufferBeginInfo vkCommandBufferBeginInfo;
@@ -5120,8 +5145,6 @@ VkResult buildCommandBuffers(void)
             vkResult = VK_ERROR_INITIALIZATION_FAILED;
             return vkResult;
         }
-        else
-            fprintf(gpFile, "%s() => vkBeginCommandBuffer() Succeeded For Index : %d\n", __func__, i);
 
         //* Step - 4 => Set Clear Value
         VkClearValue vkClearValue_array[2];
@@ -5143,8 +5166,8 @@ VkResult buildCommandBuffers(void)
         vkRenderPassBeginInfo.pClearValues = vkClearValue_array;
         vkRenderPassBeginInfo.framebuffer = vkFramebuffer_array[i];
 
-        imGUI->newFrame(false);
-        imGUI->updateBuffers();
+        overlay->newFrame(false);
+        overlay->updateBuffers();
         
         //* Step - 6
         vkCmdBeginRenderPass(vkCommandBuffer_array[i], &vkRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -5186,10 +5209,10 @@ VkResult buildCommandBuffers(void)
                 vkDeviceSize_offset_texture
             );
 
-            imGUI->drawFrame(vkCommandBuffer_array[i]);
-
             //! Vulkan Drawing Function
             vkCmdDraw(vkCommandBuffer_array[i], 36, 1, 0, 0);
+
+            overlay->drawFrame(vkCommandBuffer_array[i]);
         }
         //* Step - 7
         vkCmdEndRenderPass(vkCommandBuffer_array[i]);
@@ -5202,8 +5225,6 @@ VkResult buildCommandBuffers(void)
             vkResult = VK_ERROR_INITIALIZATION_FAILED;
             return vkResult;
         }
-        else
-            fprintf(gpFile, "%s() => vkEndCommandBuffer() Succeeded For Index : %d\n", __func__, i);
     }
 
     return vkResult;

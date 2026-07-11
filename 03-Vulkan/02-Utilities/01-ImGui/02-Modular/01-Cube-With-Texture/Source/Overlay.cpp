@@ -1,8 +1,10 @@
 #include "Overlay.hpp"
-#include "imgui.h"
 #include "Utils.h"
+#include "imgui.h"
 
-ImGUI::ImGUI()
+#include <windowsx.h>
+
+Overlay::Overlay()
 {
     // Code
 
@@ -10,17 +12,19 @@ ImGUI::ImGUI()
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 }
 
-VkResult ImGUI::initialize(float width, float height)
+VkResult Overlay::initialize(float width, float height)
 {
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
 
     // Code
+    overlayWidth = width;
+    overlayHeight = height;
+
     ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize = ImVec2(width, height);
+    io.DisplaySize = ImVec2(overlayWidth, overlayHeight);
     io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 
     ImGui::StyleColorsDark();
@@ -70,7 +74,7 @@ VkResult ImGUI::initialize(float width, float height)
     return vkResult;
 }
 
-VkResult ImGUI::createBuffer(BufferData* bufferData, VkBufferUsageFlagBits bufferUsageFlagBits, VkDeviceSize bufferSize)
+VkResult Overlay::createBuffer(BufferData* bufferData, VkBufferUsageFlagBits bufferUsageFlagBits, VkDeviceSize bufferSize)
 {
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -98,6 +102,7 @@ VkResult ImGUI::createBuffer(BufferData* bufferData, VkBufferUsageFlagBits buffe
     vkGetBufferMemoryRequirements(vkDevice, bufferData->vkBuffer, &vkMemoryRequirements);
 
     //* Step - 8
+    VkMemoryAllocateInfo vkMemoryAllocateInfo;
     memset((void*)&vkMemoryAllocateInfo, 0, sizeof(VkMemoryAllocateInfo));
     vkMemoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     vkMemoryAllocateInfo.pNext = NULL;
@@ -111,7 +116,7 @@ VkResult ImGUI::createBuffer(BufferData* bufferData, VkBufferUsageFlagBits buffe
         if ((vkMemoryRequirements.memoryTypeBits & 1) == 1)
         {
             //* Step - 8.3
-            if (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+            if (vkPhysicalDeviceMemoryProperties.memoryTypes[i].propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
             {
                 //* Step - 8.4
                 vkMemoryAllocateInfo.memoryTypeIndex = i;
@@ -137,21 +142,32 @@ VkResult ImGUI::createBuffer(BufferData* bufferData, VkBufferUsageFlagBits buffe
     return vkResult;
 }
 
-VkResult ImGUI::mapBufferMemory(BufferData *bufferData)
+VkResult Overlay::mapBufferMemory(BufferData *bufferData)
 {
     // Code
-    return vkMapMemory(vkDevice, bufferData->vkDeviceMemory, 0, vkMemoryAllocateInfo.allocationSize, 0, &bufferData->mapped);
+    return vkMapMemory(vkDevice, bufferData->vkDeviceMemory, 0, VK_WHOLE_SIZE, 0, &bufferData->mapped);
 }
 
-void ImGUI::unmapBufferMemory(BufferData *bufferData)
+void Overlay::unmapBufferMemory(BufferData *bufferData)
 {
     // Code
-    vkUnmapMemory(vkDevice, bufferData->vkDeviceMemory);
+    if (bufferData->mapped)
+    {
+        vkUnmapMemory(vkDevice, bufferData->vkDeviceMemory);
+        bufferData->mapped = nullptr;
+    }
+    
 }
 
-void ImGUI::destroyBuffer(BufferData *bufferData)
+void Overlay::destroyBuffer(BufferData *bufferData)
 {
     // Code
+    if (bufferData->mapped)
+    {
+        vkUnmapMemory(vkDevice, bufferData->vkDeviceMemory);
+        bufferData->mapped = nullptr;
+    }
+
     if (bufferData->vkBuffer)
     {
         vkDestroyBuffer(vkDevice, bufferData->vkBuffer, NULL);
@@ -165,7 +181,7 @@ void ImGUI::destroyBuffer(BufferData *bufferData)
     }
 }
 
-VkResult ImGUI::createFontTexture()
+VkResult Overlay::createFontTexture()
 {
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -1123,7 +1139,7 @@ VkResult ImGUI::createFontTexture()
 
 }
 
-VkResult ImGUI::createShaders(void)
+VkResult Overlay::createShaders(void)
 {
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -1131,7 +1147,7 @@ VkResult ImGUI::createShaders(void)
     //! Vertex Shader
     //! ---------------------------------------------------------------------------------------------------------------------------
     //* Step - 6
-    const char* szFileName = "Bin/ImGUI.vert.spv";
+    const char* szFileName = "Bin/Overlay.vert.spv";
     FILE *fp = NULL;
     size_t size;
 
@@ -1208,7 +1224,7 @@ VkResult ImGUI::createShaders(void)
 
     //! Fragment Shader
     //! ---------------------------------------------------------------------------------------------------------------------------
-    szFileName = "Bin/ImGUI.frag.spv";
+    szFileName = "Bin/Overlay.frag.spv";
 
     fp = fopen(szFileName, "rb");
     if (fp == NULL)
@@ -1283,7 +1299,7 @@ VkResult ImGUI::createShaders(void)
     return vkResult;
 }
 
-VkResult ImGUI::createDescriptorPool(void)
+VkResult Overlay::createDescriptorPool(void)
 {
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -1315,7 +1331,7 @@ VkResult ImGUI::createDescriptorPool(void)
     return vkResult;
 }
 
-VkResult ImGUI::createDescriptorSetLayout(void)
+VkResult Overlay::createDescriptorSetLayout(void)
 {
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -1348,7 +1364,7 @@ VkResult ImGUI::createDescriptorSetLayout(void)
     return vkResult;
 }
 
-VkResult ImGUI::createDescriptorSet(void)
+VkResult Overlay::createDescriptorSet(void)
 {
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -1403,7 +1419,7 @@ VkResult ImGUI::createDescriptorSet(void)
     return vkResult;
 }
 
-VkResult ImGUI::createPipelineLayout(void)
+VkResult Overlay::createPipelineLayout(void)
 {
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -1435,7 +1451,7 @@ VkResult ImGUI::createPipelineLayout(void)
     return vkResult;
 }
 
-VkResult ImGUI::createPipeline(void)
+VkResult Overlay::createPipeline(void)
 {
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -1529,26 +1545,6 @@ VkResult ImGUI::createPipeline(void)
     vkPipelineViewportStateCreateInfo.viewportCount = 1;    //* We can specify multiple viewports here
     vkPipelineViewportStateCreateInfo.scissorCount = 1;
 
-    //! Viewport Info     
-    memset((void*)&vkViewport, 0, sizeof(VkViewport));
-    vkViewport.x = 0;
-    vkViewport.y = 0;
-    vkViewport.width = (float)vkExtent2D_swapchain.width;
-    vkViewport.height = (float)vkExtent2D_swapchain.height;
-    vkViewport.minDepth = 0.0f;
-    vkViewport.maxDepth = 1.0f;
-
-    vkPipelineViewportStateCreateInfo.pViewports = &vkViewport;
-
-    //! Scissor Info
-    memset((void*)&vkRect2D_scissor, 0, sizeof(VkRect2D));
-    vkRect2D_scissor.offset.x = 0;
-    vkRect2D_scissor.offset.y = 0;
-    vkRect2D_scissor.extent.width = vkExtent2D_swapchain.width;
-    vkRect2D_scissor.extent.height = vkExtent2D_swapchain.height;
-
-    vkPipelineViewportStateCreateInfo.pScissors = &vkRect2D_scissor;
-
     //! Depth Stencil State !//
     VkPipelineDepthStencilStateCreateInfo vkPipelineDepthStencilCreateInfo;
     memset((void*)&vkPipelineDepthStencilCreateInfo, 0, sizeof(VkPipelineDepthStencilStateCreateInfo));
@@ -1566,6 +1562,17 @@ VkResult ImGUI::createPipeline(void)
     vkPipelineDepthStencilCreateInfo.front = vkPipelineDepthStencilCreateInfo.back;
 
     //! Dynamic State !//
+    VkDynamicState vkDynamicState_array[2];
+    vkDynamicState_array[0] = VK_DYNAMIC_STATE_VIEWPORT;
+    vkDynamicState_array[1] = VK_DYNAMIC_STATE_SCISSOR;
+    
+    VkPipelineDynamicStateCreateInfo vkPipelineDynamicStateCreateInfo;
+    memset((void*)&vkPipelineDynamicStateCreateInfo, 0, sizeof(VkPipelineDynamicStateCreateInfo));
+    vkPipelineDynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    vkPipelineDynamicStateCreateInfo.pNext = NULL;
+    vkPipelineDynamicStateCreateInfo.flags = 0;
+    vkPipelineDynamicStateCreateInfo.dynamicStateCount = _ARRAYSIZE(vkDynamicState_array);
+    vkPipelineDynamicStateCreateInfo.pDynamicStates = vkDynamicState_array;
 
     //! Multi-Sample State
     VkPipelineMultisampleStateCreateInfo vkPipelineMultisampleStateCreateInfo;
@@ -1625,7 +1632,7 @@ VkResult ImGUI::createPipeline(void)
     vkGraphicsPipelineCreateInfo.pColorBlendState = &vkPipelineColorBlendStateCreateInfo;
     vkGraphicsPipelineCreateInfo.pViewportState = &vkPipelineViewportStateCreateInfo;
     vkGraphicsPipelineCreateInfo.pDepthStencilState = &vkPipelineDepthStencilCreateInfo;
-    vkGraphicsPipelineCreateInfo.pDynamicState = NULL;
+    vkGraphicsPipelineCreateInfo.pDynamicState = &vkPipelineDynamicStateCreateInfo;
     vkGraphicsPipelineCreateInfo.pMultisampleState = &vkPipelineMultisampleStateCreateInfo;
     vkGraphicsPipelineCreateInfo.stageCount = _ARRAYSIZE(vkPipelineShaderStageCreateInfo_array);
     vkGraphicsPipelineCreateInfo.pStages = vkPipelineShaderStageCreateInfo_array;
@@ -1653,13 +1660,18 @@ VkResult ImGUI::createPipeline(void)
     return vkResult;
 }
 
-void ImGUI::newFrame(bool updateFrameGraph)
+void Overlay::newFrame(bool updateFrameGraph, float deltaTime)
 {
     // Code
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2(overlayWidth, overlayHeight);
+
+    if (updateFrameGraph)
+        io.DeltaTime = deltaTime;
+
     ImGui::NewFrame();
 
     ImGui::SetWindowSize(ImVec2(410, 200));
-    ImGui::TextUnformatted("Vulkan : ImGui");
 
     ImGui::Begin("Vulkan : ImGui");
     {
@@ -1667,12 +1679,10 @@ void ImGUI::newFrame(bool updateFrameGraph)
     }
     ImGui::End();
 
-    ImGui::ShowDemoWindow();
-
     ImGui::Render();
 }
 
-void ImGUI::updateBuffers()
+void Overlay::updateBuffers()
 {
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -1683,7 +1693,7 @@ void ImGUI::updateBuffers()
     VkDeviceSize vertexBufferSize = imDrawData->TotalVtxCount * sizeof(ImDrawVert);
     VkDeviceSize indexBufferSize = imDrawData->TotalIdxCount * sizeof(ImDrawIdx);
 
-    if (vertexBufferSize == 0 || indexBufferSize == 0)
+    if ((vertexBufferSize == 0) || (indexBufferSize == 0))
         return;
 
     //! Update Vertex and Index Buffers containing the ImGui elements only when vertex or index count has changed compared to current buffer
@@ -1704,6 +1714,7 @@ void ImGUI::updateBuffers()
         vkResult = mapBufferMemory(&vertexBuffer);
         if (vkResult != VK_SUCCESS)
             fprintf(gpFile, "%s() => mapBufferMemory() Failed For Vertex Buffer: %s !!!", __func__, getVkResultString(vkResult));
+        
     }
 
     //! Index Buffer
@@ -1738,10 +1749,9 @@ void ImGUI::updateBuffers()
         vertexDst += drawCmdList->VtxBuffer.Size;
         indexDst += drawCmdList->IdxBuffer.Size;
     }
-
 }
 
-void ImGUI::drawFrame(VkCommandBuffer commandBuffer)
+void Overlay::drawFrame(VkCommandBuffer commandBuffer)
 {
     // Code
     ImGuiIO& io = ImGui::GetIO();
@@ -1760,6 +1770,14 @@ void ImGUI::drawFrame(VkCommandBuffer commandBuffer)
         0,
         NULL
     );
+
+    VkViewport viewport;
+    memset((void*)&viewport, 0, sizeof(VkViewport));
+    viewport.width = ImGui::GetIO().DisplaySize.x;
+    viewport.height = ImGui::GetIO().DisplaySize.y;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
     //* UI scale and translate via push constants
     pushData.scale = glm::vec2(2.0f / io.DisplaySize.x, 2.0f / io.DisplaySize.y);
@@ -1781,19 +1799,82 @@ void ImGUI::drawFrame(VkCommandBuffer commandBuffer)
         for (int32_t i = 0; i < imDrawData->CmdListsCount; i++)
         {
             const ImDrawList* cmdList = imDrawData->CmdLists[i];
+
             for (int32_t j = 0; j < cmdList->CmdBuffer.Size; j++)
             {
                 const ImDrawCmd* pCmd = &cmdList->CmdBuffer[j];
-                vkCmdDrawIndexed(commandBuffer, pCmd->ElemCount, 1, indexOffset, vertexOffset, 0);
-                indexOffset += pCmd->ElemCount;
+                
+                VkRect2D scissorRect;
+                scissorRect.offset.x = std::max((int32_t)(pCmd->ClipRect.x), 0);
+                scissorRect.offset.y = std::max((int32_t)(pCmd->ClipRect.y), 0);
+                scissorRect.extent.width = (uint32_t)(pCmd->ClipRect.z - pCmd->ClipRect.x);
+                scissorRect.extent.height = (uint32_t)(pCmd->ClipRect.w - pCmd->ClipRect.y);
+                vkCmdSetScissor(commandBuffer, 0, 1, &scissorRect);
+
+
+                vkCmdDrawIndexed(
+                    commandBuffer, 
+                    pCmd->ElemCount, 
+                    1, 
+                    indexOffset + pCmd->IdxOffset, 
+                    vertexOffset + pCmd->VtxOffset, 
+                    0);
             }
+
+            indexOffset += cmdList->IdxBuffer.Size;
             vertexOffset += cmdList->VtxBuffer.Size;
         }
     }
 }
 
-ImGUI::~ImGUI()
+void Overlay::addMouseMoveHandler(LPARAM lParam)
 {
+    // Code
+    ImGui::GetIO().AddMousePosEvent((float)GET_X_LPARAM(lParam), (float)GET_Y_LPARAM(lParam));
+}
+
+void Overlay::addMouseButtonHandler(int buttonIndex, bool status)
+{
+    // Code
+    ImGui::GetIO().AddMouseButtonEvent(buttonIndex, status);
+}
+
+void Overlay::addMouseWheelHandler(WPARAM wParam)
+{
+    // Code
+    ImGui::GetIO().AddMouseWheelEvent(0.0f, GET_WHEEL_DELTA_WPARAM(wParam) / (float)WHEEL_DELTA);
+}
+
+void Overlay::addKeyboardHandler(WPARAM wParam)
+{
+    // Code
+    ImGuiIO& io = ImGui::GetIO();
+
+    io.AddKeyEvent(ImGuiKey_ModCtrl,  (GetKeyState(VK_CONTROL) & 0x8000) != 0);
+    io.AddKeyEvent(ImGuiKey_ModShift, (GetKeyState(VK_SHIFT) & 0x8000) != 0);
+    io.AddKeyEvent(ImGuiKey_ModAlt,   (GetKeyState(VK_MENU) & 0x8000) != 0);
+
+    ImGuiKey key = ImGuiKey_None;
+
+    switch (wParam)
+    {
+        case VK_TAB:    key = ImGuiKey_Tab; break;
+        case VK_LEFT:   key = ImGuiKey_LeftArrow; break;
+        case VK_RIGHT:  key = ImGuiKey_RightArrow; break;
+        case VK_UP:     key = ImGuiKey_UpArrow; break;
+        case VK_DOWN:   key = ImGuiKey_DownArrow; break;
+        case VK_ESCAPE: key = ImGuiKey_Escape; break;
+        case VK_RETURN: key = ImGuiKey_Enter; break;
+        case VK_SPACE:  key = ImGuiKey_Space; break;
+    }
+
+    if (key != ImGuiKey_None)
+        io.AddKeyEvent(key, true);
+}
+
+Overlay::~Overlay()
+{
+    // Code
     ImGui::DestroyContext();
 
     if (vkDevice)

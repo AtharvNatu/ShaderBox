@@ -77,13 +77,13 @@ if %SPV% == 1 (
     echo ----------------------------------------------------------------------------------------------------------------
     cd Shaders
     %VULKAN_BIN_PATH%\glslangValidator.exe -V -H -o Shader.vert.spv Shader.vert
-    %VULKAN_BIN_PATH%\glslangValidator.exe -V -H -o ImGUI.vert.spv ImGUI.vert
+    %VULKAN_BIN_PATH%\glslangValidator.exe -V -H -o Overlay.vert.spv Overlay.vert
     %VULKAN_BIN_PATH%\glslangValidator.exe -V -H -o Shader.frag.spv Shader.frag
-    %VULKAN_BIN_PATH%\glslangValidator.exe -V -H -o ImGUI.frag.spv ImGUI.frag
+    %VULKAN_BIN_PATH%\glslangValidator.exe -V -H -o Overlay.frag.spv Overlay.frag
     move Shader.vert.spv ../Bin
     move Shader.frag.spv ../Bin
-    move ImGUI.vert.spv ../Bin
-    move ImGUI.frag.spv ../Bin
+    move Overlay.vert.spv ../Bin
+    move Overlay.frag.spv ../Bin
     cd ..
     if errorlevel 1 (
         @echo:
