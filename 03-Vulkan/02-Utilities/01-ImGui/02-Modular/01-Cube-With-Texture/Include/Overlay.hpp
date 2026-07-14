@@ -1,9 +1,16 @@
 #ifndef IMGUI_HPP
 #define IMGUI_HPP
 
+#include "imgui.h"
+
 #define NOMINMAX
 #include <cstdio>
 #include <algorithm>
+#include <string>
+#include <functional>
+#include <vector>
+#include <memory>
+#include <map>
 
 //! GLM Related Macros and Header Files
 #define GLM_FORCE_RADIANS
@@ -14,6 +21,8 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
 
+#include <windowsx.h>
+
 extern VkDevice vkDevice;
 extern VkPhysicalDeviceMemoryProperties vkPhysicalDeviceMemoryProperties;
 extern VkCommandPool vkCommandPool;
@@ -23,9 +32,94 @@ extern VkExtent2D vkExtent2D_swapchain;
 extern FILE* gpFile;
 extern int winWidth, winHeight;
 
+
+class UIProperty
+{
+    public:
+        virtual ~UIProperty() = default;
+
+        virtual void draw() = 0;
+
+        std::string category;
+        std::string label;
+        bool readOnly = false;
+        std::function<void()> onChanged;
+
+};
+
+template<typename T>
+class UIValue : public UIProperty
+{
+    public:
+        
+        T* value = nullptr;
+
+        UIValue(
+            const std::string& category, 
+            const std::string& label, 
+            T* value, 
+            bool readOnly = false, 
+            std::function<void()> callback = nullptr
+        )
+        {
+            this->category = category;
+            this->label = label;
+            this->value = value;
+            this->readOnly = readOnly;
+            this->onChanged = callback;
+        }
+
+        virtual void draw() override = 0;
+};
+
+
+template<typename T>
+class UISlider : public UIValue<T>
+{
+    public:
+        T min;
+        T max;
+
+        UISlider(
+            const std::string& category, 
+            const std::string& label,
+            T* value,
+            T min,
+            T max,
+            bool readOnly = false,
+            std::function<void()> callback = nullptr
+        )
+        : UIValue<T>(category, label, value, readOnly, callback), 
+          min(min),
+          max(max)
+        {
+        }
+
+        void draw() override;
+};
+
+template<>
+inline void UISlider<float>::draw()
+{
+    bool changed = ImGui::SliderFloat(this->label.c_str(), this->value, min, max);
+    if (changed && this->onChanged)
+        this->onChanged();
+}
+
+template<>
+inline void UISlider<int>::draw()
+{
+    bool changed = ImGui::SliderInt(this->label.c_str(), this->value, min, max);
+    if (changed && this->onChanged)
+        this->onChanged();
+}
+
 class Overlay
 {   
     private:
+
+        //* Overlay Structured Map
+        std::map<std::string, std::vector<std::unique_ptr<UIProperty>>> properties;
 
         //* Vulkan Resources for rendering the UI
         struct BufferData
@@ -76,29 +170,52 @@ class Overlay
         VkResult createDescriptorSet();
         VkResult createPipelineLayout();
         VkResult createPipeline();
+
+        void drawProperties();
     
     public:
-
-        struct OverlayData
-        {
-            // Scene-wise uniforms / variables
-            float cubeAnimationSpeed;
-        };
-
-        OverlayData data;
         
-        Overlay();
+        Overlay(float width, float height, float fontSize);
         ~Overlay();
 
+        //* Win32 Integration
         void addMouseMoveHandler(LPARAM lParam);
         void addMouseButtonHandler(int buttonIndex, bool status);
         void addMouseWheelHandler(WPARAM wParam);
         void addKeyboardHandler(WPARAM wParam);
 
-        VkResult initialize(float width, float height);
+        //* Overlay Functions
         void updateBuffers();
         void drawFrame(VkCommandBuffer commandBuffer);
         void newFrame(bool updateFrameGraph, float deltaTime = 0.0f);
+
+    public:
+
+        template<typename T>
+        void addSlider(
+            const std::string& category, 
+            const std::string& label, 
+            T* value,
+            T min,
+            T max, 
+            bool readOnly = false, 
+            std::function<void()> callback = nullptr
+        )
+        {
+            // Code
+            properties[category].emplace_back(
+                std::make_unique<UISlider<T>>(
+                    category,
+                    label,
+                    value,
+                    min,
+                    max,
+                    readOnly,
+                    callback
+                )
+            );
+        }
+        
 };
 
 

@@ -1,21 +1,70 @@
 #include "Overlay.hpp"
 #include "Utils.h"
-#include "imgui.h"
 
-#include <windowsx.h>
-
-Overlay::Overlay()
+Overlay::Overlay(float width, float height, float fontSize)
 {
+    // Variable Declarations
+    VkResult vkResult = VK_SUCCESS;
+
     // Code
+    overlayWidth = width;
+    overlayHeight = height;
 
     //! Setup ImGui Context
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.DisplaySize = ImVec2(overlayWidth, overlayHeight);
+    io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 
-    io.Fonts->AddFontFromFileTTF("ImGui\\Poppins-Regular.ttf", 24.0f, NULL, io.Fonts->GetGlyphRangesDefault());
+    io.Fonts->AddFontFromFileTTF("ImGui\\Poppins-Regular.ttf", fontSize, NULL, io.Fonts->GetGlyphRangesDefault());
+
+    ImGui::StyleColorsDark();
+    
+    vkResult = createFontTexture();
+    if (vkResult != VK_SUCCESS)
+        fprintf(gpFile, "%s() => createFontTexture() Failed : %s !!!\n", __func__, getVkResultString(vkResult));
+    else 
+        fprintf(gpFile, "%s() => createFontTexture() Succeeded\n", __func__);
+
+    vkResult = createShaders();
+    if (vkResult != VK_SUCCESS)
+        fprintf(gpFile, "%s() => createShaders() Failed : %s !!!\n", __func__, getVkResultString(vkResult));
+    else 
+        fprintf(gpFile, "%s() => createShaders() Succeeded\n", __func__);
+
+    vkResult = createDescriptorPool();
+    if (vkResult != VK_SUCCESS)
+        fprintf(gpFile, "%s() => createDescriptorPool() Failed : %s !!!\n", __func__, getVkResultString(vkResult));
+    else 
+        fprintf(gpFile, "%s() => createDescriptorPool() Succeeded\n", __func__);
+
+    vkResult = createDescriptorSetLayout();
+    if (vkResult != VK_SUCCESS)
+        fprintf(gpFile, "%s() => createDescriptorSetLayout() Failed : %s !!!\n", __func__, getVkResultString(vkResult));
+    else 
+        fprintf(gpFile, "%s() => createDescriptorSetLayout() Succeeded\n", __func__);
+
+    vkResult = createDescriptorSet();
+    if (vkResult != VK_SUCCESS)
+        fprintf(gpFile, "%s() => createDescriptorSet() Failed : %s !!!\n", __func__, getVkResultString(vkResult));
+    else 
+        fprintf(gpFile, "%s() => createDescriptorSet() Succeeded\n", __func__);
+
+    vkResult = createPipelineLayout();
+    if (vkResult != VK_SUCCESS)
+        fprintf(gpFile, "%s() => createPipelineLayout() Failed : %s !!!\n", __func__, getVkResultString(vkResult));
+    else 
+        fprintf(gpFile, "%s() => createPipelineLayout() Succeeded\n", __func__);
+
+    vkResult = createPipeline();
+    if (vkResult != VK_SUCCESS)
+        fprintf(gpFile, "%s() => createPipeline() Failed : %s !!!\n", __func__, getVkResultString(vkResult));
+    else 
+        fprintf(gpFile, "%s() => createPipeline() Succeeded\n", __func__);
 }
 
+//! Win32 Integration Functions
 void Overlay::addMouseMoveHandler(LPARAM lParam)
 {
     // Code
@@ -61,66 +110,8 @@ void Overlay::addKeyboardHandler(WPARAM wParam)
         io.AddKeyEvent(key, true);
 }
 
-VkResult Overlay::initialize(float width, float height)
-{
-    // Variable Declarations
-    VkResult vkResult = VK_SUCCESS;
 
-    // Code
-    overlayWidth = width;
-    overlayHeight = height;
-
-    ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize = ImVec2(overlayWidth, overlayHeight);
-    io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
-
-    ImGui::StyleColorsDark();
-    
-    vkResult = createFontTexture();
-    if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => createFontTexture() Failed : %s !!!\n", __func__, getVkResultString(vkResult));
-    else 
-        fprintf(gpFile, "%s() => createFontTexture() Succeeded\n", __func__);
-
-    vkResult = createShaders();
-    if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => createShaders() Failed : %s !!!\n", __func__, getVkResultString(vkResult));
-    else 
-        fprintf(gpFile, "%s() => createShaders() Succeeded\n", __func__);
-
-    vkResult = createDescriptorPool();
-    if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => createDescriptorPool() Failed : %s !!!\n", __func__, getVkResultString(vkResult));
-    else 
-        fprintf(gpFile, "%s() => createDescriptorPool() Succeeded\n", __func__);
-
-    vkResult = createDescriptorSetLayout();
-    if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => createDescriptorSetLayout() Failed : %s !!!\n", __func__, getVkResultString(vkResult));
-    else 
-        fprintf(gpFile, "%s() => createDescriptorSetLayout() Succeeded\n", __func__);
-
-    vkResult = createDescriptorSet();
-    if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => createDescriptorSet() Failed : %s !!!\n", __func__, getVkResultString(vkResult));
-    else 
-        fprintf(gpFile, "%s() => createDescriptorSet() Succeeded\n", __func__);
-
-    vkResult = createPipelineLayout();
-    if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => createPipelineLayout() Failed : %s !!!\n", __func__, getVkResultString(vkResult));
-    else 
-        fprintf(gpFile, "%s() => createPipelineLayout() Succeeded\n", __func__);
-
-    vkResult = createPipeline();
-    if (vkResult != VK_SUCCESS)
-        fprintf(gpFile, "%s() => createPipeline() Failed : %s !!!\n", __func__, getVkResultString(vkResult));
-    else 
-        fprintf(gpFile, "%s() => createPipeline() Succeeded\n", __func__);
-
-    return vkResult;
-}
-
+//! Overlay Vulkan Functions
 VkResult Overlay::createBuffer(BufferData* bufferData, VkBufferUsageFlagBits bufferUsageFlagBits, VkDeviceSize bufferSize)
 {
     // Variable Declarations
@@ -1707,6 +1698,8 @@ VkResult Overlay::createPipeline(void)
     return vkResult;
 }
 
+
+//! Overlay Rendering Functions
 void Overlay::newFrame(bool updateFrameGraph, float deltaTime)
 {
     // Code
@@ -1720,10 +1713,9 @@ void Overlay::newFrame(bool updateFrameGraph, float deltaTime)
 
     ImGui::SetWindowSize(ImVec2(overlayWidth, overlayHeight));
 
-    ImGui::Begin("Vulkan : ImGui");
+    ImGui::Begin("Vulkan : ImGui Overlay");
     {
-        ImGui::Text("Cube Rotation Speed");
-        ImGui::SliderFloat("##", (float*)&data.cubeAnimationSpeed, 0.001f, 0.1f);
+        drawProperties();
     }
     ImGui::End();
 
@@ -1874,6 +1866,22 @@ void Overlay::drawFrame(VkCommandBuffer commandBuffer)
         }
     }
 }
+
+void Overlay::drawProperties()
+{
+    // Code
+    for (auto& [category, propertyList] : properties)
+    {
+        if (ImGui::CollapsingHeader(category.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+        {
+            for (auto& property : propertyList)
+            {
+                property->draw();
+            }
+        }
+    }
+}
+
 
 Overlay::~Overlay()
 {

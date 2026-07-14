@@ -763,8 +763,8 @@ VkResult initialize(void)
     vkClearDepthStencilValue.stencil = 0;
 
     //! Initialize ImGui
-    overlay = new Overlay();
-    overlay->initialize(410, 200);
+    overlay = new Overlay(500, 500, 18.0f);
+    overlay->addSlider("Animation", "Cube Rotation Speed", &fAnimationSpeed, 0.01f, 1.0f);
 
     //! Initialization Completed
     bInitialized = TRUE;
@@ -1099,8 +1099,6 @@ void update(void)
     fAngle += fAnimationSpeed;
     if (fAngle >= 360.0f)
         fAngle = 0.0f;
-    
-    overlay->data.cubeAnimationSpeed = fAnimationSpeed;
 }
 
 void uninitialize(void)
