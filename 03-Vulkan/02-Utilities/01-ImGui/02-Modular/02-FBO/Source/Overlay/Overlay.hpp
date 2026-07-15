@@ -167,25 +167,15 @@ class Overlay
         void addText(
             const std::string& categoryName,
             const char* value,
-            glm::vec4 color,
-            const char* fmt,
-            ...
+            glm::vec4 color
         )
         {
-            // Variable Declarations
-            char buffer[1024];
-
             // Code
-            va_list args;
-            va_start(args, fmt);
-            vsnprintf(buffer, sizeof(buffer), fmt, args);
-            va_end(args);
-
             UICategory* category = getCategory(categoryName);
             category->properties.emplace_back(
                 std::make_unique<UIText>(
                     categoryName,
-                    buffer,
+                    value,
                     color
                 )
             );

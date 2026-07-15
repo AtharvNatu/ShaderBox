@@ -1879,8 +1879,6 @@ void Overlay::newFrame()
         ImGuiIO& io = ImGui::GetIO();
         io.DisplaySize = ImVec2(overlayWidth, overlayHeight);
 
-        performanceStats.update();
-
         ImGui::NewFrame();
 
         ImGui::SetWindowSize(ImVec2(overlayWidth, overlayHeight));

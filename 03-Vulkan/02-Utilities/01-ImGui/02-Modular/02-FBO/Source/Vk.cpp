@@ -179,7 +179,7 @@ VkRect2D vkRect2D_scissor;
 VkPipeline vkPipeline = VK_NULL_HANDLE;
 
 //* Cube Animation Related
-float fAnimationSpeed = 0.02f;
+float fAnimationSpeed = 0.08f;
 float fAngle = 0.0f;
 
 //! FBO Related Variable Declarations
@@ -312,6 +312,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     VkResult display(void);
     void update(void);
     void uninitialize(void);
+    void ToggleFullScreen(void);
 
     // Variable Declarations
     WNDCLASSEX wndclass;
@@ -390,6 +391,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLi
     // Bring the window to foreground and set focus
     SetForegroundWindow(hwnd);
     SetFocus(hwnd);
+    ToggleFullScreen();
 
     //* Game Loop
     while (bDone == FALSE)
@@ -1078,17 +1080,45 @@ VkResult initialize(void)
 
     overlay = new Overlay(500, winHeight, 20);
 
-    overlay->addText("Performance", "GPU : RTX 5070", glm::vec4(100.0f, 121.0f, 65.0f, 1.0f), "asas");
-    // overlay->addDynamicText(
-    //     "Performance",
-    //     [&]() -> std::string
-    //     {
-    //         return std::format("FPS : {:.1f}", overlay->performanceStats.getFPS());
-    //     }
-    // );
+    overlay->addText("Performance", "GPU : RTX 5070", glm::vec4(0.462f, 0.725f, 0.0f, 1.0f));
+    overlay->addDynamicText(
+        "Performance",
+        [&]() -> std::string
+        {
+            return std::format("FPS : {:d}", static_cast<int>(overlay->performanceStats.getFPS()));
+        }
+    );
+    overlay->addDynamicText(
+        "Performance",
+        [&]() -> std::string
+        {
+            return std::format("Min FPS : {:d}", static_cast<int>(overlay->performanceStats.getMinimumFPS()));
+        }
+    );
+    overlay->addDynamicText(
+        "Performance",
+        [&]() -> std::string
+        {
+            return std::format("Max FPS : {:d}", static_cast<int>(overlay->performanceStats.getMaximumFPS()));
+        }
+    );
+    overlay->addDynamicText(
+        "Performance",
+        [&]() -> std::string
+        {
+            return std::format("Avg FPS : {:d}", static_cast<int>(overlay->performanceStats.getAverageFPS()));
+        }
+    );
+    overlay->addDynamicText(
+        "Performance",
+        [&]() -> std::string
+        {
+            return std::format("Frametime : {:d} ms", static_cast<int>(overlay->performanceStats.getFrameTime()));
+        }
+    );
 
     overlay->addCheckBox("Animation", "Enable Teapot Animation", (bool*)&bAnimate);
-    overlay->addSlider("Animation", "Cube Rotation Speed", &fAnimationSpeed, 0.001f, 0.1f);
+    overlay->addSlider("Animation", "Cube Rotation Speed", &fAnimationSpeed, 0.01f, 1.0f);
     overlay->addCheckBox("Light", "Enable Diffuse Light", (bool*)&bLight);
     overlay->addCheckBox("Texture", "Enable Teapot Texture", (bool*)&bTexture);
 
@@ -1359,21 +1389,7 @@ VkResult display(void)
         return (VkResult)VK_FALSE;
     }
 
-    vkResult = buildCommandBuffers();
-    if (vkResult != VK_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => buildCommandBuffers() Failed\n", __func__);
-        vkResult = VK_ERROR_INITIALIZATION_FAILED;
-        return vkResult;
-    }
-
-    vkResult = buildCommandBuffer_fbo();
-    if (vkResult != VK_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => buildCommandBuffer_fbo() Failed\n", __func__);
-        vkResult = VK_ERROR_INITIALIZATION_FAILED;
-        return vkResult;
-    }
+    overlay->performanceStats.update();
 
     //! Acquire next image index
     vkResult = vkAcquireNextImageKHR(vkDevice, vkSwapchainKHR, UINT64_MAX, vkSemaphore_backBuffer, VK_NULL_HANDLE, &currentImageIndex);
@@ -1389,6 +1405,22 @@ VkResult display(void)
             fprintf(gpFile, "%s() => vkAcquireNextImageKHR() Failed : %d\n", __func__, vkResult);
             return vkResult;
         }
+    }
+
+    vkResult = buildCommandBuffers();
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => buildCommandBuffers() Failed\n", __func__);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+
+    vkResult = buildCommandBuffer_fbo();
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => buildCommandBuffer_fbo() Failed\n", __func__);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
     }
 
     //! Use fence to allow host to wait for completion of execution of previous command buffer

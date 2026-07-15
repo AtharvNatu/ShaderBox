@@ -652,6 +652,66 @@ createPipeline() => vkDestroyPipelineCache() Succeeded
 Overlay() => createPipeline() Succeeded
 initialize() => Initialization Completed Successfully
 WinMain() => initialize() Succeeded
+createImagesAndImageViews_fbo() => vkCreateImage() Succeeded For FBO Texture
+createImagesAndImageViews_fbo() => vkAllocateMemory() Succeeded For FBO Texture
+createImagesAndImageViews_fbo() => vkBindImageMemory() Succeeded For FBO Texture
+createImagesAndImageViews_fbo() => vkCreateImageView() Succeeded FBO Texture
+createImagesAndImageViews_fbo() => vkCreateSampler() Succeeded For FBO Texture
+createImagesAndImageViews_fbo() => vkCreateImage() Succeeded For FBO Depth Image
+createImagesAndImageViews_fbo() => vkAllocateMemory() Succeeded For FBO Depth
+createImagesAndImageViews_fbo() => vkBindImageMemory() Succeeded For FBO Depth
+createImagesAndImageViews_fbo() => vkCreateImageView() Succeeded For FBO Depth
+createRenderPass_fbo() => vkCreateRenderPass() Succeeded
+createPipelineLayout_fbo() => vkCreatePipelineLayout() Succeeded
+createPipeline_fbo() => vkCreatePipelineCache() Succeeded
+createPipeline_fbo() => vkCreateGraphicsPipelines() Succeeded
+createPipeline_fbo() => vkDestroyPipelineCache() Succeeded
+createCommandBuffer_fbo() => vkAllocateCommandBuffers() Succeeded For vkCommandBuffer_fbo
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 1 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => Call 2 : vkGetPhysicalDeviceSurfaceFormatsKHR() Succeeded
+getPhysicalDeviceSurfaceFormatAndColorSpace() => free() Succeeded For vkSurfaceFormatKHR_array
+createSwapchain() => getPhysicalDeviceSurfaceFormatAndColorSpace() Succeeded
+createSwapchain() => vkGetPhysicalDeviceSurfaceCapabilitiesKHR() Succeeded
+createSwapchain() => [If Block] => Swapchain Image Width x Swapchain Image Height = 2048 x 1152
+getPhysicalDevicePresentMode() => Call 1 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+getPhysicalDevicePresentMode() => Call 2 : vkGetPhysicalDeviceSurfacePresentModesKHR() Succeeded
+
+------------------------------------------------------------------------------------------------
+Vulkan Physical Device Present Mode : VK_PRESENT_MODE_MAILBOX_KHR
+------------------------------------------------------------------------------------------------
+
+getPhysicalDevicePresentMode() => free() Succeeded For vkPresentModeKHR_array
+createSwapchain() => getPhysicalDevicePresentMode() Succeeded
+createSwapchain() => vkCreateSwapchainKHR() Succeeded
+createImagesAndImageViews() => Call 1 : vkGetSwapchainImagesKHR() => Swapchain Image Count = 2
+createImagesAndImageViews() => Call 2 : vkGetSwapchainImagesKHR() Succeeded
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 0
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 1
+createImagesAndImageViews() => getSupportedDepthFormat() Succeded
+createImagesAndImageViews() => vkCreateImage() Succeeded For Depth Image
+createImagesAndImageViews() => vkAllocateMemory() Succeeded For Depth
+createImagesAndImageViews() => vkBindImageMemory() Succeeded For Depth
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Depth
+createRenderPass() => vkCreateRenderPass() Succeeded
+createPipelineLayout() => vkCreatePipelineLayout() Succeeded
+createPipeline() => vkCreatePipelineCache() Succeeded
+createPipeline() => vkCreateGraphicsPipelines() Succeeded
+createPipeline() => vkDestroyPipelineCache() Succeeded
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 0
+createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 1
+createDescriptorSet() => vkAllocateDescriptorSets() Succeeded
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkQueueSubmit-pCommandBuffers-00070 ] Object 0: handle = 0xd3dd54000000008e, type = VK_OBJECT_TYPE_BUFFER; Object 1: handle = 0x1babbcb18d0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID = 0xaeecdc0b | vkQueueSubmit(): pSubmits[0].pCommandBuffers[0] was called in VkCommandBuffer 0x1babbcb18d0[] which is invalid because bound VkBuffer 0xd3dd54000000008e[] was destroyed.
+The Vulkan spec states: Each element of the pCommandBuffers member of each element of pSubmits must be in the pending or executable state (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkQueueSubmit-pCommandBuffers-00070)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkQueueSubmit-pCommandBuffers-00070 ] Object 0: handle = 0x9f1516000000008c, type = VK_OBJECT_TYPE_BUFFER; Object 1: handle = 0x1babbcb18d0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID = 0xaeecdc0b | vkQueueSubmit(): pSubmits[0].pCommandBuffers[0] was called in VkCommandBuffer 0x1babbcb18d0[] which is invalid because bound VkBuffer 0x9f1516000000008c[] was destroyed.
+The Vulkan spec states: Each element of the pCommandBuffers member of each element of pSubmits must be in the pending or executable state (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkQueueSubmit-pCommandBuffers-00070)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkQueueSubmit-pCommandBuffers-00070 ] Object 0: handle = 0x58e3e000000000d8, type = VK_OBJECT_TYPE_BUFFER; Object 1: handle = 0x1babbcb18d0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID = 0xaeecdc0b | vkQueueSubmit(): pSubmits[0].pCommandBuffers[0] was called in VkCommandBuffer 0x1babbcb18d0[] which is invalid because bound VkBuffer 0x58e3e000000000d8[] was destroyed.
+The Vulkan spec states: Each element of the pCommandBuffers member of each element of pSubmits must be in the pending or executable state (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkQueueSubmit-pCommandBuffers-00070)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkQueueSubmit-pCommandBuffers-00070 ] Object 0: handle = 0x1e386200000000da, type = VK_OBJECT_TYPE_BUFFER; Object 1: handle = 0x1babbcb18d0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID = 0xaeecdc0b | vkQueueSubmit(): pSubmits[0].pCommandBuffers[0] was called in VkCommandBuffer 0x1babbcb18d0[] which is invalid because bound VkBuffer 0x1e386200000000da[] was destroyed.
+The Vulkan spec states: Each element of the pCommandBuffers member of each element of pSubmits must be in the pending or executable state (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkQueueSubmit-pCommandBuffers-00070)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkQueueSubmit-pCommandBuffers-00070 ] Object 0: handle = 0x5128b300000000e4, type = VK_OBJECT_TYPE_BUFFER; Object 1: handle = 0x1babbcb18d0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID = 0xaeecdc0b | vkQueueSubmit(): pSubmits[0].pCommandBuffers[0] was called in VkCommandBuffer 0x1babbcb18d0[] which is invalid because bound VkBuffer 0x5128b300000000e4[] was destroyed.
+The Vulkan spec states: Each element of the pCommandBuffers member of each element of pSubmits must be in the pending or executable state (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkQueueSubmit-pCommandBuffers-00070)
+ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkQueueSubmit-pCommandBuffers-00070 ] Object 0: handle = 0x6d7dd100000000e6, type = VK_OBJECT_TYPE_BUFFER; Object 1: handle = 0x1babbcb18d0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID = 0xaeecdc0b | vkQueueSubmit(): pSubmits[0].pCommandBuffers[0] was called in VkCommandBuffer 0x1babbcb18d0[] which is invalid because bound VkBuffer 0x6d7dd100000000e6[] was destroyed.
+The Vulkan spec states: Each element of the pCommandBuffers member of each element of pSubmits must be in the pending or executable state (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkQueueSubmit-pCommandBuffers-00070)
 uninitialize_fbo() => vkDestroySemaphore() Succeeded For vkSemaphore_fbo
 uninitialize_fbo() => vkDestroyPipeline() Succeeded For vkPipeline_fbo
 uninitialize_fbo() => vkDestroyRenderPass() Succeeded For vkRenderPass_fbo
