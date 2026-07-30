@@ -111,9 +111,13 @@ VkRenderPass vkRenderPass = VK_NULL_HANDLE;
 VkFramebuffer *vkFramebuffer_array = NULL;
 
 //? Fences and Semaphores
-VkSemaphore vkSemaphore_backBuffer = VK_NULL_HANDLE;
+VkSemaphore* vkSemaphore_backBuffer_array = NULL;
 VkSemaphore vkSemaphore_renderComplete = VK_NULL_HANDLE;
+uint32_t frameIndex = 0;
+
 VkFence *vkFence_array = NULL;
+VkFence *vkFence_images_in_flight = NULL;
+VkFence vkFence_fbo = VK_NULL_HANDLE;
 
 //? Clear Color Values
 VkClearColorValue vkClearColorValue;
@@ -1078,9 +1082,18 @@ VkResult initialize(void)
     vkClearDepthStencilValue_fbo.depth = 1.0f;
     vkClearDepthStencilValue_fbo.stencil = 0;
 
-    overlay = new Overlay(500, winHeight, 20);
+    overlay = new Overlay(600, 800, 20);
 
-    overlay->addText("Performance", "GPU : RTX 5070", glm::vec4(0.462f, 0.725f, 0.0f, 1.0f));
+    VkPhysicalDeviceProperties vkPhysicalDeviceProperties_selected;
+    memset((void*)&vkPhysicalDeviceProperties_selected, 0, sizeof(VkPhysicalDeviceProperties));
+    vkGetPhysicalDeviceProperties(vkPhysicalDevice_selected, &vkPhysicalDeviceProperties_selected);
+
+    overlay->addText(
+        "Performance", 
+        std::format("GPU : {}", vkPhysicalDeviceProperties_selected.deviceName).c_str(), 
+        glm::vec4(0.462f, 0.725f, 0.0f, 1.0f)
+    );
+
     overlay->addDynamicText(
         "Performance",
         [&]() -> std::string
@@ -1088,6 +1101,9 @@ VkResult initialize(void)
             return std::format("FPS : {:d}", static_cast<int>(overlay->performanceStats.getFPS()));
         }
     );
+
+    overlay->addPlotLines("Performance", "FPS Graph", &overlay->performanceStats.getFPSHistory(), 0.0f, 240.0f, ImVec2(300.0f, 70.0f));
+
     overlay->addDynamicText(
         "Performance",
         [&]() -> std::string
@@ -1113,9 +1129,12 @@ VkResult initialize(void)
         "Performance",
         [&]() -> std::string
         {
-            return std::format("Frametime : {:d} ms", static_cast<int>(overlay->performanceStats.getFrameTime()));
+            return std::format("Frametime : {:.1f} ms", static_cast<float>(overlay->performanceStats.getFrameTime()));
         }
     );
+
+    overlay->addPlotLines("Performance", "FrameTime Graph", &overlay->performanceStats.getFrameTimeHistory(), 0.0f, 33.3f, ImVec2(300.0f, 70.0f));
+
 
     overlay->addCheckBox("Animation", "Enable Teapot Animation", (bool*)&bAnimate);
     overlay->addSlider("Animation", "Cube Rotation Speed", &fAnimationSpeed, 0.01f, 1.0f);
@@ -1140,7 +1159,7 @@ VkResult resize(int width, int height)
     VkResult createRenderPass(void);
     VkResult createPipeline(void);
     VkResult createFramebuffers(void);
-    VkResult buildCommandBuffers(void);
+    VkResult buildCommandBuffers(uint32_t imageIndex);
     VkResult createDescriptorSet(void);
 
     //! FBO Related
@@ -1348,14 +1367,15 @@ VkResult resize(int width, int height)
         }
 
         //* Build Command Buffers
-        vkResult = buildCommandBuffers();
-        if (vkResult != VK_SUCCESS)
+        for (uint32_t i = 0; i < swapchainImageCount; i++)
         {
-            fprintf(gpFile, "%s() => buildCommandBuffers() Failed\n", __func__);
-            return vkResult;
+            vkResult = buildCommandBuffers(i);
+            if (vkResult != VK_SUCCESS)
+            {
+                fprintf(gpFile, "%s() => buildCommandBuffers() Failed For Index : %d\n", __func__, i);
+                return vkResult;
+            }
         }
-
-        
         //?--------------------------------------------------------------------------------------------------
     }
     bInitialized = TRUE;
@@ -1370,7 +1390,7 @@ VkResult display(void)
     VkResult resize_fbo(int, int);
     VkResult updateUniformBuffer(void);
     VkResult updateUniformBuffer_fbo(void);
-    VkResult buildCommandBuffers(void);
+    VkResult buildCommandBuffers(uint32_t imageIndex);
     VkResult buildCommandBuffer_fbo(void);
 
     // Variable Declarations
@@ -1391,15 +1411,27 @@ VkResult display(void)
 
     overlay->performanceStats.update();
 
+    //! Use fence to allow host to wait for completion of execution of previous command buffer
+    vkResult = vkWaitForFences(vkDevice, 1, &vkFence_array[frameIndex], VK_TRUE, UINT64_MAX);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkWaitForFences() Failed For vkFence_array  : %d\n", __func__, vkResult);
+        return vkResult;
+    }
+
     //! Acquire next image index
-    vkResult = vkAcquireNextImageKHR(vkDevice, vkSwapchainKHR, UINT64_MAX, vkSemaphore_backBuffer, VK_NULL_HANDLE, &currentImageIndex);
+    vkResult = vkAcquireNextImageKHR(
+        vkDevice, 
+        vkSwapchainKHR, 
+        UINT64_MAX, 
+        vkSemaphore_backBuffer_array[frameIndex], 
+        VK_NULL_HANDLE, 
+        &currentImageIndex
+    );
     if (vkResult != VK_SUCCESS)
     {
         if (vkResult == VK_ERROR_OUT_OF_DATE_KHR || vkResult == VK_SUBOPTIMAL_KHR)
-        {
             resize(winWidth, winHeight);
-            resize_fbo(fboWidth, fboHeight);
-        }
         else
         {
             fprintf(gpFile, "%s() => vkAcquireNextImageKHR() Failed : %d\n", __func__, vkResult);
@@ -1407,11 +1439,47 @@ VkResult display(void)
         }
     }
 
-    vkResult = buildCommandBuffers();
+    if (vkFence_images_in_flight[currentImageIndex] != VK_NULL_HANDLE)
+    {
+        vkResult = vkWaitForFences(vkDevice, 1, &vkFence_images_in_flight[currentImageIndex], VK_TRUE, UINT64_MAX);
+        if (vkResult != VK_SUCCESS)
+        {
+            fprintf(gpFile, "%s() => vkWaitForFences() Failed For vkFence_images_in_flight : %d\n", __func__, vkResult);
+            return vkResult;
+        }
+    }
+
+    vkFence_images_in_flight[currentImageIndex] = vkFence_array[frameIndex];
+
+    //! Make sure fences are ready for execution of next command buffer
+    vkResult = vkResetFences(vkDevice, 1, &vkFence_array[frameIndex]);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkResetFences() Failed : %d\n", __func__, vkResult);
+        return vkResult;
+    }
+
+    vkResult = buildCommandBuffers(currentImageIndex);
     if (vkResult != VK_SUCCESS)
     {
         fprintf(gpFile, "%s() => buildCommandBuffers() Failed\n", __func__);
         vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+
+    //! Use fence to allow host to wait for completion of execution of previous command buffer
+    vkResult = vkWaitForFences(vkDevice, 1, &vkFence_fbo, VK_TRUE, UINT64_MAX);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkWaitForFences() Failed For vkFence_fbo : %d\n", __func__, vkResult);
+        return vkResult;
+    }
+
+    //! Make sure fences are ready for execution of next command buffer
+    vkResult = vkResetFences(vkDevice, 1, &vkFence_fbo);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkResetFences() Failed For vkFence_fbo : %d\n", __func__, vkResult);
         return vkResult;
     }
 
@@ -1420,22 +1488,6 @@ VkResult display(void)
     {
         fprintf(gpFile, "%s() => buildCommandBuffer_fbo() Failed\n", __func__);
         vkResult = VK_ERROR_INITIALIZATION_FAILED;
-        return vkResult;
-    }
-
-    //! Use fence to allow host to wait for completion of execution of previous command buffer
-    vkResult = vkWaitForFences(vkDevice, 1, &vkFence_array[currentImageIndex], VK_TRUE, UINT64_MAX);
-    if (vkResult != VK_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => vkWaitForFences() Failed : %d\n", __func__, vkResult);
-        return vkResult;
-    }
-
-    //! Make sure fences are ready for execution of next command buffer
-    vkResult = vkResetFences(vkDevice, 1, &vkFence_array[currentImageIndex]);
-    if (vkResult != VK_SUCCESS)
-    {
-        fprintf(gpFile, "%s() => vkResetFences() Failed : %d\n", __func__, vkResult);
         return vkResult;
     }
 
@@ -1453,7 +1505,7 @@ VkResult display(void)
     vkSubmitInfo.pSignalSemaphores = &vkSemaphore_fbo;
 
     //! Submit above work to the queue
-    vkResult = vkQueueSubmit(vkQueue, 1, &vkSubmitInfo, NULL);
+    vkResult = vkQueueSubmit(vkQueue, 1, &vkSubmitInfo, vkFence_fbo);
     if (vkResult != VK_SUCCESS)
     {
         fprintf(gpFile, "%s() => vkQueueSubmit() Failed For FBO : %d\n", __func__, vkResult);
@@ -1468,7 +1520,7 @@ VkResult display(void)
 
     VkSemaphore vkSemaphore_array[2];
     memset((void*)vkSemaphore_array, 0, sizeof(VkSemaphore) * _ARRAYSIZE(vkSemaphore_array));
-    vkSemaphore_array[0] = vkSemaphore_backBuffer;
+    vkSemaphore_array[0] = vkSemaphore_backBuffer_array[frameIndex];
     vkSemaphore_array[1] = vkSemaphore_fbo;
     
     //! Host Render
@@ -1484,7 +1536,7 @@ VkResult display(void)
     vkSubmitInfo.pSignalSemaphores = &vkSemaphore_renderComplete;
 
     //! Submit above work to the queue
-    vkResult = vkQueueSubmit(vkQueue, 1, &vkSubmitInfo, vkFence_array[currentImageIndex]);
+    vkResult = vkQueueSubmit(vkQueue, 1, &vkSubmitInfo, vkFence_array[frameIndex]);
     if (vkResult != VK_SUCCESS)
     {
         fprintf(gpFile, "%s() => vkQueueSubmit() Failed : %d\n", __func__, vkResult);
@@ -1507,10 +1559,7 @@ VkResult display(void)
     if (vkResult != VK_SUCCESS)
     {
         if (vkResult == VK_ERROR_OUT_OF_DATE_KHR || vkResult == VK_SUBOPTIMAL_KHR)
-        {
             resize(winWidth, winHeight);
-            resize_fbo(fboWidth, fboHeight);
-        }
         else
         {
             fprintf(gpFile, "%s() => vkQueuePresentKHR() Failed : %d\n", __func__, vkResult);
@@ -1526,7 +1575,7 @@ VkResult display(void)
     if (vkResult != VK_SUCCESS)
         fprintf(gpFile, "%s() => updateUniformBuffer_fbo() Failed : %d\n", __func__, vkResult);
 
-    vkDeviceWaitIdle(vkDevice);
+    frameIndex = (frameIndex + 1) % swapchainImageCount;
 
     return vkResult;
 }
@@ -1552,8 +1601,6 @@ void uninitialize(void)
     void uninitialize_fbo(void);
 
     // Code
-    uninitialize_fbo();
-
     if (gbFullScreen)
         ToggleFullScreen();
 
@@ -1571,6 +1618,8 @@ void uninitialize(void)
         fprintf(gpFile, "%s() => vkDeviceWaitIdle() Succeeded\n", __func__);
     }
 
+    uninitialize_fbo();
+
     delete overlay;
     overlay = nullptr;
 
@@ -1586,6 +1635,10 @@ void uninitialize(void)
         free(vkFence_array);
         vkFence_array = NULL;
         fprintf(gpFile, "%s() => free() Succeeded For vkFence_array\n", __func__);
+
+        vkDestroyFence(vkDevice, vkFence_fbo, NULL);
+        vkFence_fbo = VK_NULL_HANDLE;
+        fprintf(gpFile, "%s() => vkDestroyFence() Succeeded For vkFence_fbo\n", __func__);
     }
 
     if (vkSemaphore_renderComplete)
@@ -1595,11 +1648,16 @@ void uninitialize(void)
         vkSemaphore_renderComplete = VK_NULL_HANDLE;
     }
 
-    if (vkSemaphore_backBuffer)
+    if (vkSemaphore_backBuffer_array)
     {
-        vkDestroySemaphore(vkDevice, vkSemaphore_backBuffer, NULL);
-        fprintf(gpFile, "%s() => vkDestroySemaphore() Succeeded For vkSemaphore_backBuffer\n", __func__);
-        vkSemaphore_backBuffer = VK_NULL_HANDLE;
+        for (uint32_t i = 0; i < swapchainImageCount; i++)
+        {
+            vkDestroySemaphore(vkDevice, vkSemaphore_backBuffer_array[i], NULL);
+            fprintf(gpFile, "%s() => vkDestroySemaphore() Succeeded For vkSemaphore_backBuffer_array[%d]\n", __func__, i);
+        }
+
+        free(vkSemaphore_backBuffer_array);
+        vkSemaphore_backBuffer_array = NULL;
     }
 
     //* Step - 5 of Frame Buffer
@@ -4441,12 +4499,22 @@ VkResult createSemaphores(void)
     vkSemaphoreCreateInfo.pNext = NULL;
 
     //* Step - 3
-    vkResult = vkCreateSemaphore(vkDevice, &vkSemaphoreCreateInfo, NULL, &vkSemaphore_backBuffer);
-    if (vkResult != VK_SUCCESS)
+    vkSemaphore_backBuffer_array = (VkSemaphore*)malloc(sizeof(VkSemaphore) * swapchainImageCount);
+    if (vkSemaphore_backBuffer_array == NULL)
     {
-        fprintf(gpFile, "%s() => vkCreateSemaphore() Failed For vkSemaphore_backBuffer : %d !!!\n", __func__, vkResult);
-        vkResult = VK_ERROR_INITIALIZATION_FAILED;
-        return vkResult;
+        fprintf(gpFile, "%s() => malloc() Failed For vkSemaphore_backBuffer_array !!!\n", __func__);
+        return VK_ERROR_OUT_OF_HOST_MEMORY;
+    }
+
+    for (uint32_t i = 0; i < swapchainImageCount; i++)
+    {
+        vkResult = vkCreateSemaphore(vkDevice, &vkSemaphoreCreateInfo, NULL, &vkSemaphore_backBuffer_array[i]);
+        if (vkResult != VK_SUCCESS)
+        {
+            fprintf(gpFile, "%s() => vkCreateSemaphore() Failed For vkSemaphore_backBuffer_array : %d, Reason : %d !!!\n", __func__, i, vkResult);
+            vkResult = VK_ERROR_INITIALIZATION_FAILED;
+            return vkResult;
+        }
     }
 
     vkResult = vkCreateSemaphore(vkDevice, &vkSemaphoreCreateInfo, NULL, &vkSemaphore_renderComplete);
@@ -4494,120 +4562,135 @@ VkResult createFences(void)
             fprintf(gpFile, "%s() => vkCreateFence() Succeeded For Index : %d\n", __func__, i);
     }
 
+    //! Track Frames In Flight
+    vkFence_images_in_flight = (VkFence*)calloc(swapchainImageCount, sizeof(VkFence));
+    if (vkFence_images_in_flight == NULL)
+    {
+        fprintf(gpFile, "%s() => calloc() Failed For vkFence_images_in_flight !!!\n", __func__);
+        return VK_ERROR_OUT_OF_HOST_MEMORY;
+    }
+
+    //! Fence For FBO to avoid vkDeviceWaitIdle() in display()
+    vkResult = vkCreateFence(vkDevice, &vkFenceCreateInfo, NULL, &vkFence_fbo);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkCreateFence() Failed For vkFence_fbo : %d\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+    else
+        fprintf(gpFile, "%s() => vkCreateFence() Succeeded For vkFence_fbo\n", __func__);
+
     return vkResult;
 }
 
-VkResult buildCommandBuffers(void)
+VkResult buildCommandBuffers(uint32_t imageIndex)
 {
     // Code
     VkResult vkResult = VK_SUCCESS;
 
-    //! Loop per swapchain image
-    for (uint32_t i = 0; i < swapchainImageCount; i++)
+    //* Step - 1 => Reset Command Buffer
+    vkResult = vkResetCommandBuffer(vkCommandBuffer_array[imageIndex], 0);   //! 0 specifies not to release the resources
+    if (vkResult != VK_SUCCESS)
     {
-        //* Step - 1 => Reset Command Buffer
-        vkResult = vkResetCommandBuffer(vkCommandBuffer_array[i], 0);   //! 0 specifies not to release the resources
-        if (vkResult != VK_SUCCESS)
-        {
-            fprintf(gpFile, "%s() => vkResetCommandBuffer() Failed For Index : %d, Reason : %d\n", __func__, i, vkResult);
-            vkResult = VK_ERROR_INITIALIZATION_FAILED;
-            return vkResult;
-        }
-        //* Step - 2
-        VkCommandBufferBeginInfo vkCommandBufferBeginInfo;
-        memset((void*)&vkCommandBufferBeginInfo, 0, sizeof(VkCommandBufferBeginInfo));
-        vkCommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        vkCommandBufferBeginInfo.pNext = NULL;
-        vkCommandBufferBeginInfo.flags = 0;     //! 0 specifies that we will use only the primary command buffer, and not going to use this command buffer simultaneously between multiple threads
+        fprintf(gpFile, "%s() => vkResetCommandBuffer() Failed For Index : %d, Reason : %d\n", __func__, imageIndex, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
 
-        //* Step - 3
-        vkResult = vkBeginCommandBuffer(vkCommandBuffer_array[i], &vkCommandBufferBeginInfo);
-        if (vkResult != VK_SUCCESS)
-        {
-            fprintf(gpFile, "%s() => vkBeginCommandBuffer() Failed For Index : %d, Reason : %d\n", __func__, i, vkResult);
-            vkResult = VK_ERROR_INITIALIZATION_FAILED;
-            return vkResult;
-        }
+    //* Step - 2
+    VkCommandBufferBeginInfo vkCommandBufferBeginInfo;
+    memset((void*)&vkCommandBufferBeginInfo, 0, sizeof(VkCommandBufferBeginInfo));
+    vkCommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    vkCommandBufferBeginInfo.pNext = NULL;
+    vkCommandBufferBeginInfo.flags = 0;     //! 0 specifies that we will use only the primary command buffer, and not going to use this command buffer simultaneously between multiple threads
 
-        //* Step - 4 => Set Clear Value
-        VkClearValue vkClearValue_array[2];
-        memset((void*)vkClearValue_array, 0, sizeof(VkClearValue) * _ARRAYSIZE(vkClearValue_array));
-        vkClearValue_array[0].color = vkClearColorValue;
-        vkClearValue_array[1].depthStencil = vkClearDepthStencilValue;
+    //* Step - 3
+    vkResult = vkBeginCommandBuffer(vkCommandBuffer_array[imageIndex], &vkCommandBufferBeginInfo);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkBeginCommandBuffer() Failed For Index : %d, Reason : %d\n", __func__, imageIndex, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
 
-        //* Step - 5
-        VkRenderPassBeginInfo vkRenderPassBeginInfo;
-        memset((void*)&vkRenderPassBeginInfo, 0, sizeof(VkRenderPassBeginInfo));
-        vkRenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        vkRenderPassBeginInfo.pNext = NULL;
-        vkRenderPassBeginInfo.renderPass = vkRenderPass;
-        vkRenderPassBeginInfo.renderArea.offset.x = 0;
-        vkRenderPassBeginInfo.renderArea.offset.y = 0;
-        vkRenderPassBeginInfo.renderArea.extent.width = vkExtent2D_swapchain.width;
-        vkRenderPassBeginInfo.renderArea.extent.height = vkExtent2D_swapchain.height;
-        vkRenderPassBeginInfo.clearValueCount = _ARRAYSIZE(vkClearValue_array);
-        vkRenderPassBeginInfo.pClearValues = vkClearValue_array;
-        vkRenderPassBeginInfo.framebuffer = vkFramebuffer_array[i];
+    overlay->newFrame(imageIndex);
 
+    //* Step - 4 => Set Clear Value
+    VkClearValue vkClearValue_array[2];
+    memset((void*)vkClearValue_array, 0, sizeof(VkClearValue) * _ARRAYSIZE(vkClearValue_array));
+    vkClearValue_array[0].color = vkClearColorValue;
+    vkClearValue_array[1].depthStencil = vkClearDepthStencilValue;
 
-        overlay->newFrame();
-        
-        //* Step - 6
-        vkCmdBeginRenderPass(vkCommandBuffer_array[i], &vkRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-        {
-            //! Bind with Pipeline
-            vkCmdBindPipeline(vkCommandBuffer_array[i], VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline);
+    //* Step - 5
+    VkRenderPassBeginInfo vkRenderPassBeginInfo;
+    memset((void*)&vkRenderPassBeginInfo, 0, sizeof(VkRenderPassBeginInfo));
+    vkRenderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    vkRenderPassBeginInfo.pNext = NULL;
+    vkRenderPassBeginInfo.renderPass = vkRenderPass;
+    vkRenderPassBeginInfo.renderArea.offset.x = 0;
+    vkRenderPassBeginInfo.renderArea.offset.y = 0;
+    vkRenderPassBeginInfo.renderArea.extent.width = vkExtent2D_swapchain.width;
+    vkRenderPassBeginInfo.renderArea.extent.height = vkExtent2D_swapchain.height;
+    vkRenderPassBeginInfo.clearValueCount = _ARRAYSIZE(vkClearValue_array);
+    vkRenderPassBeginInfo.pClearValues = vkClearValue_array;
+    vkRenderPassBeginInfo.framebuffer = vkFramebuffer_array[imageIndex];
 
-            //! Bind the Descriptor Set to the Pipeline
-            vkCmdBindDescriptorSets(
-                vkCommandBuffer_array[i],
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                vkPipelineLayout,
-                0,
-                1,
-                &vkDescriptorSet,
-                0,
-                NULL
-            );
+    //* Step - 6
+    vkCmdBeginRenderPass(vkCommandBuffer_array[imageIndex], &vkRenderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    {
+        //! Bind with Pipeline
+        vkCmdBindPipeline(vkCommandBuffer_array[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, vkPipeline);
 
-            //! Bind with Vertex Position Buffer
-            VkDeviceSize vkDeviceSize_offset_position[1];
-            memset((void*)vkDeviceSize_offset_position, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_position));
-            vkCmdBindVertexBuffers(
-                vkCommandBuffer_array[i], 
-                0, 
-                1, 
-                &vertexData_position.vkBuffer, 
-                vkDeviceSize_offset_position
-            );
+        //! Bind the Descriptor Set to the Pipeline
+        vkCmdBindDescriptorSets(
+            vkCommandBuffer_array[imageIndex],
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            vkPipelineLayout,
+            0,
+            1,
+            &vkDescriptorSet,
+            0,
+            NULL
+        );
 
-            //! Bind with Vertex Texture Buffer
-            VkDeviceSize vkDeviceSize_offset_texture[1];
-            memset((void*)vkDeviceSize_offset_texture, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_texture));
-            vkCmdBindVertexBuffers(
-                vkCommandBuffer_array[i], 
-                1, 
-                1, 
-                &vertexData_texcoord.vkBuffer, 
-                vkDeviceSize_offset_texture
-            );
+        //! Bind with Vertex Position Buffer
+        VkDeviceSize vkDeviceSize_offset_position[1];
+        memset((void*)vkDeviceSize_offset_position, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_position));
+        vkCmdBindVertexBuffers(
+            vkCommandBuffer_array[imageIndex], 
+            0, 
+            1, 
+            &vertexData_position.vkBuffer, 
+            vkDeviceSize_offset_position
+        );
 
-            //! Vulkan Drawing Function
-            vkCmdDraw(vkCommandBuffer_array[i], 36, 1, 0, 0);
+        //! Bind with Vertex Texture Buffer
+        VkDeviceSize vkDeviceSize_offset_texture[1];
+        memset((void*)vkDeviceSize_offset_texture, 0, sizeof(VkDeviceSize) * _ARRAYSIZE(vkDeviceSize_offset_texture));
+        vkCmdBindVertexBuffers(
+            vkCommandBuffer_array[imageIndex], 
+            1, 
+            1, 
+            &vertexData_texcoord.vkBuffer, 
+            vkDeviceSize_offset_texture
+        );
 
-            overlay->render(vkCommandBuffer_array[i]);
-        }
-        //* Step - 7
-        vkCmdEndRenderPass(vkCommandBuffer_array[i]);
+        //! Vulkan Drawing Function
+        vkCmdDraw(vkCommandBuffer_array[imageIndex], 36, 1, 0, 0);
 
-        //* Step - 8
-        vkResult = vkEndCommandBuffer(vkCommandBuffer_array[i]);
-        if (vkResult != VK_SUCCESS)
-        {
-            fprintf(gpFile, "%s() => vkEndCommandBuffer() Failed For Index : %d, Reason : %d\n", __func__, i, vkResult);
-            vkResult = VK_ERROR_INITIALIZATION_FAILED;
-            return vkResult;
-        }
+        overlay->render(vkCommandBuffer_array[imageIndex], imageIndex);
+    }
+    //* Step - 7
+    vkCmdEndRenderPass(vkCommandBuffer_array[imageIndex]);
+
+    //* Step - 8
+    vkResult = vkEndCommandBuffer(vkCommandBuffer_array[imageIndex]);
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => vkEndCommandBuffer() Failed For Index : %d, Reason : %d\n", __func__, imageIndex, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
     }
 
     return vkResult;
@@ -4664,6 +4747,9 @@ VkResult resize_fbo(int fbo_width, int fbo_height)
 
         //? DESTROY
         //?--------------------------------------------------------------------------------------------------
+        if (vkDevice)
+            vkDeviceWaitIdle(vkDevice);
+        
         //* Check presence of swapchain
         if (vkSwapchainKHR == VK_NULL_HANDLE)
         {
@@ -4828,6 +4914,9 @@ void update_fbo(void)
 void uninitialize_fbo(void)
 {
     // Code
+    if (vkDevice)
+        vkDeviceWaitIdle(vkDevice);
+
     if (vkSemaphore_fbo)
     {
         vkDestroySemaphore(vkDevice, vkSemaphore_fbo, NULL);
@@ -4923,7 +5012,7 @@ void uninitialize_fbo(void)
     if (vkImageView_texture_fbo)
     {
         vkDestroyImageView(vkDevice, vkImageView_texture_fbo, NULL);
-        vkImageView_texture_fbo = NULL;
+        vkImageView_texture_fbo = VK_NULL_HANDLE;
         fprintf(gpFile, "%s() => vkDestroyImageView() Succeeded For vkImage_texture_fbo\n", __func__);
     }
 
@@ -4937,7 +5026,7 @@ void uninitialize_fbo(void)
     if (vkImage_texture_fbo)
     {
         vkDestroyImage(vkDevice, vkImage_texture_fbo, NULL);
-        vkImage_texture_fbo = NULL;
+        vkImage_texture_fbo = VK_NULL_HANDLE;
         fprintf(gpFile, "%s() => vkDestroyImage() Succeeded For vkImage_texture_fbo\n", __func__);
     }
 

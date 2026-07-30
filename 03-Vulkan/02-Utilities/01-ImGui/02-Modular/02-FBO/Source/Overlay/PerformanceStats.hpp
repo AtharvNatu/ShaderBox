@@ -37,6 +37,7 @@ class PerformanceStats
         float deltaTime;
 
         float frameTime = 0.0f;
+        float smoothedFrameTime = 0.0f;
         float currentFPS = 0.0f;
         float minFPS = FLT_MAX;
         float maxFPS = 0.0f;
@@ -45,13 +46,24 @@ class PerformanceStats
         float accumulatedTime = 0.0f;
         uint32_t accumulatedFrames = 0;
 
+        static constexpr float smoothingTimeConstant = 0.5f;
+
+        static constexpr size_t HISTORY_SIZE = 120;
+        static constexpr float historySampleInteval = 1.0f / 60.0f;
+
+        float historySampleAccumulator = 0.0f;
+        std::vector<float> fpsHistory;
+        std::vector<float> frameTimeHistory;
+
     public:
         void update()
         {
             deltaTime = frameTimer.tick();
             frameTime = deltaTime * 1000.0f;
-
-            currentFPS = currentFPS * 0.9f + (1.0f / deltaTime) * 0.1f;
+            
+            float alpha = 1.0f - expf(-deltaTime / smoothingTimeConstant);
+            currentFPS += alpha * ((1.0f / deltaTime) - currentFPS);
+            smoothedFrameTime += alpha * (frameTime - smoothedFrameTime);
 
             minFPS = std::min(minFPS, currentFPS);
             maxFPS = std::max(maxFPS, currentFPS);
@@ -65,6 +77,20 @@ class PerformanceStats
                 accumulatedTime -= 1.0f;
                 accumulatedFrames = 0;
             }
+
+            historySampleAccumulator += deltaTime;
+            if (historySampleAccumulator >= historySampleInteval)
+            {
+                historySampleAccumulator -= historySampleInteval;
+                
+                fpsHistory.push_back(currentFPS);
+                if (fpsHistory.size() > HISTORY_SIZE)
+                    fpsHistory.erase(fpsHistory.begin());
+
+                frameTimeHistory.push_back(smoothedFrameTime);
+                if (frameTimeHistory.size() > HISTORY_SIZE)
+                    frameTimeHistory.erase(frameTimeHistory.begin());
+            }
         }
 
         void reset()
@@ -72,10 +98,12 @@ class PerformanceStats
             currentFPS = 0.0f;
             averageFPS = 0.0f;
             frameTime = 0.0f;
+            smoothedFrameTime = 0.0f;
             minFPS = FLT_MAX;
             maxFPS = 0.0f;
             accumulatedTime = 0.0f;
             accumulatedFrames = 0;
+            historySampleAccumulator = 0;
         }
 
         float getFrameTime() const 
@@ -102,7 +130,16 @@ class PerformanceStats
         { 
             return averageFPS; 
         }
-};
 
+        const std::vector<float>& getFPSHistory() const
+        {
+            return fpsHistory;
+        }
+
+        const std::vector<float>& getFrameTimeHistory() const
+        {
+            return frameTimeHistory;
+        }
+};
 
 #endif

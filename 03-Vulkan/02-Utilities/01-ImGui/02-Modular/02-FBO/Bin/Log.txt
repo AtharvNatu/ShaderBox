@@ -36,7 +36,6 @@ fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_NV_optimus
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_NV_present
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_OBS_HOOK
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_RENDERDOC_Capture
-fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_RTSS
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_LUNARG_api_dump
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_LUNARG_gfxreconstruct
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_KHRONOS_synchronization2
@@ -71,9 +70,9 @@ VULKAN INFORMATION
 Device Number : 0
 *******************************************************
 Vulkan API Version : 1.4.341
-Device Name : NVIDIA GeForce RTX 5070
+Device Name : NVIDIA GeForce RTX 4050 Laptop GPU
 Device Type : Discrete GPU (dGPU)
-Device ID : 0x2f04
+Device ID : 0x28e1
 Vendor ID : 0x10de
 Vendor Name : NVIDIA
 
@@ -141,6 +140,40 @@ Supports Compute : No
 Supports Transfer Operations : Yes
 Supports Video Encoding : No
 Supports Video Decoding : No
+Supports Presentation : No
+****************************************
+
+*******************************************************
+
+Device Number : 1
+*******************************************************
+Vulkan API Version : 1.4.309
+Device Name : Intel(R) UHD Graphics
+Device Type : Integrated GPU (iGPU)
+Device ID : 0xa7a8
+Vendor ID : 0x8086
+Vendor Name : Intel
+
+No. of Queue Families: 2
+
+Queue Family : 0
+****************************************
+Supports Graphics : Yes
+Supports Compute : Yes
+Supports Transfer Operations : Yes
+Supports Video Encoding : No
+Supports Video Decoding : No
+Supports Presentation : Yes
+****************************************
+
+
+Queue Family : 1
+****************************************
+Supports Graphics : No
+Supports Compute : No
+Supports Transfer Operations : No
+Supports Video Encoding : No
+Supports Video Decoding : Yes
 Supports Presentation : No
 ****************************************
 
@@ -388,7 +421,6 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_diagno
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_generated_commands
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_generated_commands_compute
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_disk_cache_utils
-fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_extended_sparse_address_space
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_compute_queue
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_memory
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_memory_win32
@@ -412,7 +444,6 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_push_constant
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_raw_access_chains
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_ray_tracing
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_ray_tracing_invocation_reorder
-fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_ray_tracing_linear_swept_spheres
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_ray_tracing_motion_blur
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_representative_fragment_test
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_sample_mask_override_coverage
@@ -433,7 +464,7 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_GOOGLE_hlsl_func
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_GOOGLE_user_type
 
 ------------------------------------------------------------------------------------------------
-fillDeviceExtensionNames() => Vulkan Device Extension Count : 280
+fillDeviceExtensionNames() => Vulkan Device Extension Count : 278
 ------------------------------------------------------------------------------------------------
 
 fillDeviceExtensionNames() => VK_KHR_SWAPCHAIN_EXTENSION_NAME Extension Found
@@ -622,6 +653,7 @@ initialize() => createSemaphores() Succeeded
 initialize() => createSemaphore_fbo() Succeeded
 createFences() => vkCreateFence() Succeeded For Index : 0
 createFences() => vkCreateFence() Succeeded For Index : 1
+createFences() => vkCreateFence() Succeeded For vkFence_fbo
 initialize() => createFences() Succeeded
 createFontTexture() => vkQueueSubmit() Succeeded For vkSubmitInfo_buffer_to_copy
 Overlay() => createFontTexture() Succeeded
@@ -700,18 +732,7 @@ createPipeline() => vkDestroyPipelineCache() Succeeded
 createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 0
 createCommandBuffers() => vkAllocateCommandBuffers() Succeeded For Index : 1
 createDescriptorSet() => vkAllocateDescriptorSets() Succeeded
-ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkQueueSubmit-pCommandBuffers-00070 ] Object 0: handle = 0xd3dd54000000008e, type = VK_OBJECT_TYPE_BUFFER; Object 1: handle = 0x1babbcb18d0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID = 0xaeecdc0b | vkQueueSubmit(): pSubmits[0].pCommandBuffers[0] was called in VkCommandBuffer 0x1babbcb18d0[] which is invalid because bound VkBuffer 0xd3dd54000000008e[] was destroyed.
-The Vulkan spec states: Each element of the pCommandBuffers member of each element of pSubmits must be in the pending or executable state (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkQueueSubmit-pCommandBuffers-00070)
-ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkQueueSubmit-pCommandBuffers-00070 ] Object 0: handle = 0x9f1516000000008c, type = VK_OBJECT_TYPE_BUFFER; Object 1: handle = 0x1babbcb18d0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID = 0xaeecdc0b | vkQueueSubmit(): pSubmits[0].pCommandBuffers[0] was called in VkCommandBuffer 0x1babbcb18d0[] which is invalid because bound VkBuffer 0x9f1516000000008c[] was destroyed.
-The Vulkan spec states: Each element of the pCommandBuffers member of each element of pSubmits must be in the pending or executable state (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkQueueSubmit-pCommandBuffers-00070)
-ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkQueueSubmit-pCommandBuffers-00070 ] Object 0: handle = 0x58e3e000000000d8, type = VK_OBJECT_TYPE_BUFFER; Object 1: handle = 0x1babbcb18d0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID = 0xaeecdc0b | vkQueueSubmit(): pSubmits[0].pCommandBuffers[0] was called in VkCommandBuffer 0x1babbcb18d0[] which is invalid because bound VkBuffer 0x58e3e000000000d8[] was destroyed.
-The Vulkan spec states: Each element of the pCommandBuffers member of each element of pSubmits must be in the pending or executable state (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkQueueSubmit-pCommandBuffers-00070)
-ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkQueueSubmit-pCommandBuffers-00070 ] Object 0: handle = 0x1e386200000000da, type = VK_OBJECT_TYPE_BUFFER; Object 1: handle = 0x1babbcb18d0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID = 0xaeecdc0b | vkQueueSubmit(): pSubmits[0].pCommandBuffers[0] was called in VkCommandBuffer 0x1babbcb18d0[] which is invalid because bound VkBuffer 0x1e386200000000da[] was destroyed.
-The Vulkan spec states: Each element of the pCommandBuffers member of each element of pSubmits must be in the pending or executable state (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkQueueSubmit-pCommandBuffers-00070)
-ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkQueueSubmit-pCommandBuffers-00070 ] Object 0: handle = 0x5128b300000000e4, type = VK_OBJECT_TYPE_BUFFER; Object 1: handle = 0x1babbcb18d0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID = 0xaeecdc0b | vkQueueSubmit(): pSubmits[0].pCommandBuffers[0] was called in VkCommandBuffer 0x1babbcb18d0[] which is invalid because bound VkBuffer 0x5128b300000000e4[] was destroyed.
-The Vulkan spec states: Each element of the pCommandBuffers member of each element of pSubmits must be in the pending or executable state (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkQueueSubmit-pCommandBuffers-00070)
-ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-vkQueueSubmit-pCommandBuffers-00070 ] Object 0: handle = 0x6d7dd100000000e6, type = VK_OBJECT_TYPE_BUFFER; Object 1: handle = 0x1babbcb18d0, type = VK_OBJECT_TYPE_COMMAND_BUFFER; | MessageID = 0xaeecdc0b | vkQueueSubmit(): pSubmits[0].pCommandBuffers[0] was called in VkCommandBuffer 0x1babbcb18d0[] which is invalid because bound VkBuffer 0x6d7dd100000000e6[] was destroyed.
-The Vulkan spec states: Each element of the pCommandBuffers member of each element of pSubmits must be in the pending or executable state (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-vkQueueSubmit-pCommandBuffers-00070)
+uninitialize() => vkDeviceWaitIdle() Succeeded
 uninitialize_fbo() => vkDestroySemaphore() Succeeded For vkSemaphore_fbo
 uninitialize_fbo() => vkDestroyPipeline() Succeeded For vkPipeline_fbo
 uninitialize_fbo() => vkDestroyRenderPass() Succeeded For vkRenderPass_fbo
@@ -742,12 +763,13 @@ uninitialize_fbo() => vkDestroySampler() Succeeded For vkSampler_fbo
 uninitialize_fbo() => vkDestroyImageView() Succeeded For vkImageView_fbo
 uninitialize_fbo() => vkFreeMemory() Succeeded For vkDeviceMemory_fbo
 uninitialize_fbo() => vkDestroyImage() Succeeded For vkImage_fbo
-uninitialize() => vkDeviceWaitIdle() Succeeded
 uninitialize() => vkDestroyFence() Succeeded For Index : 0
 uninitialize() => vkDestroyFence() Succeeded For Index : 1
 uninitialize() => free() Succeeded For vkFence_array
+uninitialize() => vkDestroyFence() Succeeded For vkFence_fbo
 uninitialize() => vkDestroySemaphore() Succeeded For vkSemaphore_renderComplete
-uninitialize() => vkDestroySemaphore() Succeeded For vkSemaphore_backBuffer
+uninitialize() => vkDestroySemaphore() Succeeded For vkSemaphore_backBuffer_array[0]
+uninitialize() => vkDestroySemaphore() Succeeded For vkSemaphore_backBuffer_array[1]
 uninitialize() => vkDestroyFramebuffer() Succeeded For Index : 0
 uninitialize() => vkDestroyFramebuffer() Succeeded For Index : 1
 uninitialize() => free() Succeeded For vkFramebuffer_array

@@ -21,6 +21,7 @@
 #include "PropertyMetaData.hpp"
 #include "PerformanceStats.hpp"
 
+extern uint32_t swapchainImageCount;
 extern VkDevice vkDevice;
 extern VkPhysicalDeviceMemoryProperties vkPhysicalDeviceMemoryProperties;
 extern VkCommandPool vkCommandPool;
@@ -52,10 +53,11 @@ class Overlay
 
         } pushData;
 
-        BufferData vertexBuffer;
-        BufferData indexBuffer;
-        int32_t vertexCount = 0;
-        int32_t indexCount = 0;
+        //* Used Vector For Double Buffering
+        std::vector<BufferData> vertexBuffers;
+        std::vector<BufferData> indexBuffers;
+        std::vector<int32_t> vertexCounts;
+        std::vector<int32_t> indexCounts;
 
         VkSampler fontSampler = VK_NULL_HANDLE;
         VkImage fontImage = VK_NULL_HANDLE;
@@ -88,7 +90,7 @@ class Overlay
         VkResult createPipelineLayout();
         VkResult createPipeline();
 
-        void updateBuffers();
+        void updateBuffers(uint32_t imageIndex);
         void drawProperties();
 
         //* Win32 Integration
@@ -112,8 +114,8 @@ class Overlay
         void registerWin32MsgHandler(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
         
         //* Overlay Functions
-        void render(VkCommandBuffer commandBuffer);
-        void newFrame();
+        void render(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+        void newFrame(uint32_t imageIndex);
 
     public:
 
@@ -194,6 +196,29 @@ class Overlay
                     categoryName,
                     std::move(callback),
                     color
+                )
+            );
+        }
+
+        void addPlotLines(
+            const std::string& categoryName,
+            const std::string& label,
+            const std::vector<float>* buffer,
+            float scaleMin = FLT_MAX,
+            float scaleMax = FLT_MAX,
+            ImVec2 graphSize = ImVec2(120.0f, 220.0f)
+        )
+        {
+            // Code
+            UICategory* category = getCategory(categoryName);
+            category->properties.emplace_back(
+                std::make_unique<UIPlotLines>(
+                    categoryName,
+                    label,
+                    buffer,
+                    scaleMin,
+                    scaleMax,
+                    graphSize
                 )
             );
         }

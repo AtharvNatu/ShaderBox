@@ -10,6 +10,11 @@ Overlay::Overlay(float width, float height, float fontSize)
     overlayWidth = width;
     overlayHeight = height;
 
+    vertexBuffers.resize(swapchainImageCount);
+    indexBuffers.resize(swapchainImageCount);
+    vertexCounts.assign(swapchainImageCount, 0);
+    indexCounts.assign(swapchainImageCount, 0);
+
     //! Setup ImGui Context
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
@@ -1757,7 +1762,7 @@ VkResult Overlay::createPipeline(void)
     return vkResult;
 }
 
-void Overlay::updateBuffers()
+void Overlay::updateBuffers(uint32_t imageIndex)
 {
     // Variable Declarations
     VkResult vkResult = VK_SUCCESS;
@@ -1774,45 +1779,45 @@ void Overlay::updateBuffers()
     //! Update Vertex and Index Buffers containing the ImGui elements only when vertex or index count has changed compared to current buffer
 
     //! Vertex Buffer
-    if ((vertexBuffer.vkBuffer == VK_NULL_HANDLE) || (vertexCount != imDrawData->TotalVtxCount))
+    if ((vertexBuffers[imageIndex].vkBuffer == VK_NULL_HANDLE) || (vertexCounts[imageIndex] != imDrawData->TotalVtxCount))
     {
-        unmapBufferMemory(&vertexBuffer);
+        unmapBufferMemory(&vertexBuffers[imageIndex]);
         
-        destroyBuffer(&vertexBuffer);
+        destroyBuffer(&vertexBuffers[imageIndex]);
 
-        vkResult = createBuffer(&vertexBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexBufferSize);
+        vkResult = createBuffer(&vertexBuffers[imageIndex], VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexBufferSize);
         if (vkResult != VK_SUCCESS)
             fprintf(gpFile, "%s() => createBuffer() Failed For Vertex Buffer: %s !!!", __func__, getVkResultString(vkResult));
 
-        vertexCount = imDrawData->TotalVtxCount;
+        vertexCounts[imageIndex] = imDrawData->TotalVtxCount;
 
-        vkResult = mapBufferMemory(&vertexBuffer);
+        vkResult = mapBufferMemory(&vertexBuffers[imageIndex]);
         if (vkResult != VK_SUCCESS)
             fprintf(gpFile, "%s() => mapBufferMemory() Failed For Vertex Buffer: %s !!!", __func__, getVkResultString(vkResult));
         
     }
 
     //! Index Buffer
-    if ((indexBuffer.vkBuffer == VK_NULL_HANDLE) || (indexCount != imDrawData->TotalIdxCount))
+    if ((indexBuffers[imageIndex].vkBuffer == VK_NULL_HANDLE) || (indexCounts[imageIndex] != imDrawData->TotalIdxCount))
     {
-        unmapBufferMemory(&indexBuffer);
+        unmapBufferMemory(&indexBuffers[imageIndex]);
         
-        destroyBuffer(&indexBuffer);
+        destroyBuffer(&indexBuffers[imageIndex]);
 
-        vkResult = createBuffer(&indexBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexBufferSize);
+        vkResult = createBuffer(&indexBuffers[imageIndex], VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexBufferSize);
         if (vkResult != VK_SUCCESS)
             fprintf(gpFile, "%s() => createBuffer() Failed For Index Buffer : %s !!!", __func__, getVkResultString(vkResult));
 
-        indexCount = imDrawData->TotalIdxCount;
+        indexCounts[imageIndex] = imDrawData->TotalIdxCount;
 
-        vkResult = mapBufferMemory(&indexBuffer);
+        vkResult = mapBufferMemory(&indexBuffers[imageIndex]);
         if (vkResult != VK_SUCCESS)
             fprintf(gpFile, "%s() => mapBufferMemory() Failed For Index Buffer: %s !!!", __func__, getVkResultString(vkResult));
     }
 
     //* Upload Data
-    ImDrawVert* vertexDst = (ImDrawVert*)vertexBuffer.mapped;
-    ImDrawIdx* indexDst = (ImDrawIdx*)indexBuffer.mapped;
+    ImDrawVert* vertexDst = (ImDrawVert*)vertexBuffers[imageIndex].mapped;
+    ImDrawIdx* indexDst = (ImDrawIdx*)indexBuffers[imageIndex].mapped;
 
     for (int i = 0; i < imDrawData->CmdListsCount; i++)
     {
@@ -1871,7 +1876,7 @@ void Overlay::toggle()
     visible = !visible;
 }
 
-void Overlay::newFrame()
+void Overlay::newFrame(uint32_t imageIndex)
 {
     // Code
     if (visible)
@@ -1891,12 +1896,12 @@ void Overlay::newFrame()
 
         ImGui::Render();
 
-        updateBuffers();
+        updateBuffers(imageIndex);
     }
     
 }
 
-void Overlay::render(VkCommandBuffer commandBuffer)
+void Overlay::render(VkCommandBuffer commandBuffer, uint32_t imageIndex)
 {
     // Code
     if (visible)
@@ -1940,8 +1945,8 @@ void Overlay::render(VkCommandBuffer commandBuffer)
         {
             //! Bind with Vertex and Index Buffer
             VkDeviceSize offsets[1] = { 0 };
-            vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer.vkBuffer, offsets);
-            vkCmdBindIndexBuffer(commandBuffer, indexBuffer.vkBuffer, 0, VK_INDEX_TYPE_UINT16);
+            vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffers[imageIndex].vkBuffer, offsets);
+            vkCmdBindIndexBuffer(commandBuffer, indexBuffers[imageIndex].vkBuffer, 0, VK_INDEX_TYPE_UINT16);
 
             for (int32_t i = 0; i < imDrawData->CmdListsCount; i++)
             {
@@ -2045,6 +2050,9 @@ Overlay::~Overlay()
         fontImage = NULL;
     }
 
-    destroyBuffer(&indexBuffer);
-    destroyBuffer(&vertexBuffer);
+    for (BufferData& buffer : indexBuffers)
+       destroyBuffer(&buffer);
+
+    for (BufferData& buffer : vertexBuffers)
+        destroyBuffer(&buffer);
 }

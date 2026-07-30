@@ -3,6 +3,7 @@
 
 #include <string>
 #include <functional>
+#include <chrono>
 
 #include "imgui.h"
 
@@ -173,9 +174,12 @@ class UIText : public UIProperty
 
 class UIDynamicText : public UIProperty
 {
-    public:
+    private:
+        std::string cachedText;
+        std::chrono::steady_clock::time_point lastUpdate {};
+        static constexpr std::chrono::milliseconds updateInterval {250};
 
-        std::string format;
+    public:
         std::function<std::string()> textCallback;
         ImVec4 imColor = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -193,13 +197,90 @@ class UIDynamicText : public UIProperty
 
         void draw() override
         {
+            std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+            if (cachedText.empty() || (now - lastUpdate) >= updateInterval)
+            {
+                cachedText = textCallback();
+                lastUpdate = now;
+            }
+
             ImGui::BeginDisabled();
-            ImGui::TextColored(imColor, "%s", textCallback().c_str());
+            ImGui::TextColored(imColor, "%s", cachedText.c_str());
             ImGui::EndDisabled();
         }
 };
 
 
 //* ------------------------------------------------------------------------------------------------------------
+
+
+//! Plot Lines
+//* ------------------------------------------------------------------------------------------------------------
+class UIPlotLines : public UIProperty
+{
+    public:
+        const std::vector<float>* buffer;
+        float scaleMin;
+        float scaleMax;
+        ImVec2 graphSize;
+
+        UIPlotLines(
+            const std::string& categoryName,
+            const std::string& label,
+            const std::vector<float>* buffer,
+            float scaleMin = FLT_MAX,
+            float scaleMax = FLT_MAX,
+            ImVec2 graphSize = ImVec2(120.0f, 220.0f)
+        )
+        {
+            this->buffer = buffer;
+            this->scaleMin = scaleMin;
+            this->scaleMax = scaleMax;
+            this->categoryName = categoryName;
+            this->label = label;
+            this->graphSize = graphSize;
+        }
+        
+
+        void draw() override
+        {
+            std::string hiddenLabel = "##" + label;
+
+            ImGui::PlotLines(
+                hiddenLabel.c_str(),
+                buffer->data(),
+                (int)buffer->size(),
+                0,
+                nullptr,
+                scaleMin,
+                scaleMax,
+                graphSize
+            );
+
+            // Grid Overlay
+            ImVec2 rectMin = ImGui::GetItemRectMin();
+            ImVec2 rectMax = ImGui::GetItemRectMax();
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            const ImU32 gridColor = ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 0.15f));
+
+            const int gridColumns = 6;
+            for (int i = 1; i < gridColumns; i++)
+            {
+                float x = rectMin.x + (rectMax.x - rectMin.x) * (float)i / gridColumns;
+                drawList->AddLine(ImVec2(x, rectMin.y), ImVec2(x, rectMax.y), gridColor);
+            }
+
+            const int gridRows = 4;
+            for (int i = 1; i < gridRows; i++)
+            {
+                float y = rectMin.y + (rectMax.y - rectMin.y) * (float)i / gridRows;
+                drawList->AddLine(ImVec2(rectMin.x, y), ImVec2(rectMax.x, y), gridColor);
+            }
+        }
+
+};
+
+//* ------------------------------------------------------------------------------------------------------------
+
 
 #endif
