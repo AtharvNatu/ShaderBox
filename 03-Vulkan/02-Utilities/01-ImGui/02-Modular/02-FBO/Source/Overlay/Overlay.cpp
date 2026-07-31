@@ -1860,12 +1860,31 @@ void Overlay::drawProperties()
     // Code
     for (auto& category : categories)
     {
-        if (ImGui::CollapsingHeader(category.name.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+        if (!ImGui::CollapsingHeader(category.name.c_str(), ImGuiTreeNodeFlags_DefaultOpen))
+            continue;
+
+        int columnCount = 0;
+        for (auto& property : category.properties)
+            columnCount = std::max(columnCount, property->column + 1);
+
+        if (columnCount <= 1)
         {
             for (auto& property : category.properties)
-            {
                 property->draw();
+        }
+        else if (ImGui::BeginTable((category.name + "##table").c_str(), columnCount, ImGuiTableFlags_SizingStretchProp))
+        {
+            ImGui::TableNextRow();
+            for (int column = 0; column < columnCount; column++)
+            {
+                ImGui::TableSetColumnIndex(column);
+                for (auto& property : category.properties)
+                {
+                    if (property->column == column)
+                        property->draw();
+                }
             }
+            ImGui::EndTable();
         }
     }
 }
@@ -1899,6 +1918,100 @@ void Overlay::newFrame(uint32_t imageIndex)
         updateBuffers(imageIndex);
     }
     
+}
+
+//* Performance Stats Related
+void Overlay::showPerformanceStats(VkPhysicalDevice vkPhysicalDevice)
+{
+    // Code
+    VkPhysicalDeviceProperties vkPhysicalDeviceProperties;
+    memset((void*)&vkPhysicalDeviceProperties, 0, sizeof(VkPhysicalDeviceProperties));
+    vkGetPhysicalDeviceProperties(vkPhysicalDevice, &vkPhysicalDeviceProperties);
+
+    glm::vec4 gpuColor = glm::vec4(1.0f);
+    glm::vec4 color_AMD = glm::vec4(0.929f, 0.109f, 0.141f, 1.0f);
+    glm::vec4 color_NVIDIA = glm::vec4(0.462f, 0.725f, 0.0f, 1.0f);
+    glm::vec4 color_Intel = glm::vec4(0.0f, 0.407f, 0.709f, 1.0f);
+
+    switch(vkPhysicalDeviceProperties.vendorID)
+    {
+        case 0x10DE: gpuColor = color_NVIDIA; break;
+        case 0x1002: gpuColor = color_AMD; break;
+        case 0x8086: gpuColor = color_Intel; break;
+    }
+
+    addText(
+        "Performance", 
+        std::format("GPU : {}", vkPhysicalDeviceProperties.deviceName).c_str(), 
+        gpuColor
+    );
+
+    addDynamicText(
+        "Performance",
+        [&]() -> std::string
+        {
+            return std::format("FPS : {:d}", static_cast<int>(performanceStats.getFPS()));
+        }
+    );
+
+    addPlotLines(
+        "Performance", 
+        "FPS Graph", 
+        &performanceStats.getFPSHistory(), 
+        0.0f, 
+        240.0f, 
+        ImVec2(250.0f, 80.0f),
+        1
+    );
+
+    addDynamicText(
+        "Performance",
+        [&]() -> std::string
+        {
+            return std::format("Min FPS : {:d}", static_cast<int>(performanceStats.getMinimumFPS()));
+        }
+    );
+
+    addDynamicText(
+        "Performance",
+        [&]() -> std::string
+        {
+            return std::format("Max FPS : {:d}", static_cast<int>(performanceStats.getMaximumFPS()));
+        }
+    );
+
+    addDynamicText(
+        "Performance",
+        [&]() -> std::string
+        {
+            return std::format("Avg FPS : {:d}", static_cast<int>(performanceStats.getAverageFPS()));
+        }
+    );
+
+    addDynamicText(
+        "Performance",
+        [&]() -> std::string
+        {
+            return std::format("Frametime : {:.1f} ms", static_cast<float>(performanceStats.getFrameTime()));
+        }
+    );
+
+    addPlotLines(
+        "Performance", 
+        "FrameTime Graph", 
+        &performanceStats.getFrameTimeHistory(), 
+        0.0f, 
+        33.3f, 
+        ImVec2(250.0f, 80.0f),
+        1
+    );
+
+}
+
+void Overlay::updatePerformanceStats()
+{
+    // Code
+    performanceStats.update();
 }
 
 void Overlay::render(VkCommandBuffer commandBuffer, uint32_t imageIndex)
@@ -2056,3 +2169,4 @@ Overlay::~Overlay()
     for (BufferData& buffer : vertexBuffers)
         destroyBuffer(&buffer);
 }
+

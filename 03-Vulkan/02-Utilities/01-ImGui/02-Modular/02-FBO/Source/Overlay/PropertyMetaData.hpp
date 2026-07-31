@@ -17,6 +17,7 @@ class UIProperty
         std::string categoryName;
         std::string label;
         bool readOnly = false;
+        int column = 0;
         std::function<void()> onChanged;
 
     protected:
@@ -257,25 +258,25 @@ class UIPlotLines : public UIProperty
                 graphSize
             );
 
-            // Grid Overlay
-            ImVec2 rectMin = ImGui::GetItemRectMin();
-            ImVec2 rectMax = ImGui::GetItemRectMax();
-            ImDrawList* drawList = ImGui::GetWindowDrawList();
-            const ImU32 gridColor = ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 0.15f));
+            // // Grid Overlay
+            // ImVec2 rectMin = ImGui::GetItemRectMin();
+            // ImVec2 rectMax = ImGui::GetItemRectMax();
+            // ImDrawList* drawList = ImGui::GetWindowDrawList();
+            // const ImU32 gridColor = ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 0.15f));
 
-            const int gridColumns = 6;
-            for (int i = 1; i < gridColumns; i++)
-            {
-                float x = rectMin.x + (rectMax.x - rectMin.x) * (float)i / gridColumns;
-                drawList->AddLine(ImVec2(x, rectMin.y), ImVec2(x, rectMax.y), gridColor);
-            }
+            // const int gridColumns = 6;
+            // for (int i = 1; i < gridColumns; i++)
+            // {
+            //     float x = rectMin.x + (rectMax.x - rectMin.x) * (float)i / gridColumns;
+            //     drawList->AddLine(ImVec2(x, rectMin.y), ImVec2(x, rectMax.y), gridColor);
+            // }
 
-            const int gridRows = 4;
-            for (int i = 1; i < gridRows; i++)
-            {
-                float y = rectMin.y + (rectMax.y - rectMin.y) * (float)i / gridRows;
-                drawList->AddLine(ImVec2(rectMin.x, y), ImVec2(rectMax.x, y), gridColor);
-            }
+            // const int gridRows = 4;
+            // for (int i = 1; i < gridRows; i++)
+            // {
+            //     float y = rectMin.y + (rectMax.y - rectMin.y) * (float)i / gridRows;
+            //     drawList->AddLine(ImVec2(rectMin.x, y), ImVec2(rectMax.x, y), gridColor);
+            // }
         }
 
 };

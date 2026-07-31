@@ -1084,57 +1084,7 @@ VkResult initialize(void)
 
     overlay = new Overlay(600, 800, 20);
 
-    VkPhysicalDeviceProperties vkPhysicalDeviceProperties_selected;
-    memset((void*)&vkPhysicalDeviceProperties_selected, 0, sizeof(VkPhysicalDeviceProperties));
-    vkGetPhysicalDeviceProperties(vkPhysicalDevice_selected, &vkPhysicalDeviceProperties_selected);
-
-    overlay->addText(
-        "Performance", 
-        std::format("GPU : {}", vkPhysicalDeviceProperties_selected.deviceName).c_str(), 
-        glm::vec4(0.462f, 0.725f, 0.0f, 1.0f)
-    );
-
-    overlay->addDynamicText(
-        "Performance",
-        [&]() -> std::string
-        {
-            return std::format("FPS : {:d}", static_cast<int>(overlay->performanceStats.getFPS()));
-        }
-    );
-
-    overlay->addPlotLines("Performance", "FPS Graph", &overlay->performanceStats.getFPSHistory(), 0.0f, 240.0f, ImVec2(300.0f, 70.0f));
-
-    overlay->addDynamicText(
-        "Performance",
-        [&]() -> std::string
-        {
-            return std::format("Min FPS : {:d}", static_cast<int>(overlay->performanceStats.getMinimumFPS()));
-        }
-    );
-    overlay->addDynamicText(
-        "Performance",
-        [&]() -> std::string
-        {
-            return std::format("Max FPS : {:d}", static_cast<int>(overlay->performanceStats.getMaximumFPS()));
-        }
-    );
-    overlay->addDynamicText(
-        "Performance",
-        [&]() -> std::string
-        {
-            return std::format("Avg FPS : {:d}", static_cast<int>(overlay->performanceStats.getAverageFPS()));
-        }
-    );
-    overlay->addDynamicText(
-        "Performance",
-        [&]() -> std::string
-        {
-            return std::format("Frametime : {:.1f} ms", static_cast<float>(overlay->performanceStats.getFrameTime()));
-        }
-    );
-
-    overlay->addPlotLines("Performance", "FrameTime Graph", &overlay->performanceStats.getFrameTimeHistory(), 0.0f, 33.3f, ImVec2(300.0f, 70.0f));
-
+    overlay->showPerformanceStats(vkPhysicalDevice_selected);
 
     overlay->addCheckBox("Animation", "Enable Teapot Animation", (bool*)&bAnimate);
     overlay->addSlider("Animation", "Cube Rotation Speed", &fAnimationSpeed, 0.01f, 1.0f);
@@ -1409,7 +1359,7 @@ VkResult display(void)
         return (VkResult)VK_FALSE;
     }
 
-    overlay->performanceStats.update();
+    overlay->updatePerformanceStats();
 
     //! Use fence to allow host to wait for completion of execution of previous command buffer
     vkResult = vkWaitForFences(vkDevice, 1, &vkFence_array[frameIndex], VK_TRUE, UINT64_MAX);

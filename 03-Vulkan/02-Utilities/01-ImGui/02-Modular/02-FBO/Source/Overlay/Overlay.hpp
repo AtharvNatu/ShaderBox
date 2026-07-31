@@ -77,6 +77,8 @@ class Overlay
         float overlayHeight = 0.0f;
         bool visible = true;
 
+        PerformanceStats performanceStats;
+
         VkResult createBuffer(BufferData* bufferData, VkBufferUsageFlagBits bufferUsageFlagBits, VkDeviceSize bufferSize);
         VkResult mapBufferMemory(BufferData* bufferData);
         void unmapBufferMemory(BufferData* bufferData);
@@ -108,8 +110,6 @@ class Overlay
         Overlay(float width, float height, float fontSize);
         ~Overlay();
 
-        PerformanceStats performanceStats;
-
         //* Win32 Message Handler
         void registerWin32MsgHandler(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam);
         
@@ -117,8 +117,11 @@ class Overlay
         void render(VkCommandBuffer commandBuffer, uint32_t imageIndex);
         void newFrame(uint32_t imageIndex);
 
-    public:
+        //* Performance Stats Related
+        void showPerformanceStats(VkPhysicalDevice vkPhysicalDevice);
+        void updatePerformanceStats();
 
+    public:
         template<typename T>
         void addSlider(
             const std::string& categoryName, 
@@ -169,35 +172,39 @@ class Overlay
         void addText(
             const std::string& categoryName,
             const char* value,
-            glm::vec4 color
+            glm::vec4 color,
+            int column = 0
         )
         {
             // Code
             UICategory* category = getCategory(categoryName);
-            category->properties.emplace_back(
+            auto& property = category->properties.emplace_back(
                 std::make_unique<UIText>(
                     categoryName,
                     value,
                     color
                 )
             );
+            property->column = column;
         }
 
         void addDynamicText(
             const std::string& categoryName,
             std::function<std::string()> callback,
-            const glm::vec4& color = glm::vec4(1.0f)
+            const glm::vec4& color = glm::vec4(1.0f),
+            int column = 0
         )
         {
             // Code
             UICategory* category = getCategory(categoryName);
-            category->properties.emplace_back(
+            auto& property = category->properties.emplace_back(
                 std::make_unique<UIDynamicText>(
                     categoryName,
                     std::move(callback),
                     color
                 )
             );
+            property->column = column;
         }
 
         void addPlotLines(
@@ -206,12 +213,13 @@ class Overlay
             const std::vector<float>* buffer,
             float scaleMin = FLT_MAX,
             float scaleMax = FLT_MAX,
-            ImVec2 graphSize = ImVec2(120.0f, 220.0f)
+            ImVec2 graphSize = ImVec2(120.0f, 220.0f),
+            int column = 0
         )
         {
             // Code
             UICategory* category = getCategory(categoryName);
-            category->properties.emplace_back(
+            auto& property = category->properties.emplace_back(
                 std::make_unique<UIPlotLines>(
                     categoryName,
                     label,
@@ -221,6 +229,7 @@ class Overlay
                     graphSize
                 )
             );
+            property->column = column;
         }
 
 
