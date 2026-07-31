@@ -65,56 +65,74 @@ class UIValue : public UIProperty
 
 //! Slider
 //* ------------------------------------------------------------------------------------------------------------
-template<typename T>
-class UISlider : public UIValue<T>
+class UISliderInt : public UIValue<int>
 {
     public:
-        T min;
-        T max;
+        int min;
+        int max;
 
-        UISlider(
+        UISliderInt(
             const std::string& categoryName, 
             const std::string& label,
-            T* value,
-            T min,
-            T max,
+            int* value,
+            int min,
+            int max,
             bool readOnly = false,
             std::function<void()> callback = nullptr
         )
-        : UIValue<T>(categoryName, label, value, readOnly, callback), 
+        : UIValue<int>(categoryName, label, value, readOnly, callback), 
           min(min),
           max(max)
         {
         }
 
-        void draw() override;
+        void draw() override
+        {
+            if (readOnly)
+                ImGui::BeginDisabled();
+
+            bool changed = ImGui::SliderInt(this->label.c_str(), this->value, this->min, this->max);
+            notify(changed);
+
+            if (readOnly)
+                ImGui::EndDisabled();
+        }
 };
 
-template<>
-inline void UISlider<float>::draw()
+class UISliderFloat : public UIValue<float>
 {
-    if (readOnly)
-        ImGui::BeginDisabled();
+    public:
+        float min;
+        float max;
 
-    bool changed = ImGui::SliderFloat(this->label.c_str(), this->value, min, max);
-    notify(changed);
+        UISliderFloat(
+            const std::string& categoryName, 
+            const std::string& label,
+            float* value,
+            float min,
+            float max,
+            bool readOnly = false,
+            std::function<void()> callback = nullptr
+        )
+        : UIValue<float>(categoryName, label, value, readOnly, callback), 
+          min(min),
+          max(max)
+        {
+        }
 
-    if (readOnly)
-        ImGui::EndDisabled();
-}
+        void draw() override
+        {
+            if (readOnly)
+                ImGui::BeginDisabled();
 
-template<>
-inline void UISlider<int>::draw()
-{
-    if (readOnly)
-        ImGui::BeginDisabled();
+            bool changed = ImGui::SliderFloat(this->label.c_str(), this->value, this->min, this->max);
+            notify(changed);
 
-    bool changed = ImGui::SliderInt(this->label.c_str(), this->value, min, max);
-    notify(changed);
+            if (readOnly)
+                ImGui::EndDisabled();
+        }
+};
 
-    if (readOnly)
-        ImGui::EndDisabled();
-}
 //* ------------------------------------------------------------------------------------------------------------
 
 
@@ -231,7 +249,7 @@ class UIPlotLines : public UIProperty
             const std::vector<float>* buffer,
             float scaleMin = FLT_MAX,
             float scaleMax = FLT_MAX,
-            ImVec2 graphSize = ImVec2(120.0f, 220.0f)
+            ImVec2 graphSize = ImVec2(100.0f, 100.0f)
         )
         {
             this->buffer = buffer;
@@ -258,25 +276,31 @@ class UIPlotLines : public UIProperty
                 graphSize
             );
 
-            // // Grid Overlay
-            // ImVec2 rectMin = ImGui::GetItemRectMin();
-            // ImVec2 rectMax = ImGui::GetItemRectMax();
-            // ImDrawList* drawList = ImGui::GetWindowDrawList();
-            // const ImU32 gridColor = ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 0.15f));
+            ImVec2 rectMin = ImGui::GetItemRectMin();
+            ImVec2 rectMax = ImGui::GetItemRectMax();
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
 
-            // const int gridColumns = 6;
-            // for (int i = 1; i < gridColumns; i++)
-            // {
-            //     float x = rectMin.x + (rectMax.x - rectMin.x) * (float)i / gridColumns;
-            //     drawList->AddLine(ImVec2(x, rectMin.y), ImVec2(x, rectMax.y), gridColor);
-            // }
+            // Title
+            const ImVec2 titlePadding(6.0f, 4.0f);
+            ImVec2 titlePos(rectMin.x + titlePadding.x, rectMin.y + titlePadding.y);
+            drawList->AddText(titlePos, ImGui::GetColorU32(ImGuiCol_Text), label.c_str());
 
-            // const int gridRows = 4;
-            // for (int i = 1; i < gridRows; i++)
-            // {
-            //     float y = rectMin.y + (rectMax.y - rectMin.y) * (float)i / gridRows;
-            //     drawList->AddLine(ImVec2(rectMin.x, y), ImVec2(rectMax.x, y), gridColor);
-            // }
+            // Grid Overlay
+            const ImU32 gridColor = ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, 0.05f));
+
+            const int gridColumns = 6;
+            for (int i = 1; i < gridColumns; i++)
+            {
+                float x = rectMin.x + (rectMax.x - rectMin.x) * (float)i / gridColumns;
+                drawList->AddLine(ImVec2(x, rectMin.y), ImVec2(x, rectMax.y), gridColor);
+            }
+
+            const int gridRows = 4;
+            for (int i = 1; i < gridRows; i++)
+            {
+                float y = rectMin.y + (rectMax.y - rectMin.y) * (float)i / gridRows;
+                drawList->AddLine(ImVec2(rectMin.x, y), ImVec2(rectMax.x, y), gridColor);
+            }
         }
 
 };

@@ -3,5 +3,8 @@
 *.res
 *.pdb
 
+.claude/*
+CLAUDE.md
 
 */Bin/*
+

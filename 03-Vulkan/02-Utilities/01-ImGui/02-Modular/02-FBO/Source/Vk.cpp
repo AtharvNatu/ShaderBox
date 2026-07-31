@@ -306,8 +306,6 @@ BOOL bTexture = FALSE;
 BOOL bLight = FALSE;
 //! --------------------------------------------------------------------------------
 
-Overlay *overlay = nullptr;
-
 // Entry Point Function
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpszCmdLine, int iCmdShow)
 {
@@ -443,7 +441,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
     void uninitialize(void);
 
     // Code
-    overlay->registerWin32MsgHandler(hwnd, iMsg, wParam, lParam);
+    Overlay::RegisterWin32MsgHandler(hwnd, iMsg, wParam, lParam);
 
     switch(iMsg)
     {
@@ -1082,14 +1080,34 @@ VkResult initialize(void)
     vkClearDepthStencilValue_fbo.depth = 1.0f;
     vkClearDepthStencilValue_fbo.stencil = 0;
 
-    overlay = new Overlay(600, 800, 20);
+    vkResult = Overlay::Init(
+        winWidth, 
+        winHeight, 
+        20,
+        vkDevice,
+        vkPhysicalDevice_selected,
+        vkCommandPool,
+        vkQueue,
+        vkRenderPass,
+        vkPhysicalDeviceMemoryProperties,
+        swapchainImageCount,
+        &gpFile
+    );
+    if (vkResult != VK_SUCCESS)
+    {
+        fprintf(gpFile, "%s() => Overlay::Init() Failed : %d !!!\n", __func__, vkResult);
+        vkResult = VK_ERROR_INITIALIZATION_FAILED;
+        return vkResult;
+    }
+    else
+        fprintf(gpFile, "%s() => Overlay::Init() Succeeded\n", __func__);
 
-    overlay->showPerformanceStats(vkPhysicalDevice_selected);
+    Overlay::ShowPerformanceStats();
 
-    overlay->addCheckBox("Animation", "Enable Teapot Animation", (bool*)&bAnimate);
-    overlay->addSlider("Animation", "Cube Rotation Speed", &fAnimationSpeed, 0.01f, 1.0f);
-    overlay->addCheckBox("Light", "Enable Diffuse Light", (bool*)&bLight);
-    overlay->addCheckBox("Texture", "Enable Teapot Texture", (bool*)&bTexture);
+    Overlay::AddCheckBox("Animation", "Enable Teapot Animation", (bool*)&bAnimate);
+    Overlay::AddSliderFloat("Animation", "Cube Rotation Speed", &fAnimationSpeed, 0.01f, 1.0f);
+    Overlay::AddCheckBox("Light", "Enable Diffuse Light", (bool*)&bLight);
+    Overlay::AddCheckBox("Texture", "Enable Teapot Texture", (bool*)&bTexture);
 
     //! Initialization Completed
     bInitialized = TRUE;
@@ -1359,7 +1377,7 @@ VkResult display(void)
         return (VkResult)VK_FALSE;
     }
 
-    overlay->updatePerformanceStats();
+    Overlay::UpdatePerformanceStats();
 
     //! Use fence to allow host to wait for completion of execution of previous command buffer
     vkResult = vkWaitForFences(vkDevice, 1, &vkFence_array[frameIndex], VK_TRUE, UINT64_MAX);
@@ -1570,8 +1588,7 @@ void uninitialize(void)
 
     uninitialize_fbo();
 
-    delete overlay;
-    overlay = nullptr;
+    Overlay::Cleanup();
 
     //* Step - 7 of Fences and Semaphores
     if (vkFence_array)
@@ -4564,7 +4581,7 @@ VkResult buildCommandBuffers(uint32_t imageIndex)
         return vkResult;
     }
 
-    overlay->newFrame(imageIndex);
+    Overlay::NewFrame(imageIndex, winWidth, winHeight);
 
     //* Step - 4 => Set Clear Value
     VkClearValue vkClearValue_array[2];
@@ -4629,7 +4646,7 @@ VkResult buildCommandBuffers(uint32_t imageIndex)
         //! Vulkan Drawing Function
         vkCmdDraw(vkCommandBuffer_array[imageIndex], 36, 1, 0, 0);
 
-        overlay->render(vkCommandBuffer_array[imageIndex], imageIndex);
+        Overlay::Render(vkCommandBuffer_array[imageIndex], imageIndex);
     }
     //* Step - 7
     vkCmdEndRenderPass(vkCommandBuffer_array[imageIndex]);
