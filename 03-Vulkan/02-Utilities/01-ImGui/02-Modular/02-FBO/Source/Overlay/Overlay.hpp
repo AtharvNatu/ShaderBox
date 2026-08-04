@@ -52,80 +52,118 @@ namespace Overlay
 
     //! Overlay UI
     void AddText(
-        const std::string& categoryName,
-        const char* value,
-        glm::vec4 color = glm::vec4(1.0f),
+        std::string categoryName,
+        std::string value,
+        const glm::vec4& color = glm::vec4(1.0f),
         int column = 0
     );
 
     void AddDynamicText(
-        const std::string& categoryName,
+        std::string categoryName,
         std::function<std::string()> callback,
         const glm::vec4& color = glm::vec4(1.0f),
         int column = 0
     );
 
+    void AddButton(
+        std::string categoryName,
+        std::string label,
+        std::function<void()> callback,
+        float width = 90.0f,
+        float height = 30.0f
+    );
+
     void AddCheckBox(
-        const std::string& categoryName, 
-        const std::string& label,
+        std::string categoryName, 
+        std::string label,
         bool* value,
-        bool readOnly = false,
         std::function<void()> callback = nullptr
     );
 
+    void AddRadioButton(
+        std::string categoryName, 
+        std::string label,
+        int* value,
+        int data,
+        std::function<void()> callback = nullptr,
+        bool sameLine = true
+    );
+
     void AddSliderInt(
-        const std::string& categoryName, 
-        const std::string& label,
+        std::string categoryName, 
+        std::string label,
         int* value,
         int min,
         int max,
-        bool readOnly = false,
         std::function<void()> callback = nullptr
     );
 
     void AddSliderInt2(
-        const std::string& categoryName, 
-        const std::string& label,
-        glm::vec2* value,
+        std::string categoryName, 
+        std::string label,
+        glm::vec2& value,
         int min,
         int max,
-        bool readOnly = false,
         std::function<void()> callback = nullptr
     );
 
     void AddSliderInt3(
-        const std::string& categoryName, 
-        const std::string& label,
-        glm::vec3* value,
+        std::string categoryName, 
+        std::string label,
+        glm::vec3& value,
         int min,
         int max,
-        bool readOnly = false,
         std::function<void()> callback = nullptr
     );
 
     void AddSliderInt4(
-        const std::string& categoryName, 
-        const std::string& label,
-        glm::vec4* value,
+        std::string categoryName, 
+        std::string label,
+        glm::vec4& value,
         int min,
         int max,
-        bool readOnly = false,
         std::function<void()> callback = nullptr
     );
 
     void AddSliderFloat(
-        const std::string& categoryName, 
-        const std::string& label,
+        std::string categoryName, 
+        std::string label,
         float* value,
         float min,
         float max,
-        bool readOnly = false,
+        std::function<void()> callback = nullptr
+    );
+
+     void AddSliderFloat2(
+        std::string categoryName, 
+        std::string label,
+        glm::vec2& value,
+        float min,
+        float max,
+        std::function<void()> callback = nullptr
+    );
+
+    void AddSliderFloat3(
+        std::string categoryName, 
+        std::string label,
+        glm::vec3& value,
+        float min,
+        float max,
+        std::function<void()> callback = nullptr
+    );
+
+    void AddSliderFloat4(
+        std::string categoryName, 
+        std::string label,
+        glm::vec4& value,
+        float min,
+        float max,
         std::function<void()> callback = nullptr
     );
 
     void AddPlotLines(
-        const std::string& categoryName,
-        const std::string& label,
+        std::string categoryName,
+        std::string label,
         const std::vector<float>* buffer,
         float scaleMin = FLT_MAX,
         float scaleMax = FLT_MAX,
@@ -133,7 +171,7 @@ namespace Overlay
         int column = 0
     );
 
-    namespace Detail
+    namespace Category
     {
         UICategory* GetCategory(const std::string& name);
     }

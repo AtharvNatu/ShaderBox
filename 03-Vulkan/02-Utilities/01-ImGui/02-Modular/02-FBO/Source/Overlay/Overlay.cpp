@@ -56,8 +56,10 @@ namespace Overlay
         VkQueue vkQueue;
         VkRenderPass vkRenderPass;
 
+        std::string gpuVendor;
+        std::string gpuDeviceName;
         PerformanceStats performanceStats;
-        SystemStats systemStats;
+        SystemStats* systemStats = nullptr;
 
         VkResult createBuffer(BufferData* bufferData, VkBufferUsageFlagBits bufferUsageFlagBits, VkDeviceSize bufferSize);
         VkResult mapBufferMemory(BufferData* bufferData);
@@ -83,7 +85,7 @@ namespace Overlay
         void toggle();
     }
 
-    namespace Detail
+    namespace Category
     {
         UICategory* GetCategory(const std::string& name)
         {
@@ -128,6 +130,44 @@ namespace Overlay
         swapchainImageCount = imageCount;
 
         logFile = *pLogFile;
+
+        VkPhysicalDeviceProperties vkPhysicalDeviceProperties;
+        memset((void*)&vkPhysicalDeviceProperties, 0, sizeof(VkPhysicalDeviceProperties));
+        vkGetPhysicalDeviceProperties(vkPhysicalDevice, &vkPhysicalDeviceProperties);
+
+        gpuDeviceName = vkPhysicalDeviceProperties.deviceName;
+        switch(vkPhysicalDeviceProperties.vendorID)
+        {
+            case 0x10DE: gpuVendor = "NVIDIA"; break;
+            case 0x1002: gpuVendor = "AMD"; break;
+            case 0x8086: gpuVendor = "Intel"; break;
+        }
+
+        VkPhysicalDeviceIDProperties vkPhysicalDeviceIDProperties;
+        memset((void*)&vkPhysicalDeviceIDProperties, 0, sizeof(VkPhysicalDeviceIDProperties));
+        vkPhysicalDeviceIDProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
+        vkPhysicalDeviceIDProperties.pNext = NULL;
+
+        VkPhysicalDeviceProperties2 vkPhysicalDeviceProperties2;
+        memset((void*)&vkPhysicalDeviceProperties2, 0, sizeof(VkPhysicalDeviceProperties2));
+        vkPhysicalDeviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+        vkPhysicalDeviceProperties2.pNext = &vkPhysicalDeviceIDProperties;
+
+        vkGetPhysicalDeviceProperties2(vkPhysicalDevice, &vkPhysicalDeviceProperties2);
+
+        uint8_t vulkanDeviceUUID[VK_UUID_SIZE];
+        memcpy(vulkanDeviceUUID, vkPhysicalDeviceIDProperties.deviceUUID, VK_UUID_SIZE);
+
+        // NVML requires "GPU-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" format
+        char uuidBuffer[64];
+        snprintf(uuidBuffer, sizeof(uuidBuffer), "GPU-%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+            vulkanDeviceUUID[0],  vulkanDeviceUUID[1],  vulkanDeviceUUID[2],  vulkanDeviceUUID[3],
+            vulkanDeviceUUID[4],  vulkanDeviceUUID[5],  vulkanDeviceUUID[6],  vulkanDeviceUUID[7],
+            vulkanDeviceUUID[8],  vulkanDeviceUUID[9],  vulkanDeviceUUID[10], vulkanDeviceUUID[11],
+            vulkanDeviceUUID[12], vulkanDeviceUUID[13], vulkanDeviceUUID[14], vulkanDeviceUUID[15]);
+        std::string vkDeviceUUIDString(uuidBuffer);
+
+        systemStats = new SystemStats(pLogFile, vkDeviceUUIDString);
 
         vertexBuffers.resize(swapchainImageCount);
         indexBuffers.resize(swapchainImageCount);
@@ -279,36 +319,16 @@ namespace Overlay
         
     }
 
-    void AddCheckBox(
-        const std::string& categoryName, 
-        const std::string& label,
-        bool* value,
-        bool readOnly,
-        std::function<void()> callback
-    )
-    {
-        // Code
-        UICategory* category = Detail::GetCategory(categoryName);
-        category->properties.emplace_back(
-            std::make_unique<UICheckBox>(
-                categoryName,
-                label,
-                value,
-                readOnly,
-                callback
-            )
-        );
-    }
-
+    //* UI Functions
     void AddText(
-        const std::string& categoryName,
-        const char* value,
-        glm::vec4 color,
+        std::string categoryName,
+        std::string value,
+        const glm::vec4& color,
         int column
     )
     {
         // Code
-        UICategory* category = Detail::GetCategory(categoryName);
+        UICategory* category = Category::GetCategory(categoryName);
         auto& property = category->properties.emplace_back(
             std::make_unique<UIText>(
                 categoryName,
@@ -320,36 +340,100 @@ namespace Overlay
     }
 
     void AddDynamicText(
-        const std::string& categoryName,
+        std::string categoryName,
         std::function<std::string()> callback,
         const glm::vec4& color,
         int column
     )
     {
         // Code
-        UICategory* category = Detail::GetCategory(categoryName);
+        UICategory* category = Category::GetCategory(categoryName);
         auto& property = category->properties.emplace_back(
             std::make_unique<UIDynamicText>(
                 categoryName,
-                std::move(callback),
+                callback,
                 color
             )
         );
         property->column = column;
     }
 
-    void AddSliderInt(
-        const std::string& categoryName, 
-        const std::string& label,
-        int* value,
-        int min,
-        int max,
-        bool readOnly,
+    void AddButton(
+        std::string categoryName,
+        std::string label,
+        std::function<void()> callback,
+        float width,
+        float height 
+    )
+    {
+        // Code
+        UICategory* category = Category::GetCategory(categoryName);
+        auto& property = category->properties.emplace_back(
+            std::make_unique<UIButton>(
+                categoryName,
+                label,
+                width,
+                height,
+                callback
+            )
+        );
+    }
+
+    void AddCheckBox(
+        std::string categoryName, 
+        std::string label, 
+        bool* value, 
         std::function<void()> callback
     )
     {
         // Code
-        UICategory* category = Detail::GetCategory(categoryName);
+        UICategory* category = Category::GetCategory(categoryName);
+        category->properties.emplace_back(
+            std::make_unique<UICheckBox>(
+                categoryName,
+                label,
+                value,
+                callback
+            )
+        );
+    }
+
+    void AddRadioButton(
+        std::string categoryName, 
+        std::string label, 
+        int* value, 
+        int data,
+        std::function<void()> callback,
+        bool sameLine 
+    )
+    {
+        // Code
+        UICategory* category = Category::GetCategory(categoryName);
+        category->properties.emplace_back(
+            std::make_unique<UIRadioButton>(
+                categoryName, 
+                label,
+                value,
+                data,
+                sameLine,
+                callback
+            )
+        );
+    }
+
+    void AddSliderInt(
+        std::string categoryName, 
+        std::string label,
+        int* value,
+        int min,
+        int max,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        constexpr int DIMENSION = 1;
+
+        UICategory* category = Category::GetCategory(categoryName);
         category->properties.emplace_back(
             std::make_unique<UISliderInt>(
                 categoryName,
@@ -357,24 +441,121 @@ namespace Overlay
                 value,
                 min,
                 max,
-                readOnly,
+                DIMENSION,
+                callback
+            )
+        );
+    }
+
+    void AddSliderInt2(
+        std::string categoryName, 
+        std::string label,
+        glm::vec2& value,
+        int min,
+        int max,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        constexpr int DIMENSIONS = 2;
+
+        UICategory* category = Category::GetCategory(categoryName);
+
+        static int arr[DIMENSIONS];
+        arr[0] = value[0];
+        arr[1] = value[1];
+
+        category->properties.emplace_back(
+            std::make_unique<UISliderInt>(
+                categoryName,
+                label,
+                arr,
+                min,
+                max,
+                DIMENSIONS,
+                callback
+            )
+        );
+    }
+
+    void AddSliderInt3(
+        std::string categoryName, 
+        std::string label,
+        glm::vec3& value,
+        int min,
+        int max,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        constexpr int DIMENSIONS = 3;
+
+        UICategory* category = Category::GetCategory(categoryName);
+
+        static int arr[DIMENSIONS];
+        arr[0] = value[0];
+        arr[1] = value[1];
+        arr[2] = value[2];
+
+        category->properties.emplace_back(
+            std::make_unique<UISliderInt>(
+                categoryName,
+                label,
+                arr,
+                min,
+                max,
+                DIMENSIONS,
+                callback
+            )
+        );
+    }
+
+    void AddSliderInt4(
+        std::string categoryName, 
+        std::string label,
+        glm::vec4& value,
+        int min,
+        int max,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        constexpr int DIMENSIONS = 4;
+
+        UICategory* category = Category::GetCategory(categoryName);
+
+        static int arr[DIMENSIONS];
+        arr[0] = value[0];
+        arr[1] = value[1];
+        arr[2] = value[2];
+        arr[3] = value[3];
+
+        category->properties.emplace_back(
+            std::make_unique<UISliderInt>(
+                categoryName,
+                label,
+                arr,
+                min,
+                max,
+                DIMENSIONS,
                 callback
             )
         );
     }
 
     void AddSliderFloat(
-        const std::string& categoryName, 
-        const std::string& label,
+        std::string categoryName, 
+        std::string label,
         float* value,
         float min,
         float max,
-        bool readOnly,
         std::function<void()> callback
     )
     {
         // Code
-        UICategory* category = Detail::GetCategory(categoryName);
+        constexpr int DIMENSION = 1;
+
+        UICategory* category = Category::GetCategory(categoryName);
         category->properties.emplace_back(
             std::make_unique<UISliderFloat>(
                 categoryName,
@@ -382,15 +563,111 @@ namespace Overlay
                 value,
                 min,
                 max,
-                readOnly,
+                DIMENSION,
+                callback
+            )
+        );
+    }
+
+    void AddSliderFloat2(
+        std::string categoryName, 
+        std::string label,
+        glm::vec2& value,
+        float min,
+        float max,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        constexpr int DIMENSIONS = 2;
+
+        UICategory* category = Category::GetCategory(categoryName);
+
+        static float arr[DIMENSIONS];
+        arr[0] = value[0];
+        arr[1] = value[1];
+
+        category->properties.emplace_back(
+            std::make_unique<UISliderFloat>(
+                categoryName,
+                label,
+                arr,
+                min,
+                max,
+                DIMENSIONS,
+                callback
+            )
+        );
+    }
+
+    void AddSliderFloat3(
+        std::string categoryName, 
+        std::string label,
+        glm::vec3& value,
+        float min,
+        float max,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        constexpr int DIMENSIONS = 3;
+
+        UICategory* category = Category::GetCategory(categoryName);
+
+        static float arr[DIMENSIONS];
+        arr[0] = value[0];
+        arr[1] = value[1];
+        arr[2] = value[2];
+
+        category->properties.emplace_back(
+            std::make_unique<UISliderFloat>(
+                categoryName,
+                label,
+                arr,
+                min,
+                max,
+                DIMENSIONS,
+                callback
+            )
+        );
+    }
+
+    void AddSliderFloat4(
+        std::string categoryName, 
+        std::string label,
+        glm::vec4& value,
+        float min,
+        float max,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        constexpr int DIMENSIONS = 4;
+
+        UICategory* category = Category::GetCategory(categoryName);
+
+        static float arr[DIMENSIONS];
+        arr[0] = value[0];
+        arr[1] = value[1];
+        arr[2] = value[2];
+        arr[3] = value[3];
+
+        category->properties.emplace_back(
+            std::make_unique<UISliderFloat>(
+                categoryName,
+                label,
+                arr,
+                min,
+                max,
+                DIMENSIONS,
                 callback
             )
         );
     }
 
     void AddPlotLines(
-        const std::string& categoryName,
-        const std::string& label,
+        std::string categoryName, 
+        std::string label,
         const std::vector<float>* buffer,
         float scaleMin,
         float scaleMax,
@@ -399,7 +676,7 @@ namespace Overlay
     )
     {
         // Code
-        UICategory* category = Detail::GetCategory(categoryName);
+        UICategory* category = Category::GetCategory(categoryName);
         auto& property = category->properties.emplace_back(
             std::make_unique<UIPlotLines>(
                 categoryName,
@@ -417,25 +694,22 @@ namespace Overlay
     void ShowPerformanceStats()
     {
         // Code
-        VkPhysicalDeviceProperties vkPhysicalDeviceProperties;
-        memset((void*)&vkPhysicalDeviceProperties, 0, sizeof(VkPhysicalDeviceProperties));
-        vkGetPhysicalDeviceProperties(vkPhysicalDevice, &vkPhysicalDeviceProperties);
-
+        
         glm::vec4 gpuColor = glm::vec4(1.0f);
         glm::vec4 color_AMD = glm::vec4(0.929f, 0.109f, 0.141f, 1.0f);
         glm::vec4 color_NVIDIA = glm::vec4(0.462f, 0.725f, 0.0f, 1.0f);
         glm::vec4 color_Intel = glm::vec4(0.0f, 0.407f, 0.709f, 1.0f);
 
-        switch(vkPhysicalDeviceProperties.vendorID)
-        {
-            case 0x10DE: gpuColor = color_NVIDIA; break;
-            case 0x1002: gpuColor = color_AMD; break;
-            case 0x8086: gpuColor = color_Intel; break;
-        }
+        if (gpuVendor == "NVIDIA")
+            gpuColor = color_NVIDIA;
+        else if (gpuVendor == "AMD")
+            gpuColor = color_AMD;
+        else if (gpuVendor == "Intel")
+            gpuColor = color_Intel;
 
         AddText(
             "Performance", 
-            std::format("GPU : {}", vkPhysicalDeviceProperties.deviceName).c_str(), 
+            std::format("GPU : {}", gpuDeviceName).c_str(), 
             gpuColor
         );
 
@@ -503,46 +777,39 @@ namespace Overlay
             "Performance",
             [&]() -> std::string
             {
-                return std::format("CPU Usage : {:.1f} %", static_cast<float>(systemStats.getCPUUsage()));
-            }
+                return std::format("CPU Usage : {:.1f} %", static_cast<float>(systemStats->getCPUUsage()));
+            },
+            glm::vec4(0.560f, 0.380f, 0.890f, 1.0f)
         );
 
         AddDynamicText(
             "Performance",
             [&]() -> std::string
             {
-                return std::format("GPU Usage : {:.1f} %", static_cast<float>(systemStats.getGPUUsage()));
-            }
+                return std::format("GPU Usage : {:d} %", static_cast<unsigned int>(systemStats->getGPUUsage()));
+            },
+            gpuColor
         );
-
-        AddDynamicText(
-            "Performance",
-            [&]() -> std::string
-            {
-                return std::format("VRAM Used (GB) : {:.2f}", static_cast<float>(systemStats.getVRAMUsed()));
-            }
-        );
-
-        VkDeviceSize totalVRAMBytes = 0;
-        for (uint32_t i = 0; i < vkPhysicalDeviceMemoryProperties.memoryHeapCount; i++)
-        {
-            if (vkPhysicalDeviceMemoryProperties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
-                totalVRAMBytes += vkPhysicalDeviceMemoryProperties.memoryHeaps[i].size;
-        }
-        float totalVRAMGB = (float)totalVRAMBytes / (1024.0f * 1024.0f * 1024.0f);
 
         AddText(
             "Performance", 
-            std::format("VRAM Total (GB) : {:.2f}", totalVRAMGB).c_str()
+            std::format("VRAM Total (GB) : {:.2f}", static_cast<float>(systemStats->getVRAMTotal())).c_str(),
+            gpuColor
         );
 
         AddDynamicText(
             "Performance",
             [&]() -> std::string
             {
-                return std::format("RAM Total (GB) : {:.2f}", static_cast<float>(systemStats.getMemoryTotal()));
+                return std::format("VRAM Used (GB) : {:.2f}", static_cast<float>(systemStats->getVRAMUsed()));
             },
-            glm::vec4(1.0f),
+            gpuColor
+        );
+
+        AddText(
+            "Performance",
+            std::format("RAM Total (GB) : {:.2f}", static_cast<float>(systemStats->getMemoryTotal())).c_str(),
+            glm::vec4(1.0f, 0.647f, 0.0f, 1.0f),
             1
         );
 
@@ -550,9 +817,9 @@ namespace Overlay
             "Performance",
             [&]() -> std::string
             {
-                return std::format("RAM Used (GB) : {:.2f}", static_cast<float>(systemStats.getMemoryUsed()));
+                return std::format("RAM Used (GB) : {:.2f}", static_cast<float>(systemStats->getMemoryUsed()));
             },
-            glm::vec4(1.0f),
+            glm::vec4(1.0f, 0.647f, 0.0f, 1.0f),
             1
         );
 
@@ -560,9 +827,9 @@ namespace Overlay
             "Performance",
             [&]() -> std::string
             {
-                return std::format("RAM Usage : {:.1f} %", static_cast<float>(systemStats.getMemoryUsage()));
+                return std::format("RAM Usage : {:.1f} %", static_cast<float>(systemStats->getMemoryUsage()));
             },
-            glm::vec4(1.0f),
+            glm::vec4(1.0f, 0.647f, 0.0f, 1.0f),
             1
         );
     }
@@ -571,7 +838,7 @@ namespace Overlay
     {
         // Code
         performanceStats.update();
-        systemStats.update();
+        systemStats->update();
     }
 
     void Render(VkCommandBuffer commandBuffer, uint32_t imageIndex)
@@ -728,6 +995,12 @@ namespace Overlay
 
         for (BufferData& buffer : vertexBuffers)
             Overlay::destroyBuffer(&buffer);
+
+        if (systemStats)
+        {
+            delete systemStats;
+            systemStats = nullptr;
+        }
     }
 
     // Anonymous Namespace

@@ -1,12 +1,18 @@
 #ifndef PERFORMANCE_STATS_HPP
 #define PERFORMANCE_STATS_HPP
 
-#pragma comment(lib, "pdh.lib")
-
 #define NOMINMAX
 #include <Windows.h>
+#include <nvml.h>
 #include <Pdh.h>
+
+#include <vector>
+#include <cmath>
 #include <algorithm>
+#include <string>
+
+#pragma comment(lib, "nvml.lib")
+#pragma comment(lib, "pdh.lib")
 
 class FrameTimer
 {
@@ -159,202 +165,165 @@ class SystemStats
     private:
 
         // CPU and Memory Related
-        LARGE_INTEGER cpuCounterFrequency{};
-        LARGE_INTEGER previousCpuCounter{};
-
-        ULONGLONG previousProcessKernel = 0;
-        ULONGLONG previousProcessUser = 0;
-
-        DWORD logicalProcessorCount = 1;
-        bool cpuPrimed = false;
-
-        // GPU Related (Using PDH (Performance Data Helper) For Cross-Vendor GPU Support)
         PDH_HQUERY pdhQuery = nullptr;
-        PDH_HCOUNTER gpuUtilCounter = nullptr;
-        PDH_HCOUNTER vramUsedCounter = nullptr;
+        PDH_HCOUNTER cpuUtilCounter = nullptr;
+        MEMORYSTATUSEX memoryStatusEx;
+        bool bQuerySucceeded = false;
 
         float cpuUsagePercentage = 0.0f;
         float memoryUsagePercentage = 0.0f;
         float memoryUsedGB = 0.0f;
         float memoryTotalGB = 0.0f;
-        float gpuUsagePercentage = 0.0f;
+
+        ULONGLONG lastRefreshTick = 0;
+        
+        // Nvidia GPU Related
+        nvmlReturn_t nvmlRet;
+        nvmlDevice_t nvmlDevice;
+        nvmlUtilization_t nvmlUtilization;
+        nvmlMemory_t nvmlMemory;
+        bool bDeviceFound = false;
+        unsigned int deviceCount;
+        std::string vkDeviceUUID;
+        unsigned int gpuUsagePercentage = 0;
         float vramUsedGB = 0.0f;
         float vramTotalGB = 0.0f;
 
-        ULONGLONG lastCpuRefreshTick = 0;
-        ULONGLONG lastMemoryRefreshTick = 0;
+        FILE *logFile = NULL;
+
+        static constexpr ULONGLONG uRefreshIntervalMs = 300;
+
+        //! Prevent shallow copy
+        SystemStats(const SystemStats&) = delete;
+        SystemStats& operator = (const SystemStats&) = delete;
 
     public:
-        SystemStats()
+        SystemStats(FILE** pLogFile, std::string _vkDeviceUUID)
         {
             // Code
-            logicalProcessorCount = std::max<DWORD>(1,GetActiveProcessorCount(ALL_PROCESSOR_GROUPS));
+            logFile = *pLogFile;
+            vkDeviceUUID = _vkDeviceUUID;
 
-            QueryPerformanceFrequency(&cpuCounterFrequency);
-            QueryPerformanceCounter(&previousCpuCounter);
-
-            cpuPrimed = getCurrentProcessCpuTimes(previousProcessKernel, previousProcessUser);
-
-            PdhOpenQuery(NULL, 0, &pdhQuery);
-            PdhAddEnglishCounterA(pdhQuery, "\\GPU Engine(*)\\Utilization Percentage", 0, &gpuUtilCounter);
-            PdhAddEnglishCounterA(pdhQuery, "\\GPU Process Memory(*)\\Local Usage", 0, &vramUsedCounter);
-            PdhCollectQueryData(pdhQuery);
-        }
-
-        static ULONGLONG fileTimeToUInt64(const FILETIME& time)
-        {
-            // Code
-            ULARGE_INTEGER value{};
-            value.LowPart = time.dwLowDateTime;
-            value.HighPart = time.dwHighDateTime;
-            return value.QuadPart;
-        }
-
-        static bool getCurrentProcessCpuTimes(ULONGLONG& kernelTime, ULONGLONG& userTime)
-        {
-            // Code
-            FILETIME creation{};
-            FILETIME exit{};
-            FILETIME kernel{};
-            FILETIME user{};
-
-            if (!GetProcessTimes(
-                GetCurrentProcess(),
-                &creation,
-                &exit,
-                &kernel,
-                &user
-            ))
+            //* CPU Utilization
+            if (PdhOpenQuery(nullptr, 0, &pdhQuery) != ERROR_SUCCESS)
             {
-                return false;
+                fprintf(logFile, "%s() => PdhOpenQuery() Failed !!!\n", __func__);
+                bQuerySucceeded = false;
+                return;
             }
 
-            kernelTime = fileTimeToUInt64(kernel);
-            userTime = fileTimeToUInt64(user);
-            return true;
+            if (PdhAddEnglishCounterW(pdhQuery, L"\\Processor Information(_Total)\\% Processor Utility", 0, &cpuUtilCounter) != ERROR_SUCCESS)
+            {
+                fprintf(logFile, "%s() => PdhAddEnglishCounter() Failed !!!\n", __func__);
+                bQuerySucceeded = false;
+                return;
+            }
+
+            // Prime the first sample
+            if (PdhCollectQueryData(pdhQuery) == ERROR_SUCCESS)
+                bQuerySucceeded = true;
+
+            //* Memory Query
+            memset((void*)&memoryStatusEx, 0, sizeof(MEMORYSTATUSEX));
+            memoryStatusEx.dwLength = sizeof(memoryStatusEx);
+            GlobalMemoryStatusEx(&memoryStatusEx);
+            memoryTotalGB = (float)(memoryStatusEx.ullTotalPhys / (1024.0f * 1024.0f * 1024.0f));
+
+            //* Nvidia GPU Utilization
+            nvmlRet = nvmlInit_v2();
+            if (nvmlRet != NVML_SUCCESS) 
+            {
+                fprintf(logFile, "%s() => nvmlInit_v2() Failed !!!\n", __func__);
+                return;
+            }
+            else
+                fprintf(logFile, "%s() => nvmlInit_v2() Succeeded\n", __func__);
+
+            memset((void*)&nvmlDevice, 0, sizeof(nvmlDevice_t));
+
+            nvmlRet = nvmlDeviceGetCount_v2(&deviceCount);
+            if (nvmlRet != NVML_SUCCESS) 
+            {
+                fprintf(logFile, "%s() => nvmlDeviceGetCount_v2() Failed !!!\n", __func__);
+                return;
+            }
+            else if (deviceCount == 0) 
+            {
+                fprintf(logFile, "%s() => nvmlDeviceGetCount_v2() Returned 0 Devices !!!\n", __func__);
+                return;
+            }
+
+            nvmlRet = nvmlDeviceGetHandleByUUID(vkDeviceUUID.c_str(), &nvmlDevice);
+            if (nvmlRet != NVML_SUCCESS) 
+            {
+                fprintf(logFile, "%s() => nvmlDeviceGetHandleByUUID() Failed : %d !!!\n", __func__, nvmlRet);
+                return;
+            }
+
+            memset((void*)&nvmlUtilization, 0, sizeof(nvmlUtilization_t));
+            memset((void*)&nvmlMemory, 0, sizeof(nvmlMemory_t));
+
+            bDeviceFound = true;
+
+            // Total VRAM - Checked only once
+            if (bDeviceFound)
+            {
+                if (nvmlDeviceGetMemoryInfo(nvmlDevice, &nvmlMemory) == NVML_SUCCESS)
+                    vramTotalGB = static_cast<float>(nvmlMemory.total) / (1024.0f * 1024.0f * 1024.0f);
+            }
+
+            lastRefreshTick = GetTickCount64();
+            
         }
 
         void update()
         {
             // Code
-
             ULONGLONG now = GetTickCount64();
-
-            // Memory Usage
-            if (now - lastMemoryRefreshTick >= 250)
+            if (now - lastRefreshTick >= uRefreshIntervalMs)
             {
-                lastMemoryRefreshTick = now;
+                lastRefreshTick = now;
 
-                MEMORYSTATUSEX memoryStatusEx;
-                memset((void*)&memoryStatusEx, 0, sizeof(MEMORYSTATUSEX));
-                memoryStatusEx.dwLength = sizeof(memoryStatusEx);
-                
-                GlobalMemoryStatusEx(&memoryStatusEx);
-
-                memoryUsagePercentage = (float)memoryStatusEx.dwMemoryLoad;
-                memoryTotalGB = (float)(memoryStatusEx.ullTotalPhys / (1024.0f * 1024.0f * 1024.0f));
-                memoryUsedGB = memoryTotalGB - (float)(memoryStatusEx.ullAvailPhys / (1024.0f * 1024.0f * 1024.0f));
-            }
-            
-            // CPU Usage
-            if (now - lastCpuRefreshTick >= 1000)
-            {
-                lastCpuRefreshTick = now;
-
-                LARGE_INTEGER currentCounter{};
-                QueryPerformanceCounter(&currentCounter);
-
-                ULONGLONG currentKernel = 0;
-                ULONGLONG currentUser = 0;
-
-                if (getCurrentProcessCpuTimes(currentKernel, currentUser))
+                // CPU Usage
+                if (bQuerySucceeded)
                 {
-                    if (cpuPrimed)
+                    if (PdhCollectQueryData(pdhQuery) == ERROR_SUCCESS)
                     {
-                        const double elapsedSeconds =
-                            static_cast<double>(
-                                currentCounter.QuadPart -
-                                previousCpuCounter.QuadPart) /
-                            static_cast<double>(cpuCounterFrequency.QuadPart);
-
-                        const ULONGLONG kernelDelta =
-                            currentKernel - previousProcessKernel;
-
-                        const ULONGLONG userDelta =
-                            currentUser - previousProcessUser;
-
-                        // FILETIME CPU durations are in 100-nanosecond units.
-                        const double processCpuSeconds =
-                            static_cast<double>(kernelDelta + userDelta) *
-                            1.0e-7;
-
-                        if (elapsedSeconds > 0.0)
+                        PDH_FMT_COUNTERVALUE pdhCounterValue;
+                        if (PdhGetFormattedCounterValue(cpuUtilCounter, PDH_FMT_DOUBLE, nullptr, &pdhCounterValue) == ERROR_SUCCESS)
                         {
-                            const double percentage =
-                                100.0 * processCpuSeconds /
-                                (elapsedSeconds *
-                                static_cast<double>(logicalProcessorCount));
-
-                            cpuUsagePercentage =
-                                static_cast<float>(
-                                    std::clamp(percentage, 0.0, 100.0));
+                            if (pdhCounterValue.CStatus == ERROR_SUCCESS)
+                            {
+                                // Clamp value
+                                if (pdhCounterValue.doubleValue > 100.0)
+                                    cpuUsagePercentage = 100.0;
+                                else
+                                    cpuUsagePercentage = pdhCounterValue.doubleValue;
+                            }
+                            
                         }
                     }
-
-                    cpuPrimed = true;
-                    previousCpuCounter = currentCounter;
-                    previousProcessKernel = currentKernel;
-                    previousProcessUser = currentUser;
-                }
-            }
-
-            // GPU Usage
-            PdhCollectQueryData(pdhQuery);
-
-            DWORD bufferSize = 0, itemCount = 0;
-            PdhGetFormattedCounterArrayA(gpuUtilCounter, PDH_FMT_DOUBLE, &bufferSize, &itemCount, nullptr);
-            if (bufferSize > 0)
-            {
-                std::vector<BYTE> buffer(bufferSize);
-
-                PDH_FMT_COUNTERVALUE_ITEM_A* items = reinterpret_cast<PDH_FMT_COUNTERVALUE_ITEM_A*>(buffer.data());
-                PdhGetFormattedCounterArrayA(gpuUtilCounter, PDH_FMT_DOUBLE, &bufferSize, &itemCount, items);
-                
-                double util3D = 0.0;
-                for (DWORD i = 0; i < itemCount; i++)
-                {
-                    if (items[i].FmtValue.CStatus == ERROR_SUCCESS 
-                        && strstr(items[i].szName, "engtype_3D"))
-                        util3D += items[i].FmtValue.doubleValue;
+                    else
+                        cpuUsagePercentage = -1.0;
                 }
 
-                gpuUsagePercentage = static_cast<float>(std::min(util3D, 100.0));
-            }
+                // Memory Usage
+                GlobalMemoryStatusEx(&memoryStatusEx);
+                memoryUsagePercentage = (float)memoryStatusEx.dwMemoryLoad;
+                memoryUsedGB = memoryTotalGB - (float)(memoryStatusEx.ullAvailPhys / (1024.0f * 1024.0f * 1024.0f));
 
-            // VRAM Usage
-            bufferSize = 0, itemCount = 0;
-            PdhGetFormattedCounterArrayA(vramUsedCounter, PDH_FMT_LARGE, &bufferSize, &itemCount, nullptr);
-            if (bufferSize > 0)
-            {
-                std::vector<BYTE> buffer(bufferSize);
+                // GPU Usage
+                if (bDeviceFound)
+                {  
+                    if (nvmlDeviceGetUtilizationRates(nvmlDevice, &nvmlUtilization) == NVML_SUCCESS)
+                        gpuUsagePercentage = nvmlUtilization.gpu;
 
-                PDH_FMT_COUNTERVALUE_ITEM_A* items = reinterpret_cast<PDH_FMT_COUNTERVALUE_ITEM_A*>(buffer.data());
-                PdhGetFormattedCounterArrayA(vramUsedCounter, PDH_FMT_LARGE, &bufferSize, &itemCount, items);
-                
-                char pidTag[32];
-                sprintf_s(pidTag, "pid_%lu_", GetCurrentProcessId());
-
-                LONGLONG total = 0;
-                for (DWORD i = 0; i < itemCount; i++)
-                {
-                    if (items[i].FmtValue.CStatus == ERROR_SUCCESS 
-                        && strstr(items[i].szName, pidTag))
-                        total += items[i].FmtValue.largeValue;
+                    if (nvmlDeviceGetMemoryInfo(nvmlDevice, &nvmlMemory) == NVML_SUCCESS)
+                        vramUsedGB = static_cast<float>(nvmlMemory.used) / (1024.0f * 1024.0f * 1024.0f);
                 }
-
-                vramUsedGB = static_cast<float>(total / (1024.0f * 1024.0f * 1024.0f));
+            
             }
-
+            
         }
 
         float getCPUUsage() const
@@ -377,7 +346,7 @@ class SystemStats
             return memoryTotalGB;
         }
 
-        float getGPUUsage() const
+        unsigned int getGPUUsage() const
         {
             return gpuUsagePercentage;
         }
@@ -394,10 +363,16 @@ class SystemStats
 
         ~SystemStats()
         {
+            nvmlRet = nvmlShutdown();
+            if (nvmlRet != NVML_SUCCESS) 
+                    fprintf(logFile, "%s() => nvmlShutdown() Failed !!!\n", __func__);
+
             if (pdhQuery)
             {
+                // Invalidates cpuUtilCounter
                 PdhCloseQuery(pdhQuery);
                 pdhQuery = nullptr;
+                cpuUtilCounter = nullptr;
             }
         }
 };

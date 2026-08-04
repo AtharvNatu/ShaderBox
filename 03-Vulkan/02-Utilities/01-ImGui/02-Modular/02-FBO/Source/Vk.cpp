@@ -1109,6 +1109,30 @@ VkResult initialize(void)
     Overlay::AddCheckBox("Light", "Enable Diffuse Light", (bool*)&bLight);
     Overlay::AddCheckBox("Texture", "Enable Teapot Texture", (bool*)&bTexture);
 
+    static glm::vec2 slider2 = glm::vec2(100.0f, 200.0f);
+    static glm::vec3 slider3 = glm::vec3(100.0f, 200.0f, 300.0f);
+    static glm::vec4 slider4 = glm::vec4(100.0f, 200.0f, 300.0f, 400.0f);
+    
+    Overlay::AddSliderInt2("Slider", "Int2", slider2, 0.0f, 1000.0f);
+    Overlay::AddSliderInt3("Slider", "Int3", slider3, 0.0f, 1000.0f);
+    Overlay::AddSliderInt4("Slider", "Int4", slider4, 0.0f, 1000.0f);
+
+    Overlay::AddSliderInt2("Slider", "Float2", slider2, 0.0f, 1000.0f);
+    Overlay::AddSliderInt3("Slider", "Float3", slider3, 0.0f, 1000.0f);
+    Overlay::AddSliderInt4("Slider", "Float4", slider4, 0.0f, 1000.0f);
+
+    Overlay::AddButton("Button Group", "Click Me !", []() 
+        {
+            fprintf(gpFile, "Saved !!!\n");
+        }
+    );
+
+    static int mode = 0;
+    Overlay::AddRadioButton("Button Group", "AA", &mode, 0, []() { bAnimate = TRUE;});
+    Overlay::AddRadioButton("Button Group", "LL", &mode, 1, []() { bLight = TRUE;});
+    Overlay::AddRadioButton("Button Group", "TT", &mode, 2, []() { bTexture = TRUE;});
+
+
     //! Initialization Completed
     bInitialized = TRUE;
     bInitialized_fbo = TRUE;
