@@ -1,4 +1,5 @@
 WinMain() => Program Started Successfully
+resize_fbo() => Initialization Not Yet Completed or Failed !!!
 resize() => Initialization Not Yet Completed or Failed !!!
 fillInstanceExtensionNames() => Call 1 : vkEnumerateInstanceExtensionProperties() Succeeded
 fillInstanceExtensionNames() => Call 2 : vkEnumerateInstanceExtensionProperties() Succeeded
@@ -66,16 +67,117 @@ initialize() => getPhysicalDevice() Succeeded
 
 VULKAN INFORMATION
 ------------------------------------------------------------------------------------------------
+Device Number : 0
+*******************************************************
 Vulkan API Version : 1.4.341
 Device Name : NVIDIA GeForce RTX 4050 Laptop GPU
 Device Type : Discrete GPU (dGPU)
-Vendor ID : 0x10de
 Device ID : 0x28e1
+Vendor ID : 0x10de
+Vendor Name : NVIDIA
+
+No. of Queue Families: 6
+
+Queue Family : 0
+****************************************
+Supports Graphics : Yes
+Supports Compute : Yes
+Supports Transfer Operations : Yes
+Supports Video Encoding : No
+Supports Video Decoding : No
+Supports Presentation : Yes
+****************************************
+
+
+Queue Family : 1
+****************************************
+Supports Graphics : No
+Supports Compute : No
+Supports Transfer Operations : Yes
+Supports Video Encoding : No
+Supports Video Decoding : No
+Supports Presentation : No
+****************************************
+
+
+Queue Family : 2
+****************************************
+Supports Graphics : No
+Supports Compute : Yes
+Supports Transfer Operations : Yes
+Supports Video Encoding : No
+Supports Video Decoding : No
+Supports Presentation : Yes
+****************************************
+
+
+Queue Family : 3
+****************************************
+Supports Graphics : No
+Supports Compute : No
+Supports Transfer Operations : Yes
+Supports Video Encoding : No
+Supports Video Decoding : Yes
+Supports Presentation : No
+****************************************
+
+
+Queue Family : 4
+****************************************
+Supports Graphics : No
+Supports Compute : No
+Supports Transfer Operations : Yes
+Supports Video Encoding : Yes
+Supports Video Decoding : No
+Supports Presentation : No
+****************************************
+
+
+Queue Family : 5
+****************************************
+Supports Graphics : No
+Supports Compute : No
+Supports Transfer Operations : Yes
+Supports Video Encoding : No
+Supports Video Decoding : No
+Supports Presentation : No
+****************************************
+
+*******************************************************
+
+Device Number : 1
+*******************************************************
 Vulkan API Version : 1.4.309
 Device Name : Intel(R) UHD Graphics
 Device Type : Integrated GPU (iGPU)
-Vendor ID : 0x8086
 Device ID : 0xa7a8
+Vendor ID : 0x8086
+Vendor Name : Intel
+
+No. of Queue Families: 2
+
+Queue Family : 0
+****************************************
+Supports Graphics : Yes
+Supports Compute : Yes
+Supports Transfer Operations : Yes
+Supports Video Encoding : No
+Supports Video Decoding : No
+Supports Presentation : Yes
+****************************************
+
+
+Queue Family : 1
+****************************************
+Supports Graphics : No
+Supports Compute : No
+Supports Transfer Operations : No
+Supports Video Encoding : No
+Supports Video Decoding : Yes
+Supports Presentation : No
+****************************************
+
+*******************************************************
 ------------------------------------------------------------------------------------------------
 
 printVkInfo() => free() Succeeded For vkPhysicalDevice_array
@@ -385,4 +487,25 @@ Vulkan Physical Device Present Mode : VK_PRESENT_MODE_MAILBOX_KHR
 ------------------------------------------------------------------------------------------------
 
 getPhysicalDevicePresentMode() => free() Succeeded For vkPresentModeKHR_array
-createSwapchain() 
+createSwapchain() => getPhysicalDevicePresentMode() Succeeded
+createSwapchain() => vkCreateSwapchainKHR() Succeeded
+initialize() => createSwapchain() Succeeded
+createImagesAndImageViews() => Call 1 : vkGetSwapchainImagesKHR() => Swapchain Image Count = 2
+createImagesAndImageViews() => Call 2 : vkGetSwapchainImagesKHR() Succeeded
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 0
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Index : 1
+createImagesAndImageViews() => getSupportedDepthFormat() Succeded
+createImagesAndImageViews() => vkCreateImage() Succeeded For Depth Image
+createImagesAndImageViews() => vkAllocateMemory() Succeeded For Depth
+createImagesAndImageViews() => vkBindImageMemory() Succeeded For Depth
+createImagesAndImageViews() => vkCreateImageView() Succeeded For Depth
+initialize() => createImagesAndImageViews() Succeeded
+createImagesAndImageViews_fbo() => vkCreateImage() Succeeded For FBO Texture
+createImagesAndImageViews_fbo() => vkAllocateMemory() Succeeded For FBO Texture
+createImagesAndImageViews_fbo() => vkBindImageMemory() Succeeded For FBO Texture
+createImagesAndImageViews_fbo() => vkCreateImageView() Succeeded FBO Texture
+createImagesAndImageViews_fbo() => vkCreateSampler() Succeeded For FBO Texture
+createImagesAndImageViews_fbo() => vkCreateImage() Succeeded For FBO Depth Image
+createImagesAndImageViews_fbo() => vkAllocateMemory() Succeeded For FBO Depth
+createImagesAndImageViews_fbo() => vkBindImageMemory() Succeeded For FBO Depth
+createImagesAndImageViews_fbo() => vkCrea

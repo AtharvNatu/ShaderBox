@@ -67,12 +67,14 @@ class UIButton: public UIProperty
 {
     public:
         ImVec2 buttonSize;
+        bool sameLine;
 
         UIButton(
             std::string categoryName, 
             std::string label,
             float width = 90.0f,
             float height = 30.0f,
+            bool sameLine = false,
             std::function<void()> callback = nullptr
         )
         {
@@ -80,12 +82,16 @@ class UIButton: public UIProperty
             this->label = std::move(label);
             this->buttonSize = ImVec2(width, height);
             this->onChanged = std::move(callback);
+            this->sameLine = sameLine;
         }
 
         void draw() override
         {
             if (ImGui::Button(this->label.c_str(), this->buttonSize))
                 notify(true);
+
+            if (sameLine)
+                ImGui::SameLine();
         }
 };
 //* ------------------------------------------------------------------------------------------------------------
@@ -239,6 +245,75 @@ class UISliderFloat : public UIValue<float>
 };
 //* ------------------------------------------------------------------------------------------------------------
 
+//! Slider
+//* ------------------------------------------------------------------------------------------------------------
+class UIInputInt : public UIValue<int>
+{
+    public:
+        int dimension = 1;
+
+        UIInputInt(
+            std::string categoryName, 
+            std::string label,
+            int* value,
+            int dimension = 1,
+            std::function<void()> callback = nullptr
+        )
+        : UIValue<int>(std::move(categoryName), std::move(label), value, std::move(callback)), 
+          dimension(dimension)
+        {
+        }
+
+        void draw() override
+        {
+            bool changed = false;
+
+            switch(dimension)
+            {
+                case 1: changed = ImGui::InputInt(this->label.c_str(), this->value); break;
+                case 2: changed = ImGui::InputInt2(this->label.c_str(), this->value); break;
+                case 3: changed = ImGui::InputInt3(this->label.c_str(), this->value); break;
+                case 4: changed = ImGui::InputInt4(this->label.c_str(), this->value); break;
+            }
+
+            notify(changed);
+        }
+};
+
+class UIInputFloat : public UIValue<float>
+{
+    public:
+        int dimension = 1;
+
+        UIInputFloat(
+            std::string categoryName, 
+            std::string label,
+            float* value,
+            int dimension = 1,
+            std::function<void()> callback = nullptr
+        )
+        : UIValue<float>(std::move(categoryName), std::move(label), value, std::move(callback)), 
+          dimension(dimension)
+        {
+        }
+
+        void draw() override
+        {
+            bool changed = false;
+
+            switch(dimension)
+            {
+                case 1: changed = ImGui::InputFloat(this->label.c_str(), this->value); break;
+                case 2: changed = ImGui::InputFloat2(this->label.c_str(), this->value); break;
+                case 3: changed = ImGui::InputFloat3(this->label.c_str(), this->value); break;
+                case 4: changed = ImGui::InputFloat4(this->label.c_str(), this->value); break;
+            }
+
+            notify(changed);
+        }
+};
+//* ------------------------------------------------------------------------------------------------------------
+
 //! CheckBox
 //* ------------------------------------------------------------------------------------------------------------
 class UICheckBox : public UIValue<bool>
@@ -281,6 +356,96 @@ class UIRadioButton: public UIValue<int>
             notify(changed);
             if (sameLine)
                 ImGui::SameLine();
+        }
+};
+//* ------------------------------------------------------------------------------------------------------------
+
+//! Combo Box
+//* ------------------------------------------------------------------------------------------------------------
+class UIComboBox: public UIValue<int>
+{
+    public:
+        std::vector<std::string> items;
+        std::string previewText;
+
+        UIComboBox(
+            std::string categoryName, 
+            std::string label,
+            std::vector<std::string> items,
+            int* value,
+            std::function<void()> callback = nullptr
+        ) : UIValue<int>(std::move(categoryName), std::move(label), value, std::move(callback)),
+            items(std::move(items))
+        {
+        }
+
+        void draw() override
+        {
+            bool changed = false;
+            int selectedItem = *this->value;
+
+            if (selectedItem >= 0 && selectedItem < static_cast<int>(items.size()))
+                previewText = items[selectedItem];
+            else
+                previewText = "";
+
+            if (ImGui::BeginCombo(this->label.c_str(), previewText.c_str()))
+            {
+                for (int i = 0; i < static_cast<int>(items.size()); i++)
+                {
+                    bool isSelected = false;
+
+                    if (selectedItem == i)
+                        isSelected = true;
+
+                    if (ImGui::Selectable(items[i].c_str(), isSelected))
+                    {
+                        *this->value = i;
+                        changed = true;
+                    }
+
+                    if (isSelected)
+                        ImGui::SetItemDefaultFocus();
+                }
+
+                ImGui::EndCombo();
+            }
+
+            notify(changed);
+        }
+};
+//* ------------------------------------------------------------------------------------------------------------
+
+//! Color Edit
+//* ------------------------------------------------------------------------------------------------------------
+class UIColorEdit: public UIValue<float>
+{
+    public:
+        int dimension;
+
+        UIColorEdit(
+            std::string categoryName, 
+            std::string label,
+            float* value,
+            int dimension,
+            std::function<void()> callback = nullptr
+        )
+        : UIValue<float>(std::move(categoryName), std::move(label), value, std::move(callback)), 
+          dimension(dimension)
+        {
+        }
+
+        void draw() override
+        {
+            bool changed = false;
+
+            switch(dimension)
+            {
+                case 3: changed = ImGui::ColorEdit3(this->label.c_str(), this->value); break;
+                case 4: changed = ImGui::ColorEdit4(this->label.c_str(), this->value); break;
+            }
+
+            notify(changed);
         }
 };
 //* ------------------------------------------------------------------------------------------------------------
@@ -355,7 +520,23 @@ class UIPlotLines : public UIProperty
         }
 
 };
+//* ------------------------------------------------------------------------------------------------------------
 
+//! Spacing
+//* ------------------------------------------------------------------------------------------------------------
+class UISpacing : public UIProperty
+{
+    public:
+        UISpacing(std::string categoryName)
+        {
+            this->categoryName = std::move(categoryName);
+        }
+
+        void draw() override
+        {
+            ImGui::Spacing();
+        }
+};
 //* ------------------------------------------------------------------------------------------------------------
 
 

@@ -79,9 +79,9 @@ namespace Overlay
 
         //* Win32 Integration
         void addMouseMoveHandler(LPARAM lParam);
-        void addMouseButtonHandler(int buttonIndex, bool status);
+        void addMouseButtonHandler(int buttonIndex, bool bStatus);
         void addMouseWheelHandler(WPARAM wParam);
-        void addKeyboardHandler(WPARAM wParam);
+        void addKeyboardHandler(WPARAM wParam, BOOL bDown);
         void toggle();
     }
 
@@ -278,10 +278,13 @@ namespace Overlay
 
             case WM_KEYDOWN:
             case WM_SYSKEYDOWN:
-                addKeyboardHandler(wParam);
+                addKeyboardHandler(wParam, TRUE);
             break;
 
             case WM_CHAR:
+                if (wParam > 0 && wParam < 0x10000)
+                    ImGui::GetIO().AddInputCharacterUTF16((unsigned short)wParam);
+
                 switch(wParam)
                 {
                     case 'O':
@@ -289,6 +292,11 @@ namespace Overlay
                         toggle();
                     break;
                 }
+            break;
+
+            case WM_KEYUP:
+            case WM_SYSKEYUP:
+                addKeyboardHandler(wParam, FALSE);
             break;
         }
     }
@@ -300,6 +308,9 @@ namespace Overlay
         {
             ImGuiIO& io = ImGui::GetIO();
             io.DisplaySize = ImVec2(width, height);
+
+            float deltaTime = performanceStats.getDeltaTime();
+            io.DeltaTime = (deltaTime > 0.0f) ? deltaTime : (1.0f / 60.0f);
 
             ImGui::NewFrame();
 
@@ -331,8 +342,8 @@ namespace Overlay
         UICategory* category = Category::GetCategory(categoryName);
         auto& property = category->properties.emplace_back(
             std::make_unique<UIText>(
-                categoryName,
-                value,
+                std::move(categoryName),
+                std::move(value),
                 color
             )
         );
@@ -350,8 +361,8 @@ namespace Overlay
         UICategory* category = Category::GetCategory(categoryName);
         auto& property = category->properties.emplace_back(
             std::make_unique<UIDynamicText>(
-                categoryName,
-                callback,
+                std::move(categoryName),
+                std::move(callback),
                 color
             )
         );
@@ -362,19 +373,21 @@ namespace Overlay
         std::string categoryName,
         std::string label,
         std::function<void()> callback,
+        bool sameLine,
         float width,
-        float height 
+        float height
     )
     {
         // Code
         UICategory* category = Category::GetCategory(categoryName);
         auto& property = category->properties.emplace_back(
             std::make_unique<UIButton>(
-                categoryName,
-                label,
+                std::move(categoryName),
+                std::move(label),
                 width,
                 height,
-                callback
+                sameLine,
+                std::move(callback)
             )
         );
     }
@@ -390,10 +403,10 @@ namespace Overlay
         UICategory* category = Category::GetCategory(categoryName);
         category->properties.emplace_back(
             std::make_unique<UICheckBox>(
-                categoryName,
-                label,
+                std::move(categoryName),
+                std::move(label),
                 value,
-                callback
+                std::move(callback)
             )
         );
     }
@@ -411,12 +424,73 @@ namespace Overlay
         UICategory* category = Category::GetCategory(categoryName);
         category->properties.emplace_back(
             std::make_unique<UIRadioButton>(
-                categoryName, 
-                label,
+                std::move(categoryName), 
+                std::move(label),
                 value,
                 data,
                 sameLine,
-                callback
+                std::move(callback)
+            )
+        );
+    }
+
+    void AddComboBox(
+        std::string categoryName,
+        std::string label,
+        std::vector<std::string> items,
+        int* currentItem,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        UICategory* category = Category::GetCategory(categoryName);
+        category->properties.emplace_back(
+            std::make_unique<UIComboBox>(
+                std::move(categoryName),
+                std::move(label),
+                items,
+                currentItem,
+                std::move(callback)
+            )
+        );
+    }
+
+    void AddColorEdit3(
+        std::string categoryName, 
+        std::string label,
+        glm::vec3& value,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        UICategory* category = Category::GetCategory(categoryName);
+        category->properties.emplace_back(
+            std::make_unique<UIColorEdit>(
+                std::move(categoryName),
+                std::move(label),
+                glm::value_ptr(value),
+                3,
+                std::move(callback)
+            )
+        );
+    }
+
+    void AddColorEdit4(
+        std::string categoryName, 
+        std::string label,
+        glm::vec4& value,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        UICategory* category = Category::GetCategory(categoryName);
+        category->properties.emplace_back(
+            std::make_unique<UIColorEdit>(
+                std::move(categoryName),
+                std::move(label),
+                glm::value_ptr(value),
+                4,
+                std::move(callback)
             )
         );
     }
@@ -431,18 +505,16 @@ namespace Overlay
     )
     {
         // Code
-        constexpr int DIMENSION = 1;
-
         UICategory* category = Category::GetCategory(categoryName);
         category->properties.emplace_back(
             std::make_unique<UISliderInt>(
-                categoryName,
-                label,
+                std::move(categoryName),
+                std::move(label),
                 value,
                 min,
                 max,
-                DIMENSION,
-                callback
+                1,
+                std::move(callback)
             )
         );
     }
@@ -450,30 +522,23 @@ namespace Overlay
     void AddSliderInt2(
         std::string categoryName, 
         std::string label,
-        glm::vec2& value,
+        glm::ivec2& value,
         int min,
         int max,
         std::function<void()> callback
     )
     {
         // Code
-        constexpr int DIMENSIONS = 2;
-
         UICategory* category = Category::GetCategory(categoryName);
-
-        static int arr[DIMENSIONS];
-        arr[0] = value[0];
-        arr[1] = value[1];
-
         category->properties.emplace_back(
             std::make_unique<UISliderInt>(
-                categoryName,
-                label,
-                arr,
+                std::move(categoryName),
+                std::move(label),
+                glm::value_ptr(value),
                 min,
                 max,
-                DIMENSIONS,
-                callback
+                2,
+                std::move(callback)
             )
         );
     }
@@ -481,31 +546,23 @@ namespace Overlay
     void AddSliderInt3(
         std::string categoryName, 
         std::string label,
-        glm::vec3& value,
+        glm::ivec3& value,
         int min,
         int max,
         std::function<void()> callback
     )
     {
         // Code
-        constexpr int DIMENSIONS = 3;
-
         UICategory* category = Category::GetCategory(categoryName);
-
-        static int arr[DIMENSIONS];
-        arr[0] = value[0];
-        arr[1] = value[1];
-        arr[2] = value[2];
-
         category->properties.emplace_back(
             std::make_unique<UISliderInt>(
-                categoryName,
-                label,
-                arr,
+                std::move(categoryName),
+                std::move(label),
+                glm::value_ptr(value),
                 min,
                 max,
-                DIMENSIONS,
-                callback
+                3,
+                std::move(callback)
             )
         );
     }
@@ -513,32 +570,23 @@ namespace Overlay
     void AddSliderInt4(
         std::string categoryName, 
         std::string label,
-        glm::vec4& value,
+        glm::ivec4& value,
         int min,
         int max,
         std::function<void()> callback
     )
     {
         // Code
-        constexpr int DIMENSIONS = 4;
-
         UICategory* category = Category::GetCategory(categoryName);
-
-        static int arr[DIMENSIONS];
-        arr[0] = value[0];
-        arr[1] = value[1];
-        arr[2] = value[2];
-        arr[3] = value[3];
-
         category->properties.emplace_back(
             std::make_unique<UISliderInt>(
-                categoryName,
-                label,
-                arr,
+                std::move(categoryName),
+                std::move(label),
+                glm::value_ptr(value),
                 min,
                 max,
-                DIMENSIONS,
-                callback
+                4,
+                std::move(callback)
             )
         );
     }
@@ -553,18 +601,16 @@ namespace Overlay
     )
     {
         // Code
-        constexpr int DIMENSION = 1;
-
         UICategory* category = Category::GetCategory(categoryName);
         category->properties.emplace_back(
             std::make_unique<UISliderFloat>(
-                categoryName,
-                label,
+                std::move(categoryName),
+                std::move(label),
                 value,
                 min,
                 max,
-                DIMENSION,
-                callback
+                1,
+                std::move(callback)
             )
         );
     }
@@ -579,23 +625,16 @@ namespace Overlay
     )
     {
         // Code
-        constexpr int DIMENSIONS = 2;
-
         UICategory* category = Category::GetCategory(categoryName);
-
-        static float arr[DIMENSIONS];
-        arr[0] = value[0];
-        arr[1] = value[1];
-
         category->properties.emplace_back(
             std::make_unique<UISliderFloat>(
-                categoryName,
-                label,
-                arr,
+                std::move(categoryName),
+                std::move(label),
+                glm::value_ptr(value),
                 min,
                 max,
-                DIMENSIONS,
-                callback
+                2,
+                std::move(callback)
             )
         );
     }
@@ -610,24 +649,16 @@ namespace Overlay
     )
     {
         // Code
-        constexpr int DIMENSIONS = 3;
-
         UICategory* category = Category::GetCategory(categoryName);
-
-        static float arr[DIMENSIONS];
-        arr[0] = value[0];
-        arr[1] = value[1];
-        arr[2] = value[2];
-
         category->properties.emplace_back(
             std::make_unique<UISliderFloat>(
-                categoryName,
-                label,
-                arr,
+                std::move(categoryName),
+                std::move(label),
+                glm::value_ptr(value),
                 min,
                 max,
-                DIMENSIONS,
-                callback
+                3,
+                std::move(callback)
             )
         );
     }
@@ -642,25 +673,176 @@ namespace Overlay
     )
     {
         // Code
-        constexpr int DIMENSIONS = 4;
-
         UICategory* category = Category::GetCategory(categoryName);
-
-        static float arr[DIMENSIONS];
-        arr[0] = value[0];
-        arr[1] = value[1];
-        arr[2] = value[2];
-        arr[3] = value[3];
-
         category->properties.emplace_back(
             std::make_unique<UISliderFloat>(
-                categoryName,
-                label,
-                arr,
+                std::move(categoryName),
+                std::move(label),
+                glm::value_ptr(value),
                 min,
                 max,
-                DIMENSIONS,
-                callback
+                4,
+                std::move(callback)
+            )
+        );
+    }
+
+    void AddInputInt(
+        std::string categoryName, 
+        std::string label,
+        int* value,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        UICategory* category = Category::GetCategory(categoryName);
+        category->properties.emplace_back(
+            std::make_unique<UIInputInt>(
+                std::move(categoryName),
+                std::move(label),
+                value,
+                1,
+                std::move(callback)
+            )
+        );
+    }
+
+    void AddInputInt2(
+        std::string categoryName, 
+        std::string label,
+        glm::ivec2& value,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        UICategory* category = Category::GetCategory(categoryName);
+        category->properties.emplace_back(
+            std::make_unique<UIInputInt>(
+                std::move(categoryName),
+                std::move(label),
+                glm::value_ptr(value),
+                2,
+                std::move(callback)
+            )
+        );
+    }
+
+    void AddInputInt3(
+        std::string categoryName, 
+        std::string label,
+        glm::ivec3& value,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        UICategory* category = Category::GetCategory(categoryName);
+        category->properties.emplace_back(
+            std::make_unique<UIInputInt>(
+                std::move(categoryName),
+                std::move(label),
+                glm::value_ptr(value),
+                3,
+                std::move(callback)
+            )
+        );
+    }
+
+    void AddInputInt4(
+        std::string categoryName, 
+        std::string label,
+        glm::ivec4& value,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        UICategory* category = Category::GetCategory(categoryName);
+        category->properties.emplace_back(
+            std::make_unique<UIInputInt>(
+                std::move(categoryName),
+                std::move(label),
+                glm::value_ptr(value),
+                4,
+                std::move(callback)
+            )
+        );
+    }
+
+    void AddInputFloat(
+        std::string categoryName, 
+        std::string label,
+        float* value,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        UICategory* category = Category::GetCategory(categoryName);
+        category->properties.emplace_back(
+            std::make_unique<UIInputFloat>(
+                std::move(categoryName),
+                std::move(label),
+                value,
+                1,
+                std::move(callback)
+            )
+        );
+    }
+
+    void AddInputFloat2(
+        std::string categoryName, 
+        std::string label,
+        glm::vec2& value,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        UICategory* category = Category::GetCategory(categoryName);
+        category->properties.emplace_back(
+            std::make_unique<UIInputFloat>(
+                std::move(categoryName),
+                std::move(label),
+                glm::value_ptr(value),
+                2,
+                std::move(callback)
+            )
+        );
+    }
+
+    void AddInputFloat3(
+        std::string categoryName, 
+        std::string label,
+        glm::vec3& value,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        UICategory* category = Category::GetCategory(categoryName);
+        category->properties.emplace_back(
+            std::make_unique<UIInputFloat>(
+                std::move(categoryName),
+                std::move(label),
+                glm::value_ptr(value),
+                3,
+                std::move(callback)
+            )
+        );
+    }
+
+    void AddInputFloat4(
+        std::string categoryName, 
+        std::string label,
+        glm::vec4& value,
+        std::function<void()> callback
+    )
+    {
+        // Code
+        UICategory* category = Category::GetCategory(categoryName);
+        category->properties.emplace_back(
+            std::make_unique<UIInputFloat>(
+                std::move(categoryName),
+                std::move(label),
+                glm::value_ptr(value),
+                4,
+                std::move(callback)
             )
         );
     }
@@ -679,8 +861,8 @@ namespace Overlay
         UICategory* category = Category::GetCategory(categoryName);
         auto& property = category->properties.emplace_back(
             std::make_unique<UIPlotLines>(
-                categoryName,
-                label,
+                std::move(categoryName),
+                std::move(label),
                 buffer,
                 scaleMin,
                 scaleMax,
@@ -688,6 +870,17 @@ namespace Overlay
             )
         );
         property->column = column;
+    }
+
+    void AddSpacing(std::string categoryName)
+    {
+        // Code
+        UICategory* category = Category::GetCategory(categoryName);
+        category->properties.emplace_back(
+            std::make_unique<UISpacing>(
+                std::move(categoryName)
+            )
+        );
     }
 
     //* Performance Stats Related
@@ -841,6 +1034,99 @@ namespace Overlay
         systemStats->update();
     }
 
+    void ShowWidgetsDemo()
+    {
+        // Code
+
+        //* Sliders
+        static glm::ivec2 intSlider2 = glm::vec2(100, 200);
+        static glm::ivec3 intSlider3 = glm::vec3(100, 200, 300);
+        static glm::ivec4 intSlider4 = glm::vec4(100, 200, 300, 400);
+
+        static glm::vec2 floatSlider2 = glm::vec2(100.0f, 200.0f);
+        static glm::vec3 floatSlider3 = glm::vec3(100.0f, 200.0f, 300.0f);
+        static glm::vec4 floatSlider4 = glm::vec4(100.0f, 200.0f, 300.0f, 400.0f);
+        
+        Overlay::AddSliderInt2("Slider", "Int2", intSlider2, 0.0f, 1000.0f);
+        Overlay::AddSliderInt3("Slider", "Int3", intSlider3, 0.0f, 1000.0f);
+        Overlay::AddSliderInt4("Slider", "Int4", intSlider4, 0.0f, 1000.0f);
+        
+        Overlay::AddSliderFloat2("Slider", "Float2", floatSlider2, 0.0f, 1000.0f);
+        Overlay::AddSliderFloat3("Slider", "Float3", floatSlider3, 0.0f, 1000.0f);
+        Overlay::AddSliderFloat4("Slider", "Float4", floatSlider4, 0.0f, 1000.0f);
+
+        //* Buttons
+        Overlay::AddButton("Button Group", "Save", []() 
+            {
+                fprintf(logFile, "Save Button Clicked ...\n");
+            },
+            true
+        );
+
+        Overlay::AddButton("Button Group", "Reset", []() 
+            {
+                fprintf(logFile, "Reset Button Clicked ...\n");
+            },
+            false,
+            120.0f,
+            35.0f
+        );
+
+        //* Vertical Spacing
+        Overlay::AddSpacing("Button Group");
+        Overlay::AddSpacing("Button Group");
+        Overlay::AddSpacing("Button Group");
+
+        //* Radio Button
+        static int mode = 1;
+        Overlay::AddRadioButton("Button Group", "Option 1", &mode, 1, []() 
+            { 
+                fprintf(logFile, "Option 1 Radio Button Clicked ...\n");
+            },
+            true
+        );
+
+        Overlay::AddRadioButton("Button Group", "Option 2", &mode, 2, []() 
+            { 
+                fprintf(logFile, "Option 2 Radio Button Clicked ...\n");
+            },
+            false
+        );
+
+        Overlay::AddRadioButton("Button Group", "Option 3", &mode, 3, []() 
+            { 
+                fprintf(logFile, "Option 3 Radio Button (Present On New Line) Clicked ...\n");
+            },
+            true
+        );
+
+        Overlay::AddRadioButton("Button Group", "Option 4", &mode, 4, []() 
+            { 
+                fprintf(logFile, "Option 4 Radio Button (Present On New Line) Clicked ...\n");
+            },
+            false
+        );
+
+        //* Combo Box
+        static std::vector<std::string> options;
+        static int selection = 0;
+        options.push_back("Nvidia");
+        options.push_back("Intel");
+        options.push_back("AMD");
+        Overlay::AddComboBox("Combo", "Select Option", options, &selection, []() 
+        {
+            fprintf(logFile, "COMBO SELECTION : %d :: %s\n", selection, options[selection].c_str());
+        });
+
+        //* Color Edit
+        static glm::vec3 color3 = { 1.0f, 0.0f, 0.8f };
+        Overlay::AddColorEdit3("Color", "Color Edit 3", color3);
+
+        static glm::vec4 color4 = { 1.0f, 0.5f, 0.2f, 1.0f };
+        Overlay::AddColorEdit4("Color", "Color Edit 4", color4);
+
+    }
+
     void Render(VkCommandBuffer commandBuffer, uint32_t imageIndex)
     {
         // Code
@@ -918,6 +1204,12 @@ namespace Overlay
                 }
             }
         }
+    }
+
+    void ResetPerformanceStats()
+    {
+        // Code
+        performanceStats.reset();
     }
 
     void Cleanup()
@@ -1021,7 +1313,7 @@ namespace Overlay
             ImGui::GetIO().AddMouseWheelEvent(0.0f, GET_WHEEL_DELTA_WPARAM(wParam) / (float)WHEEL_DELTA);
         }
 
-        void addKeyboardHandler(WPARAM wParam)
+        void addKeyboardHandler(WPARAM wParam, BOOL bDown)
         {
             ImGuiIO& io = ImGui::GetIO();
             io.AddKeyEvent(ImGuiKey_ModCtrl,  (GetKeyState(VK_CONTROL) & 0x8000) != 0);
@@ -1031,17 +1323,20 @@ namespace Overlay
             ImGuiKey key = ImGuiKey_None;
             switch (wParam)
             {
-                case VK_TAB:    key = ImGuiKey_Tab; break;
-                case VK_LEFT:   key = ImGuiKey_LeftArrow; break;
-                case VK_RIGHT:  key = ImGuiKey_RightArrow; break;
-                case VK_UP:     key = ImGuiKey_UpArrow; break;
-                case VK_DOWN:   key = ImGuiKey_DownArrow; break;
-                case VK_ESCAPE: key = ImGuiKey_Escape; break;
-                case VK_RETURN: key = ImGuiKey_Enter; break;
-                case VK_SPACE:  key = ImGuiKey_Space; break;
+                case VK_TAB:      key = ImGuiKey_Tab; break;
+                case VK_LEFT:     key = ImGuiKey_LeftArrow; break;
+                case VK_RIGHT:    key = ImGuiKey_RightArrow; break;
+                case VK_UP:       key = ImGuiKey_UpArrow; break;
+                case VK_DOWN:     key = ImGuiKey_DownArrow; break;
+                case VK_ESCAPE:   key = ImGuiKey_Escape; break;
+                case VK_RETURN:   key = ImGuiKey_Enter; break;
+                case VK_SPACE:    key = ImGuiKey_Space; break;
+                case VK_BACK:     key = ImGuiKey_Backspace; break;
+                case VK_DELETE:   key = ImGuiKey_Delete; break;
             }
+
             if (key != ImGuiKey_None)
-                io.AddKeyEvent(key, true);
+                io.AddKeyEvent(key, bDown);
         }
 
         //! Overlay Vulkan Functions

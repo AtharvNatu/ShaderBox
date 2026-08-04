@@ -270,6 +270,8 @@ typedef struct
 
 } Host_UniformData_FBO;
 
+Host_UniformData_FBO host_UniformData_fbo;
+
 UniformData uniformData_fbo;
 
 //? Marble Texture Related Variables
@@ -452,6 +454,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
 
         case WM_SETFOCUS:
             gbActiveWindow = TRUE;
+            Overlay::ResetPerformanceStats();
         break;
 
         case WM_KILLFOCUS:
@@ -464,6 +467,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam)
             else
             {
                 gbWindowMinimized = FALSE;
+                Overlay::ResetPerformanceStats();
                 resize(LOWORD(lParam), HIWORD(lParam));
             }
         break;
@@ -1106,32 +1110,23 @@ VkResult initialize(void)
 
     Overlay::AddCheckBox("Animation", "Enable Teapot Animation", (bool*)&bAnimate);
     Overlay::AddSliderFloat("Animation", "Cube Rotation Speed", &fAnimationSpeed, 0.01f, 1.0f);
+    
     Overlay::AddCheckBox("Light", "Enable Diffuse Light", (bool*)&bLight);
+
+    Overlay::AddInputFloat4("Light", "Light Position", host_UniformData_fbo.lightPosition);
+
+    Overlay::AddColorEdit4("Light", "Light Ambient", host_UniformData_fbo.lightAmbient);
+    Overlay::AddColorEdit4("Light", "Light Diffuse", host_UniformData_fbo.lightDiffuse);
+    Overlay::AddColorEdit4("Light", "Light Specular", host_UniformData_fbo.lightSpecular);
+
+    Overlay::AddColorEdit4("Light", "Material Ambient", host_UniformData_fbo.materialAmbient);
+    Overlay::AddColorEdit4("Light", "Material Diffuse", host_UniformData_fbo.materialDiffuse);
+    Overlay::AddColorEdit4("Light", "Material Specular", host_UniformData_fbo.materialSpecular);
+    Overlay::AddSliderFloat("Light", "Material Shininess", &host_UniformData_fbo.materialShininess, 32.0f, 256.0f);
+
     Overlay::AddCheckBox("Texture", "Enable Teapot Texture", (bool*)&bTexture);
 
-    static glm::vec2 slider2 = glm::vec2(100.0f, 200.0f);
-    static glm::vec3 slider3 = glm::vec3(100.0f, 200.0f, 300.0f);
-    static glm::vec4 slider4 = glm::vec4(100.0f, 200.0f, 300.0f, 400.0f);
-    
-    Overlay::AddSliderInt2("Slider", "Int2", slider2, 0.0f, 1000.0f);
-    Overlay::AddSliderInt3("Slider", "Int3", slider3, 0.0f, 1000.0f);
-    Overlay::AddSliderInt4("Slider", "Int4", slider4, 0.0f, 1000.0f);
-
-    Overlay::AddSliderInt2("Slider", "Float2", slider2, 0.0f, 1000.0f);
-    Overlay::AddSliderInt3("Slider", "Float3", slider3, 0.0f, 1000.0f);
-    Overlay::AddSliderInt4("Slider", "Float4", slider4, 0.0f, 1000.0f);
-
-    Overlay::AddButton("Button Group", "Click Me !", []() 
-        {
-            fprintf(gpFile, "Saved !!!\n");
-        }
-    );
-
-    static int mode = 0;
-    Overlay::AddRadioButton("Button Group", "AA", &mode, 0, []() { bAnimate = TRUE;});
-    Overlay::AddRadioButton("Button Group", "LL", &mode, 1, []() { bLight = TRUE;});
-    Overlay::AddRadioButton("Button Group", "TT", &mode, 2, []() { bTexture = TRUE;});
-
+    // Overlay::ShowWidgetsDemo();
 
     //! Initialization Completed
     bInitialized = TRUE;
@@ -6952,6 +6947,17 @@ VkResult createUniformBuffer_fbo(void)
     else
         fprintf(gpFile, "%s() => vkBindBufferMemory() Succeeded For Uniform Data (FBO)\n", __func__);
 
+    memset((void*)&host_UniformData_fbo, 0, sizeof(Host_UniformData_FBO));
+    host_UniformData_fbo.lightAmbient = glm::vec4(0.4f, 0.4f, 0.4f, 1.0f);
+    host_UniformData_fbo.lightDiffuse = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    host_UniformData_fbo.lightSpecular = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    host_UniformData_fbo.lightPosition = glm::vec4(100.0f, 100.0f, 100.0f, 1.0f);
+
+    host_UniformData_fbo.materialAmbient = glm::vec4(0.9f, 0.5f, 0.3f, 1.0f);
+    host_UniformData_fbo.materialDiffuse = glm::vec4(0.9f, 0.5f, 0.3f, 1.0f);
+    host_UniformData_fbo.materialSpecular = glm::vec4(0.8f, 0.8f, 0.8f, 1.0f);
+    host_UniformData_fbo.materialShininess = 128.0f;
+
     vkResult = updateUniformBuffer_fbo();
     if (vkResult != VK_SUCCESS)
     {
@@ -6971,9 +6977,6 @@ VkResult updateUniformBuffer_fbo(void)
     VkResult vkResult = VK_SUCCESS;
 
     // Code
-    Host_UniformData_FBO host_UniformData_fbo;
-    memset((void*)&host_UniformData_fbo, 0, sizeof(Host_UniformData_FBO));
-
     //! Update Matrices
     glm::mat4 translationMatrix = glm::mat4(1.0f);
     glm::mat4 rotationMatrix = glm::mat4(1.0f);
@@ -6995,16 +6998,6 @@ VkResult updateUniformBuffer_fbo(void)
     //! 2D Matrix with Column Major (Like OpenGL)
     perspectiveProjectionMatrix[1][1] = perspectiveProjectionMatrix[1][1] * (-1.0f);
     host_UniformData_fbo.projectionMatrix = perspectiveProjectionMatrix;
-
-    host_UniformData_fbo.lightAmbient = glm::vec4(0.4f, 0.4f, 0.4f, 1.0f);
-    host_UniformData_fbo.lightDiffuse = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    host_UniformData_fbo.lightSpecular = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-    host_UniformData_fbo.lightPosition = glm::vec4(100.0f, 100.0f, 100.0f, 1.0f);
-
-    host_UniformData_fbo.materialAmbient = glm::vec4(0.9f, 0.5f, 0.3f, 1.0f);
-    host_UniformData_fbo.materialDiffuse = glm::vec4(0.9f, 0.5f, 0.3f, 1.0f);
-    host_UniformData_fbo.materialSpecular = glm::vec4(0.8f, 0.8f, 0.8f, 1.0f);
-    host_UniformData_fbo.materialShininess = 128.0f;
 
     if (bTexture)
         host_UniformData_fbo.bTextureEnabled = 1;

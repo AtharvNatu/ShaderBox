@@ -66,11 +66,16 @@ initialize() => getPhysicalDevice() Succeeded
 
 VULKAN INFORMATION
 ------------------------------------------------------------------------------------------------
-Vulkan API Version : 1.4.329
-Device Name : NVIDIA GeForce RTX 5070
+Vulkan API Version : 1.4.341
+Device Name : NVIDIA GeForce RTX 4050 Laptop GPU
 Device Type : Discrete GPU (dGPU)
 Vendor ID : 0x10de
-Device ID : 0x2f04
+Device ID : 0x28e1
+Vulkan API Version : 1.4.309
+Device Name : Intel(R) UHD Graphics
+Device Type : Integrated GPU (iGPU)
+Vendor ID : 0x8086
+Device ID : 0xa7a8
 ------------------------------------------------------------------------------------------------
 
 printVkInfo() => free() Succeeded For vkPhysicalDevice_array
@@ -112,6 +117,7 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_global_prior
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_image_format_list
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_imageless_framebuffer
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_index_type_uint8
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_internally_synchronized_queues
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_line_rasterization
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_load_store_op_none
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_KHR_maintenance1
@@ -273,10 +279,12 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_atomi
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_demote_to_helper_invocation
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_float8
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_image_atomic_int64
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_long_vector
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_module_identifier
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_object
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_replicated_composites
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_subgroup_ballot
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_subgroup_partitioned
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_subgroup_vote
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_uniform_buffer_unsized_array
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_EXT_shader_viewport_index_layer
@@ -311,7 +319,6 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_diagno
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_generated_commands
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_generated_commands_compute
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_disk_cache_utils
-fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_extended_sparse_address_space
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_compute_queue
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_memory
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_memory_win32
@@ -331,10 +338,10 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_mesh_shader
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_optical_flow
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_partitioned_acceleration_structure
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_present_metering
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_push_constant_bank
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_raw_access_chains
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_ray_tracing
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_ray_tracing_invocation_reorder
-fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_ray_tracing_linear_swept_spheres
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_ray_tracing_motion_blur
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_representative_fragment_test
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_sample_mask_override_coverage
@@ -355,7 +362,7 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_GOOGLE_hlsl_func
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_GOOGLE_user_type
 
 ------------------------------------------------------------------------------------------------
-fillDeviceExtensionNames() => Vulkan Device Extension Count : 276
+fillDeviceExtensionNames() => Vulkan Device Extension Count : 278
 ------------------------------------------------------------------------------------------------
 
 fillDeviceExtensionNames() => VK_KHR_SWAPCHAIN_EXTENSION_NAME Extension Found
@@ -521,14 +528,6 @@ buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 0
 buildCommandBuffers() => vkResetCommandBuffer() Succeeded For Index : 1
 buildCommandBuffers() => vkBeginCommandBuffer() Succeeded For Index : 1
 buildCommandBuffers() => vkEndCommandBuffer() Succeeded For Index : 1
-ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-VkMappedMemoryRange-size-01390 ] Object 0: handle = 0x67022e000000004b, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0xdd4e6d8b | vkFlushMappedMemoryRanges(): pMemoryRanges[0].size (1064) is not a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize (64) and offset + size (0 + 1064 = 1064) not equal to the memory size (1072).
-The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must either be a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize, or offset plus size must equal the size of memory (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-VkMappedMemoryRange-size-01390)
-ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-VkMappedMemoryRange-size-01390 ] Object 0: handle = 0x73a850000000004d, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0xdd4e6d8b | vkFlushMappedMemoryRanges(): pMemoryRanges[0].size (936) is not a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize (64) and offset + size (0 + 936 = 936) not equal to the memory size (944).
-The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must either be a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize, or offset plus size must equal the size of memory (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-VkMappedMemoryRange-size-01390)
-ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-VkMappedMemoryRange-size-01390 ] Object 0: handle = 0x7cd292000000004f, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0xdd4e6d8b | vkFlushMappedMemoryRanges(): pMemoryRanges[0].size (1064) is not a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize (64) and offset + size (0 + 1064 = 1064) not equal to the memory size (1072).
-The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must either be a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize, or offset plus size must equal the size of memory (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-VkMappedMemoryRange-size-01390)
-ADN_VALIDATION : debugReportCallback() => Validation(0) = Validation Error: [ VUID-VkMappedMemoryRange-size-01390 ] Object 0: handle = 0x7ddd740000000051, type = VK_OBJECT_TYPE_DEVICE_MEMORY; | MessageID = 0xdd4e6d8b | vkFlushMappedMemoryRanges(): pMemoryRanges[0].size (1064) is not a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize (64) and offset + size (0 + 1064 = 1064) not equal to the memory size (1072).
-The Vulkan spec states: If size is not equal to VK_WHOLE_SIZE, size must either be a multiple of VkPhysicalDeviceLimits::nonCoherentAtomSize, or offset plus size must equal the size of memory (https://vulkan.lunarg.com/doc/view/1.4.304.0/windows/1.4-extensions/vkspec.html#VUID-VkMappedMemoryRange-size-01390)
 uninitialize() => vkDeviceWaitIdle() Succeeded
 uninitialize() => vkDestroyFence() Succeeded For Index : 0
 uninitialize() => vkDestroyFence() Succeeded For Index : 1

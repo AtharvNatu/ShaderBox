@@ -12,6 +12,7 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #define VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan.h>
@@ -49,6 +50,9 @@ namespace Overlay
     //* Performance Stats Related
     void ShowPerformanceStats();
     void UpdatePerformanceStats();
+    void ResetPerformanceStats();
+
+    void ShowWidgetsDemo();
 
     //! Overlay UI
     void AddText(
@@ -69,6 +73,7 @@ namespace Overlay
         std::string categoryName,
         std::string label,
         std::function<void()> callback,
+        bool sameLine = false,
         float width = 90.0f,
         float height = 30.0f
     );
@@ -80,13 +85,35 @@ namespace Overlay
         std::function<void()> callback = nullptr
     );
 
+    void AddComboBox(
+        std::string categoryName,
+        std::string label,
+        std::vector<std::string> items,
+        int* currentItem,
+        std::function<void()> callback = nullptr
+    );
+
     void AddRadioButton(
         std::string categoryName, 
         std::string label,
         int* value,
         int data,
         std::function<void()> callback = nullptr,
-        bool sameLine = true
+        bool sameLine = false
+    );
+
+    void AddColorEdit3(
+        std::string categoryName, 
+        std::string label,
+        glm::vec3& value,
+        std::function<void()> callback = nullptr
+    );
+
+    void AddColorEdit4(
+        std::string categoryName, 
+        std::string label,
+        glm::vec4& value,
+        std::function<void()> callback = nullptr
     );
 
     void AddSliderInt(
@@ -101,7 +128,7 @@ namespace Overlay
     void AddSliderInt2(
         std::string categoryName, 
         std::string label,
-        glm::vec2& value,
+        glm::ivec2& value,
         int min,
         int max,
         std::function<void()> callback = nullptr
@@ -110,7 +137,7 @@ namespace Overlay
     void AddSliderInt3(
         std::string categoryName, 
         std::string label,
-        glm::vec3& value,
+        glm::ivec3& value,
         int min,
         int max,
         std::function<void()> callback = nullptr
@@ -119,7 +146,7 @@ namespace Overlay
     void AddSliderInt4(
         std::string categoryName, 
         std::string label,
-        glm::vec4& value,
+        glm::ivec4& value,
         int min,
         int max,
         std::function<void()> callback = nullptr
@@ -161,6 +188,62 @@ namespace Overlay
         std::function<void()> callback = nullptr
     );
 
+    void AddInputInt(
+        std::string categoryName, 
+        std::string label,
+        int* value,
+        std::function<void()> callback = nullptr
+    );
+
+    void AddInputInt2(
+        std::string categoryName, 
+        std::string label,
+        glm::ivec2& value,
+        std::function<void()> callback = nullptr
+    );
+
+    void AddInputInt3(
+        std::string categoryName, 
+        std::string label,
+        glm::ivec3& value,
+        std::function<void()> callback = nullptr
+    );
+
+    void AddInputInt4(
+        std::string categoryName, 
+        std::string label,
+        glm::ivec4& value,
+        std::function<void()> callback = nullptr
+    );
+
+    void AddInputFloat(
+        std::string categoryName, 
+        std::string label,
+        float* value,
+        std::function<void()> callback = nullptr
+    );
+
+     void AddInputFloat2(
+        std::string categoryName, 
+        std::string label,
+        glm::vec2& value,
+        std::function<void()> callback = nullptr
+    );
+
+    void AddInputFloat3(
+        std::string categoryName, 
+        std::string label,
+        glm::vec3& value,
+        std::function<void()> callback = nullptr
+    );
+
+    void AddInputFloat4(
+        std::string categoryName, 
+        std::string label,
+        glm::vec4& value,
+        std::function<void()> callback = nullptr
+    );
+
     void AddPlotLines(
         std::string categoryName,
         std::string label,
@@ -170,6 +253,8 @@ namespace Overlay
         ImVec2 graphSize = ImVec2(100.0f, 200.0f),
         int column = 0
     );
+
+    void AddSpacing(std::string categoryName);
 
     namespace Category
     {

@@ -57,8 +57,6 @@ class PerformanceStats
         float frameTime = 0.0f;
         float smoothedFrameTime = 0.0f;
         float currentFPS = 0.0f;
-        float minFPS = FLT_MAX;
-        float maxFPS = 0.0f;
         float averageFPS = 0.0f;
 
         float accumulatedTime = 0.0f;
@@ -73,18 +71,26 @@ class PerformanceStats
         std::vector<float> fpsHistory;
         std::vector<float> frameTimeHistory;
 
+        bool statsPrimed = false;
+
     public:
         void update()
         {
             deltaTime = frameTimer.tick();
             frameTime = deltaTime * 1000.0f;
-            
-            float alpha = 1.0f - expf(-deltaTime / smoothingTimeConstant);
-            currentFPS += alpha * ((1.0f / deltaTime) - currentFPS);
-            smoothedFrameTime += alpha * (frameTime - smoothedFrameTime);
 
-            minFPS = std::min(minFPS, currentFPS);
-            maxFPS = std::max(maxFPS, currentFPS);
+            if (!statsPrimed)
+            {
+                currentFPS = 1.0f / deltaTime;
+                smoothedFrameTime = frameTime;
+                statsPrimed = true;
+            }
+            else
+            {
+                float alpha = 1.0f - expf(-deltaTime / smoothingTimeConstant);
+                currentFPS += alpha * ((1.0f / deltaTime) - currentFPS);
+                smoothedFrameTime += alpha * (frameTime - smoothedFrameTime);
+            }
 
             accumulatedTime += deltaTime;
             accumulatedFrames++;
@@ -117,11 +123,15 @@ class PerformanceStats
             averageFPS = 0.0f;
             frameTime = 0.0f;
             smoothedFrameTime = 0.0f;
-            minFPS = FLT_MAX;
-            maxFPS = 0.0f;
             accumulatedTime = 0.0f;
             accumulatedFrames = 0;
             historySampleAccumulator = 0;
+            statsPrimed = false;
+        }
+
+        float getDeltaTime() const
+        {
+            return deltaTime;
         }
 
         float getFrameTime() const 
@@ -136,12 +146,18 @@ class PerformanceStats
 
         float getMinimumFPS() const 
         { 
-            return (minFPS == FLT_MAX) ? 0.0f : minFPS; 
+            if (fpsHistory.empty())
+                return 0.0f;
+
+            return *std::min_element(fpsHistory.begin(), fpsHistory.end());
         }
 
         float getMaximumFPS() const 
         { 
-            return maxFPS; 
+            if (fpsHistory.empty())
+                return 0.0f;
+
+            return *std::max_element(fpsHistory.begin(), fpsHistory.end());
         }
 
         float getAverageFPS() const 
