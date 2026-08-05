@@ -36,6 +36,7 @@ fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_NV_optimus
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_NV_present
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_OBS_HOOK
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_RENDERDOC_Capture
+fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_RTSS
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_LUNARG_api_dump
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_LUNARG_gfxreconstruct
 fillValidationLayerNames() => Vulkan Instance Layer Name : VK_LAYER_KHRONOS_synchronization2
@@ -70,9 +71,9 @@ VULKAN INFORMATION
 Device Number : 0
 *******************************************************
 Vulkan API Version : 1.4.341
-Device Name : NVIDIA GeForce RTX 4050 Laptop GPU
+Device Name : NVIDIA GeForce RTX 5070
 Device Type : Discrete GPU (dGPU)
-Device ID : 0x28e1
+Device ID : 0x2f04
 Vendor ID : 0x10de
 Vendor Name : NVIDIA
 
@@ -140,40 +141,6 @@ Supports Compute : No
 Supports Transfer Operations : Yes
 Supports Video Encoding : No
 Supports Video Decoding : No
-Supports Presentation : No
-****************************************
-
-*******************************************************
-
-Device Number : 1
-*******************************************************
-Vulkan API Version : 1.4.309
-Device Name : Intel(R) UHD Graphics
-Device Type : Integrated GPU (iGPU)
-Device ID : 0xa7a8
-Vendor ID : 0x8086
-Vendor Name : Intel
-
-No. of Queue Families: 2
-
-Queue Family : 0
-****************************************
-Supports Graphics : Yes
-Supports Compute : Yes
-Supports Transfer Operations : Yes
-Supports Video Encoding : No
-Supports Video Decoding : No
-Supports Presentation : Yes
-****************************************
-
-
-Queue Family : 1
-****************************************
-Supports Graphics : No
-Supports Compute : No
-Supports Transfer Operations : No
-Supports Video Encoding : No
-Supports Video Decoding : Yes
 Supports Presentation : No
 ****************************************
 
@@ -421,6 +388,7 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_diagno
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_generated_commands
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_device_generated_commands_compute
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_disk_cache_utils
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_extended_sparse_address_space
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_compute_queue
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_memory
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_external_memory_win32
@@ -444,6 +412,7 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_push_constant
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_raw_access_chains
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_ray_tracing
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_ray_tracing_invocation_reorder
+fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_ray_tracing_linear_swept_spheres
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_ray_tracing_motion_blur
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_representative_fragment_test
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_NV_sample_mask_override_coverage
@@ -464,7 +433,7 @@ fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_GOOGLE_hlsl_func
 fillDeviceExtensionNames() => Vulkan Device Extension Name : VK_GOOGLE_user_type
 
 ------------------------------------------------------------------------------------------------
-fillDeviceExtensionNames() => Vulkan Device Extension Count : 278
+fillDeviceExtensionNames() => Vulkan Device Extension Count : 280
 ------------------------------------------------------------------------------------------------
 
 fillDeviceExtensionNames() => VK_KHR_SWAPCHAIN_EXTENSION_NAME Extension Found
