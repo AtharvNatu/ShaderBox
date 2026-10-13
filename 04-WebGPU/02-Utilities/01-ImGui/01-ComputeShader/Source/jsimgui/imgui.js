@@ -1,0 +1,9021 @@
+// @ts-nocheck
+export const Mod = {
+    // biome-ignore lint/suspicious/noExplicitAny: _
+    export: null,
+    async init(enableFreeType, extensions, loaderPath) {
+        // biome-ignore lint/suspicious/noExplicitAny: _
+        let MainExport;
+        if (loaderPath) {
+            MainExport = await import(loaderPath);
+        }
+        else if (enableFreeType) {
+            MainExport = extensions
+                ? // @ts-expect-error
+                    await import("./loader-freetype-extensions.js")
+                : // @ts-expect-error
+                    await import("./loader-freetype.js");
+        }
+        else {
+            MainExport = extensions
+                ? // @ts-expect-error
+                    await import("./loader-extensions.js")
+                : // @ts-expect-error
+                    await import("./loader.js");
+        }
+        Mod.export = await MainExport.default();
+    },
+};
+/**
+ * Base class for value structs (passed by value, no native pointer).
+ */
+export class ValueStruct {
+}
+/**
+ * Base class for reference structs (carry native pointer/reference).
+ * These structs manage native memory and require explicit cleanup.
+ */
+export class ReferenceStruct {
+    /**
+     * The native pointer to the struct.
+     */
+    ptr = null;
+    /**
+     * Construct a new JavaScript class instance and allocate native memory.
+     */
+    static New() {
+        const obj = new this();
+        obj.ptr = new Mod.export[this.name]();
+        return obj;
+    }
+    /**
+     * Create a JavaScript class instance from a native pointer.
+     */
+    static From(ptr) {
+        const obj = new this();
+        obj.ptr = ptr;
+        return obj;
+    }
+    /**
+     * Free the struct's native allocated memory.
+     */
+    Drop() {
+        this.ptr?.delete();
+    }
+}
+const IM_COL32_WHITE = 0xFFFFFFFF;
+/**
+ * Flags for ImGui::Begin()
+ * (Those are per-window flags. There are shared flags in ImGuiIO: io.ConfigWindowsResizeFromEdges and io.ConfigWindowsMoveFromTitleBarOnly)
+ */
+export const ImGuiWindowFlags = {
+    None: 0,
+    /**
+     * Disable title-bar
+     */
+    NoTitleBar: 1,
+    /**
+     * Disable user resizing with the lower-right grip
+     */
+    NoResize: 2,
+    /**
+     * Disable user moving the window
+     */
+    NoMove: 4,
+    /**
+     * Disable scrollbars (window can still scroll with mouse or programmatically)
+     */
+    NoScrollbar: 8,
+    /**
+     * Disable user vertically scrolling with mouse wheel. On child window, mouse wheel will be forwarded to the parent unless NoScrollbar is also set.
+     */
+    NoScrollWithMouse: 16,
+    /**
+     * Disable user collapsing window by double-clicking on it. Also referred to as Window Menu Button (e.g. within a docking node).
+     */
+    NoCollapse: 32,
+    /**
+     * Resize every window to its content every frame
+     */
+    AlwaysAutoResize: 64,
+    /**
+     * Disable drawing background color (WindowBg, etc.) and outside border. Similar as using SetNextWindowBgAlpha(0.0f).
+     */
+    NoBackground: 128,
+    /**
+     * Never load/save settings in .ini file
+     */
+    NoSavedSettings: 256,
+    /**
+     * Disable catching mouse, hovering test with pass through.
+     */
+    NoMouseInputs: 512,
+    /**
+     * Has a menu-bar
+     */
+    MenuBar: 1024,
+    /**
+     * Allow horizontal scrollbar to appear (off by default). You may use SetNextWindowContentSize(ImVec2(width,0.0f)); prior to calling Begin() to specify width. Read code in imgui_demo in the "Horizontal Scrolling" section.
+     */
+    HorizontalScrollbar: 2048,
+    /**
+     * Disable taking focus when transitioning from hidden to visible state
+     */
+    NoFocusOnAppearing: 4096,
+    /**
+     * Disable bringing window to front when taking focus (e.g. clicking on it or programmatically giving it focus)
+     */
+    NoBringToFrontOnFocus: 8192,
+    /**
+     * Always show vertical scrollbar (even if ContentSize.y < Size.y)
+     */
+    AlwaysVerticalScrollbar: 16384,
+    /**
+     * Always show horizontal scrollbar (even if ContentSize.x < Size.x)
+     */
+    AlwaysHorizontalScrollbar: 32768,
+    /**
+     * No keyboard/gamepad navigation within the window
+     */
+    NoNavInputs: 65536,
+    /**
+     * No focusing toward this window with keyboard/gamepad navigation (e.g. skipped by Ctrl+Tab)
+     */
+    NoNavFocus: 131072,
+    /**
+     * Display a dot next to the title. When used in a tab/docking context, tab is selected when clicking the X + closure is not assumed (will wait for user to stop submitting the tab). Otherwise closure is assumed when pressing the X, so if you keep submitting the tab may reappear at end of tab bar.
+     */
+    UnsavedDocument: 262144,
+    /**
+     * Disable docking of this window
+     */
+    NoDocking: 524288,
+    NoNav: 196608,
+    NoDecoration: 43,
+    NoInputs: 197120,
+};
+/**
+ * Flags for ImGui::BeginChild()
+ * (Legacy: bit 0 must always correspond to ImGuiChildFlags_Borders to be backward compatible with old API using 'bool border = false'.)
+ * About using AutoResizeX/AutoResizeY flags:
+ * - May be combined with SetNextWindowSizeConstraints() to set a min/max size for each axis (see "Demo->Child->Auto-resize with Constraints").
+ * - Size measurement for a given axis is only performed when the child window is within visible boundaries, or is just appearing.
+ *   - This allows BeginChild() to return false when not within boundaries (e.g. when scrolling), which is more optimal. BUT it won't update its auto-size while clipped.
+ *     While not perfect, it is a better default behavior as the always-on performance gain is more valuable than the occasional "resizing after becoming visible again" glitch.
+ *   - You may also use ImGuiChildFlags_AlwaysAutoResize to force an update even when child window is not in view.
+ *     HOWEVER PLEASE UNDERSTAND THAT DOING SO WILL PREVENT BeginChild() FROM EVER RETURNING FALSE, disabling benefits of coarse clipping.
+ */
+export const ImGuiChildFlags = {
+    None: 0,
+    /**
+     * Show an outer border and enable WindowPadding. (IMPORTANT: this is always == 1 == true for legacy reason)
+     */
+    Borders: 1,
+    /**
+     * Pad with style.WindowPadding even if no border are drawn (no padding by default for non-bordered child windows because it makes more sense)
+     */
+    AlwaysUseWindowPadding: 2,
+    /**
+     * Allow resize from right border (layout direction). Enable .ini saving (unless ImGuiWindowFlags_NoSavedSettings passed to window flags)
+     */
+    ResizeX: 4,
+    /**
+     * Allow resize from bottom border (layout direction). "
+     */
+    ResizeY: 8,
+    /**
+     * Enable auto-resizing width. Read "IMPORTANT: Size measurement" details above.
+     */
+    AutoResizeX: 16,
+    /**
+     * Enable auto-resizing height. Read "IMPORTANT: Size measurement" details above.
+     */
+    AutoResizeY: 32,
+    /**
+     * Combined with AutoResizeX/AutoResizeY. Always measure size even when child is hidden, always return true, always disable clipping optimization! NOT RECOMMENDED.
+     */
+    AlwaysAutoResize: 64,
+    /**
+     * Style the child window like a framed item: use FrameBg, FrameRounding, FrameBorderSize, FramePadding instead of ChildBg, ChildRounding, ChildBorderSize, WindowPadding.
+     */
+    FrameStyle: 128,
+    /**
+     * [BETA] Share focus scope, allow keyboard/gamepad navigation to cross over parent border to this child or between sibling child windows.
+     */
+    NavFlattened: 256,
+};
+/**
+ * Flags for ImGui::PushItemFlag()
+ * (Those are shared by all submitted items)
+ */
+export const ImGuiItemFlags = {
+    /**
+     * (Default)
+     */
+    None: 0,
+    /**
+     * false    // Disable keyboard tabbing. This is a "lighter" version of ImGuiItemFlags_NoNav.
+     */
+    NoTabStop: 1,
+    /**
+     * false    // Disable any form of focusing (keyboard/gamepad directional navigation and SetKeyboardFocusHere() calls).
+     */
+    NoNav: 2,
+    /**
+     * false    // Disable item being a candidate for default focus (e.g. used by title bar items).
+     */
+    NoNavDefaultFocus: 4,
+    /**
+     * false    // Any button-like behavior will have repeat mode enabled (based on io.KeyRepeatDelay and io.KeyRepeatRate values). Note that you can also call IsItemActive() after any button to tell if it is being held.
+     */
+    ButtonRepeat: 8,
+    /**
+     * true     // MenuItem()/Selectable() automatically close their parent popup window.
+     */
+    AutoClosePopups: 16,
+    /**
+     * false    // Allow submitting an item with the same identifier as an item already submitted this frame without triggering a warning tooltip if io.ConfigDebugHighlightIdConflicts is set.
+     */
+    AllowDuplicateId: 32,
+    /**
+     * false    // [Internal] Disable interactions. DOES NOT affect visuals. This is used by BeginDisabled()/EndDisabled() and only provided here so you can read back via GetItemFlags().
+     */
+    Disabled: 64,
+};
+/**
+ * Flags for ImGui::InputText()
+ * (Those are per-item flags. There are shared flags in ImGuiIO: io.ConfigInputTextCursorBlink and io.ConfigInputTextEnterKeepActive)
+ */
+export const ImGuiInputTextFlags = {
+    /**
+     * Basic filters (also see ImGuiInputTextFlags_CallbackCharFilter)
+     */
+    None: 0,
+    /**
+     * Allow 0123456789.+-* /
+     */
+    CharsDecimal: 1,
+    /**
+     * Allow 0123456789ABCDEFabcdef
+     */
+    CharsHexadecimal: 2,
+    /**
+     * Allow 0123456789.+-* /eE (Scientific notation input)
+     */
+    CharsScientific: 4,
+    /**
+     * Turn a..z into A..Z
+     */
+    CharsUppercase: 8,
+    /**
+     * Filter out spaces, tabs
+     */
+    CharsNoBlank: 16,
+    // Inputs
+    /**
+     * Pressing TAB input a '\t' character into the text field
+     */
+    AllowTabInput: 32,
+    /**
+     * Return 'true' when Enter is pressed (as opposed to every time the value was modified). Consider using IsItemDeactivatedAfterEdit() instead!
+     */
+    EnterReturnsTrue: 64,
+    /**
+     * Escape key clears content if not empty, and deactivate otherwise (contrast to default behavior of Escape to revert)
+     */
+    EscapeClearsAll: 128,
+    /**
+     * In multi-line mode: validate with Enter, add new line with Ctrl+Enter (default is opposite: validate with Ctrl+Enter, add line with Enter). Note that Shift+Enter always enter a new line either way.
+     */
+    CtrlEnterForNewLine: 256,
+    // Other options
+    /**
+     * Read-only mode
+     */
+    ReadOnly: 512,
+    /**
+     * Password mode, display all characters as '*', disable copy
+     */
+    Password: 1024,
+    /**
+     * Overwrite mode
+     */
+    AlwaysOverwrite: 2048,
+    /**
+     * Select entire text when first taking mouse focus
+     */
+    AutoSelectAll: 4096,
+    /**
+     * InputFloat(), InputInt(), InputScalar() etc. only: parse empty string as zero value.
+     */
+    ParseEmptyRefVal: 8192,
+    /**
+     * InputFloat(), InputInt(), InputScalar() etc. only: when value is zero, do not display it. Generally used with ImGuiInputTextFlags_ParseEmptyRefVal.
+     */
+    DisplayEmptyRefVal: 16384,
+    /**
+     * Disable following the cursor horizontally
+     */
+    NoHorizontalScroll: 32768,
+    /**
+     * Disable undo/redo. Note that input text owns the text data while active, if you want to provide your own undo/redo stack you need e.g. to call ClearActiveID().
+     */
+    NoUndoRedo: 65536,
+    // Elide display / Alignment
+    /**
+     * When text doesn't fit, elide left side to ensure right side stays visible. Useful for path/filenames. Single-line only!
+     */
+    ElideLeft: 131072,
+    // Callback features
+    /**
+     * Callback on pressing TAB (for completion handling)
+     */
+    CallbackCompletion: 262144,
+    /**
+     * Callback on pressing Up/Down arrows (for history handling)
+     */
+    CallbackHistory: 524288,
+    /**
+     * Callback on each iteration. User code may query cursor position, modify text buffer.
+     */
+    CallbackAlways: 1048576,
+    /**
+     * Callback on character inputs to replace or discard them. Modify 'EventChar' to replace or discard, or return 1 in callback to discard.
+     */
+    CallbackCharFilter: 2097152,
+    /**
+     * Callback on buffer capacity changes request (beyond 'buf_size' parameter value), allowing the string to grow. Notify when the string wants to be resized (for string types which hold a cache of their Size). You will be provided a new BufSize in the callback and NEED to honor it. (see misc/cpp/imgui_stdlib.h for an example of using this)
+     */
+    CallbackResize: 4194304,
+    /**
+     * Callback on any edit. Note that InputText() already returns true on edit + you can always use IsItemEdited(). The callback is useful to manipulate the underlying buffer while focus is active.
+     */
+    CallbackEdit: 8388608,
+    // Multi-line Word-Wrapping [BETA]
+    // - Not well tested yet. Please report any incorrect cursor movement, selection behavior etc. bug to https://github.com/ocornut/imgui/issues/3237.
+    // - Wrapping style is not ideal. Wrapping of long words/sections (e.g. words larger than total available width) may be particularly unpleasing.
+    // - Wrapping width needs to always account for the possibility of a vertical scrollbar.
+    // - It is much slower than regular text fields.
+    //   Ballpark estimate of cost on my 2019 desktop PC: for a 100 KB text buffer: +~0.3 ms (Optimized) / +~1.0 ms (Debug build).
+    //   The CPU cost is very roughly proportional to text length, so a 10 KB buffer should cost about ten times less.
+    /**
+     * InputTextMultiline(): word-wrap lines that are too long.
+     */
+    WordWrap: 16777216,
+};
+/**
+ * Flags for ImGui::TreeNodeEx(), ImGui::CollapsingHeader*()
+ */
+export const ImGuiTreeNodeFlags = {
+    None: 0,
+    /**
+     * Draw as selected
+     */
+    Selected: 1,
+    /**
+     * Draw frame with background (e.g. for CollapsingHeader)
+     */
+    Framed: 2,
+    /**
+     * Hit testing will allow subsequent widgets to overlap this one. Require previous frame HoveredId to match before being usable. Shortcut to calling SetNextItemAllowOverlap().
+     */
+    AllowOverlap: 4,
+    /**
+     * Don't do a TreePush() when open (e.g. for CollapsingHeader) = no extra indent nor pushing on ID stack
+     */
+    NoTreePushOnOpen: 8,
+    /**
+     * Don't automatically and temporarily open node when Logging is active (by default logging will automatically open tree nodes)
+     */
+    NoAutoOpenOnLog: 16,
+    /**
+     * Default node to be open
+     */
+    DefaultOpen: 32,
+    /**
+     * Open on double-click instead of simple click (default for multi-select unless any _OpenOnXXX behavior is set explicitly). Both behaviors may be combined.
+     */
+    OpenOnDoubleClick: 64,
+    /**
+     * Open when clicking on the arrow part (default for multi-select unless any _OpenOnXXX behavior is set explicitly). Both behaviors may be combined.
+     */
+    OpenOnArrow: 128,
+    /**
+     * No collapsing, no arrow (use as a convenience for leaf nodes). Note: will always open a tree/id scope and return true. If you never use that scope, add ImGuiTreeNodeFlags_NoTreePushOnOpen.
+     */
+    Leaf: 256,
+    /**
+     * Display a bullet instead of arrow. IMPORTANT: node can still be marked open/close if you don't set the _Leaf flag!
+     */
+    Bullet: 512,
+    /**
+     * Use FramePadding (even for an unframed text node) to vertically align text baseline to regular widget height. Equivalent to calling AlignTextToFramePadding() before the node.
+     */
+    FramePadding: 1024,
+    /**
+     * Extend hit box to the right-most edge, even if not framed. This is not the default in order to allow adding other items on the same line without using AllowOverlap mode.
+     */
+    SpanAvailWidth: 2048,
+    /**
+     * Extend hit box to the left-most and right-most edges (cover the indent area).
+     */
+    SpanFullWidth: 4096,
+    /**
+     * Narrow hit box + narrow hovering highlight, will only cover the label text.
+     */
+    SpanLabelWidth: 8192,
+    /**
+     * Frame will span all columns of its container table (label will still fit in current column)
+     */
+    SpanAllColumns: 16384,
+    /**
+     * Label will span all columns of its container table
+     */
+    LabelSpanAllColumns: 32768,
+    // mGuiTreeNodeFlags_NoScrollOnOpen     = 1 << 16,  // FIXME: TODO: Disable automatic scroll on TreePop() if node got just open and contents is not visible
+    /**
+     * Nav: left arrow moves back to parent. This is processed in TreePop() when there's an unfulfilled Left nav request remaining.
+     */
+    NavLeftJumpsToParent: 131072,
+    CollapsingHeader: 26,
+    // [EXPERIMENTAL] Draw lines connecting TreeNode hierarchy. Discuss in GitHub issue #2920.
+    // Default value is pulled from style.TreeLinesFlags. May be overridden in TreeNode calls.
+    /**
+     * No lines drawn
+     */
+    DrawLinesNone: 262144,
+    /**
+     * Horizontal lines to child nodes. Vertical line drawn down to TreePop() position: cover full contents. Faster (for large trees).
+     */
+    DrawLinesFull: 524288,
+    /**
+     * Horizontal lines to child nodes. Vertical line drawn down to bottom-most child node. Slower (for large trees).
+     */
+    DrawLinesToNodes: 1048576,
+};
+/**
+ * Flags for OpenPopup*(), BeginPopupContext*(), IsPopupOpen() functions.
+ * - IMPORTANT: If you ever used the left mouse button with BeginPopupContextXXX() helpers before 1.92.6: Read "API BREAKING CHANGES" 2026/01/07 (1.92.6) entry in imgui.cpp or GitHub topic #9157.
+ * - Multiple buttons currently cannot be combined/or-ed in those functions (we could allow it later).
+ */
+export const ImGuiPopupFlags = {
+    None: 0,
+    /**
+     * For BeginPopupContext*(): open on Left Mouse release. Only one button allowed!
+     */
+    MouseButtonLeft: 4,
+    /**
+     * For BeginPopupContext*(): open on Right Mouse release. Only one button allowed! (default)
+     */
+    MouseButtonRight: 8,
+    /**
+     * For BeginPopupContext*(): open on Middle Mouse release. Only one button allowed!
+     */
+    MouseButtonMiddle: 12,
+    /**
+     * For OpenPopup*(), BeginPopupContext*(): don't reopen same popup if already open (won't reposition, won't reinitialize navigation)
+     */
+    NoReopen: 32,
+    // mGuiPopupFlags_NoReopenAlwaysNavInit = 1 << 6,   // For OpenPopup*(), BeginPopupContext*(): focus and initialize navigation even when not reopening.
+    /**
+     * For OpenPopup*(), BeginPopupContext*(): don't open if there's already a popup at the same level of the popup stack
+     */
+    NoOpenOverExistingPopup: 128,
+    /**
+     * For BeginPopupContextWindow(): don't return true when hovering items, only when hovering empty space
+     */
+    NoOpenOverItems: 256,
+    /**
+     * For IsPopupOpen(): ignore the ImGuiID parameter and test for any popup.
+     */
+    AnyPopupId: 1024,
+    /**
+     * For IsPopupOpen(): search/test at any level of the popup stack (default test in the current level)
+     */
+    AnyPopupLevel: 2048,
+    AnyPopup: 3072,
+};
+/**
+ * Flags for ImGui::Selectable()
+ */
+export const ImGuiSelectableFlags = {
+    None: 0,
+    /**
+     * Clicking this doesn't close parent popup window (overrides ImGuiItemFlags_AutoClosePopups)
+     */
+    NoAutoClosePopups: 1,
+    /**
+     * Frame will span all columns of its container table (text will still fit in current column)
+     */
+    SpanAllColumns: 2,
+    /**
+     * Generate press events on double clicks too
+     */
+    AllowDoubleClick: 4,
+    /**
+     * Cannot be selected, display grayed out text
+     */
+    Disabled: 8,
+    /**
+     * Hit testing will allow subsequent widgets to overlap this one. Require previous frame HoveredId to match before being usable. Shortcut to calling SetNextItemAllowOverlap().
+     */
+    AllowOverlap: 16,
+    /**
+     * Make the item be displayed as if it is hovered
+     */
+    Highlight: 32,
+    /**
+     * Auto-select when moved into, unless Ctrl is held. Automatic when in a BeginMultiSelect() block.
+     */
+    SelectOnNav: 64,
+};
+/**
+ * Flags for ImGui::BeginCombo()
+ */
+export const ImGuiComboFlags = {
+    None: 0,
+    /**
+     * Align the popup toward the left by default
+     */
+    PopupAlignLeft: 1,
+    /**
+     * Max ~4 items visible. Tip: If you want your combo popup to be a specific size you can use SetNextWindowSizeConstraints() prior to calling BeginCombo()
+     */
+    HeightSmall: 2,
+    /**
+     * Max ~8 items visible (default)
+     */
+    HeightRegular: 4,
+    /**
+     * Max ~20 items visible
+     */
+    HeightLarge: 8,
+    /**
+     * As many fitting items as possible
+     */
+    HeightLargest: 16,
+    /**
+     * Display on the preview box without the square arrow button
+     */
+    NoArrowButton: 32,
+    /**
+     * Display only a square arrow button
+     */
+    NoPreview: 64,
+    /**
+     * Width dynamically calculated from preview contents
+     */
+    WidthFitPreview: 128,
+};
+/**
+ * Flags for ImGui::BeginTabBar()
+ */
+export const ImGuiTabBarFlags = {
+    None: 0,
+    /**
+     * Allow manually dragging tabs to re-order them + New tabs are appended at the end of list
+     */
+    Reorderable: 1,
+    /**
+     * Automatically select new tabs when they appear
+     */
+    AutoSelectNewTabs: 2,
+    /**
+     * Disable buttons to open the tab list popup
+     */
+    TabListPopupButton: 4,
+    /**
+     * Disable behavior of closing tabs (that are submitted with p_open != NULL) with middle mouse button. You may handle this behavior manually on user's side with if (IsItemHovered() && IsMouseClicked(2)) *p_open = false.
+     */
+    NoCloseWithMiddleMouseButton: 8,
+    /**
+     * Disable scrolling buttons (apply when fitting policy is ImGuiTabBarFlags_FittingPolicyScroll)
+     */
+    NoTabListScrollingButtons: 16,
+    /**
+     * Disable tooltips when hovering a tab
+     */
+    NoTooltip: 32,
+    /**
+     * Draw selected overline markers over selected tab
+     */
+    DrawSelectedOverline: 64,
+    // Fitting/Resize policy
+    /**
+     * Shrink down tabs when they don't fit, until width is style.TabMinWidthShrink, then enable scrolling. Setting TabMinWidthShrink to FLT_MAX makes this behave like ImGuiTabBarFlags_FittingPolicyScroll.
+     */
+    FittingPolicyMixed: 128,
+    /**
+     * Shrink down tabs when they don't fit
+     */
+    FittingPolicyShrink: 256,
+    /**
+     * Enable scrolling buttons when tabs don't fit
+     */
+    FittingPolicyScroll: 512,
+};
+/**
+ * Flags for ImGui::BeginTabItem()
+ */
+export const ImGuiTabItemFlags = {
+    None: 0,
+    /**
+     * Display a dot next to the title + set ImGuiTabItemFlags_NoAssumedClosure.
+     */
+    UnsavedDocument: 1,
+    /**
+     * Trigger flag to programmatically make the tab selected when calling BeginTabItem()
+     */
+    SetSelected: 2,
+    /**
+     * Disable behavior of closing tabs (that are submitted with p_open != NULL) with middle mouse button. You may handle this behavior manually on user's side with if (IsItemHovered() && IsMouseClicked(2)) *p_open = false.
+     */
+    NoCloseWithMiddleMouseButton: 4,
+    /**
+     * Don't call PushID()/PopID() on BeginTabItem()/EndTabItem()
+     */
+    NoPushId: 8,
+    /**
+     * Disable tooltip for the given tab
+     */
+    NoTooltip: 16,
+    /**
+     * Disable reordering this tab or having another tab cross over this tab
+     */
+    NoReorder: 32,
+    /**
+     * Enforce the tab position to the left of the tab bar (after the tab list popup button)
+     */
+    Leading: 64,
+    /**
+     * Enforce the tab position to the right of the tab bar (before the scrolling buttons)
+     */
+    Trailing: 128,
+    /**
+     * Tab is selected when trying to close + closure is not immediately assumed (will wait for user to stop submitting the tab). Otherwise closure is assumed when pressing the X, so if you keep submitting the tab may reappear at end of tab bar.
+     */
+    NoAssumedClosure: 256,
+};
+/**
+ * Flags for ImGui::IsWindowFocused()
+ */
+export const ImGuiFocusedFlags = {
+    None: 0,
+    /**
+     * Return true if any children of the window is focused
+     */
+    ChildWindows: 1,
+    /**
+     * Test from root window (top most parent of the current hierarchy)
+     */
+    RootWindow: 2,
+    /**
+     * Return true if any window is focused. Important: If you are trying to tell how to dispatch your low-level inputs, do NOT use this. Use 'io.WantCaptureMouse' instead! Please read the FAQ!
+     */
+    AnyWindow: 4,
+    /**
+     * Do not consider popup hierarchy (do not treat popup emitter as parent of popup) (when used with _ChildWindows or _RootWindow)
+     */
+    NoPopupHierarchy: 8,
+    /**
+     * Consider docking hierarchy (treat dockspace host as parent of docked window) (when used with _ChildWindows or _RootWindow)
+     */
+    DockHierarchy: 16,
+    RootAndChildWindows: 3,
+};
+/**
+ * Flags for ImGui::IsItemHovered(), ImGui::IsWindowHovered()
+ * Note: if you are trying to check whether your mouse should be dispatched to Dear ImGui or to your app, you should use 'io.WantCaptureMouse' instead! Please read the FAQ!
+ * Note: windows with the ImGuiWindowFlags_NoInputs flag are ignored by IsWindowHovered() calls.
+ */
+export const ImGuiHoveredFlags = {
+    /**
+     * Return true if directly over the item/window, not obstructed by another window, not obstructed by an active popup or modal blocking inputs under them.
+     */
+    None: 0,
+    /**
+     * IsWindowHovered() only: Return true if any children of the window is hovered
+     */
+    ChildWindows: 1,
+    /**
+     * IsWindowHovered() only: Test from root window (top most parent of the current hierarchy)
+     */
+    RootWindow: 2,
+    /**
+     * IsWindowHovered() only: Return true if any window is hovered
+     */
+    AnyWindow: 4,
+    /**
+     * IsWindowHovered() only: Do not consider popup hierarchy (do not treat popup emitter as parent of popup) (when used with _ChildWindows or _RootWindow)
+     */
+    NoPopupHierarchy: 8,
+    /**
+     * IsWindowHovered() only: Consider docking hierarchy (treat dockspace host as parent of docked window) (when used with _ChildWindows or _RootWindow)
+     */
+    DockHierarchy: 16,
+    /**
+     * Return true even if a popup window is normally blocking access to this item/window
+     */
+    AllowWhenBlockedByPopup: 32,
+    // mGuiHoveredFlags_AllowWhenBlockedByModal     = 1 << 6,   // Return true even if a modal popup window is normally blocking access to this item/window. FIXME-TODO: Unavailable yet.
+    /**
+     * Return true even if an active item is blocking access to this item/window. Useful for Drag and Drop patterns.
+     */
+    AllowWhenBlockedByActiveItem: 128,
+    /**
+     * IsItemHovered() only: Return true even if the item uses AllowOverlap mode and is overlapped by another hoverable item.
+     */
+    AllowWhenOverlappedByItem: 256,
+    /**
+     * IsItemHovered() only: Return true even if the position is obstructed or overlapped by another window.
+     */
+    AllowWhenOverlappedByWindow: 512,
+    /**
+     * IsItemHovered() only: Return true even if the item is disabled
+     */
+    AllowWhenDisabled: 1024,
+    /**
+     * IsItemHovered() only: Disable using keyboard/gamepad navigation state when active, always query mouse
+     */
+    NoNavOverride: 2048,
+    AllowWhenOverlapped: 768,
+    RectOnly: 928,
+    RootAndChildWindows: 3,
+    // Tooltips mode
+    // - typically used in IsItemHovered() + SetTooltip() sequence.
+    // - this is a shortcut to pull flags from 'style.HoverFlagsForTooltipMouse' or 'style.HoverFlagsForTooltipNav' where you can reconfigure desired behavior.
+    //   e.g. 'HoverFlagsForTooltipMouse' defaults to 'ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_DelayShort | ImGuiHoveredFlags_AllowWhenDisabled'.
+    // - for frequently actioned or hovered items providing a tooltip, you want may to use ImGuiHoveredFlags_ForTooltip (stationary + delay) so the tooltip doesn't show too often.
+    // - for items which main purpose is to be hovered, or items with low affordance, or in less consistent apps, prefer no delay or shorter delay.
+    /**
+     * Shortcut for standard flags when using IsItemHovered() + SetTooltip() sequence.
+     */
+    ForTooltip: 4096,
+    // (Advanced) Mouse Hovering delays.
+    // - generally you can use ImGuiHoveredFlags_ForTooltip to use application-standardized flags.
+    // - use those if you need specific overrides.
+    /**
+     * Require mouse to be stationary for style.HoverStationaryDelay (~0.15 sec) _at least one time_. After this, can move on same item/window. Using the stationary test tends to reduces the need for a long delay.
+     */
+    Stationary: 8192,
+    /**
+     * IsItemHovered() only: Return true immediately (default). As this is the default you generally ignore this.
+     */
+    DelayNone: 16384,
+    /**
+     * IsItemHovered() only: Return true after style.HoverDelayShort elapsed (~0.15 sec) (shared between items) + requires mouse to be stationary for style.HoverStationaryDelay (once per item).
+     */
+    DelayShort: 32768,
+    /**
+     * IsItemHovered() only: Return true after style.HoverDelayNormal elapsed (~0.40 sec) (shared between items) + requires mouse to be stationary for style.HoverStationaryDelay (once per item).
+     */
+    DelayNormal: 65536,
+    /**
+     * IsItemHovered() only: Disable shared delay system where moving from one item to the next keeps the previous timer for a short time (standard for tooltips with long delays)
+     */
+    NoSharedDelay: 131072,
+};
+/**
+ * Flags for ImGui::DockSpace(), shared/inherited by child nodes.
+ * (Some flags can be applied to individual nodes directly)
+ * FIXME-DOCK: Also see ImGuiDockNodeFlagsPrivate_ which may involve using the WIP and internal DockBuilder api.
+ */
+export const ImGuiDockNodeFlags = {
+    None: 0,
+    /**
+     *       // Don't display the dockspace node but keep it alive. Windows docked into this dockspace node won't be undocked.
+     */
+    KeepAliveOnly: 1,
+    // mGuiDockNodeFlags_NoCentralNode              = 1 << 1,   //       // Disable Central Node (the node which can stay empty)
+    /**
+     *       // Disable docking over the Central Node, which will be always kept empty.
+     */
+    NoDockingOverCentralNode: 4,
+    /**
+     *       // Enable passthru dockspace: 1) DockSpace() will render a ImGuiCol_WindowBg background covering everything excepted the Central Node when empty. Meaning the host window should probably use SetNextWindowBgAlpha(0.0f) prior to Begin() when using this. 2) When Central Node is empty: let inputs pass-through + won't display a DockingEmptyBg background. See demo for details.
+     */
+    PassthruCentralNode: 8,
+    /**
+     *       // Disable other windows/nodes from splitting this node.
+     */
+    NoDockingSplit: 16,
+    /**
+     * Saved // Disable resizing node using the splitter/separators. Useful with programmatically setup dockspaces.
+     */
+    NoResize: 32,
+    /**
+     *       // Tab bar will automatically hide when there is a single window in the dock node.
+     */
+    AutoHideTabBar: 64,
+    /**
+     *       // Disable undocking this node.
+     */
+    NoUndocking: 128,
+};
+/**
+ * Flags for ImGui::BeginDragDropSource(), ImGui::AcceptDragDropPayload()
+ */
+export const ImGuiDragDropFlags = {
+    None: 0,
+    // BeginDragDropSource() flags
+    /**
+     * Disable preview tooltip. By default, a successful call to BeginDragDropSource opens a tooltip so you can display a preview or description of the source contents. This flag disables this behavior.
+     */
+    SourceNoPreviewTooltip: 1,
+    /**
+     * By default, when dragging we clear data so that IsItemHovered() will return false, to avoid subsequent user code submitting tooltips. This flag disables this behavior so you can still call IsItemHovered() on the source item.
+     */
+    SourceNoDisableHover: 2,
+    /**
+     * Disable the behavior that allows to open tree nodes and collapsing header by holding over them while dragging a source item.
+     */
+    SourceNoHoldToOpenOthers: 4,
+    /**
+     * Allow items such as Text(), Image() that have no unique identifier to be used as drag source, by manufacturing a temporary identifier based on their window-relative position. This is extremely unusual within the dear imgui ecosystem and so we made it explicit.
+     */
+    SourceAllowNullID: 8,
+    /**
+     * External source (from outside of dear imgui), won't attempt to read current item/window info. Will always return true. Only one Extern source can be active simultaneously.
+     */
+    SourceExtern: 16,
+    /**
+     * Automatically expire the payload if the source cease to be submitted (otherwise payloads are persisting while being dragged)
+     */
+    PayloadAutoExpire: 32,
+    /**
+     * Hint to specify that the payload may not be copied outside current dear imgui context.
+     */
+    PayloadNoCrossContext: 64,
+    /**
+     * Hint to specify that the payload may not be copied outside current process.
+     */
+    PayloadNoCrossProcess: 128,
+    // AcceptDragDropPayload() flags
+    /**
+     * AcceptDragDropPayload() will returns true even before the mouse button is released. You can then call IsDelivery() to test if the payload needs to be delivered.
+     */
+    AcceptBeforeDelivery: 1024,
+    /**
+     * Do not draw the default highlight rectangle when hovering over target.
+     */
+    AcceptNoDrawDefaultRect: 2048,
+    /**
+     * Request hiding the BeginDragDropSource tooltip from the BeginDragDropTarget site.
+     */
+    AcceptNoPreviewTooltip: 4096,
+    /**
+     * Accepting item will render as if hovered. Useful for e.g. a Button() used as a drop target.
+     */
+    AcceptDrawAsHovered: 8192,
+    /**
+     * For peeking ahead and inspecting the payload before delivery.
+     */
+    AcceptPeekOnly: 3072,
+};
+/**
+ * A primary data type
+ */
+export const ImGuiDataType = {
+    /**
+     * signed char / char (with sensible compilers)
+     */
+    S8: 0,
+    /**
+     * unsigned char
+     */
+    U8: 1,
+    /**
+     * short
+     */
+    S16: 2,
+    /**
+     * unsigned short
+     */
+    U16: 3,
+    /**
+     * int
+     */
+    S32: 4,
+    /**
+     * unsigned int
+     */
+    U32: 5,
+    /**
+     * long long / __int64
+     */
+    S64: 6,
+    /**
+     * unsigned long long / unsigned __int64
+     */
+    U64: 7,
+    /**
+     * float
+     */
+    Float: 8,
+    /**
+     * double
+     */
+    Double: 9,
+    /**
+     * bool (provided for user convenience, not supported by scalar widgets)
+     */
+    Bool: 10,
+    /**
+     * char* (provided for user convenience, not supported by scalar widgets)
+     */
+    String: 11,
+    COUNT: 12,
+};
+// A cardinal direction
+/**
+ * Forward declared enum type ImGuiDir
+ */
+export const ImGuiDir = {
+    _None: -1,
+    _Left: 0,
+    _Right: 1,
+    _Up: 2,
+    _Down: 3,
+    _COUNT: 4,
+};
+// A sorting direction
+/**
+ * Forward declared enum type ImGuiSortDirection
+ */
+export const ImGuiSortDirection = {
+    _None: 0,
+    /**
+     * Ascending = 0->9, A->Z etc.
+     */
+    _Ascending: 1,
+    /**
+     * Descending = 9->0, Z->A etc.
+     */
+    _Descending: 2,
+};
+// A key identifier (ImGuiKey_XXX or ImGuiMod_XXX value): can represent Keyboard, Mouse and Gamepad values.
+// All our named keys are >= 512. Keys value 0 to 511 are left unused and were legacy native/opaque key values (< 1.87).
+// Support for legacy keys was completely removed in 1.91.5.
+// Read details about the 1.87+ transition : https://github.com/ocornut/imgui/issues/4921
+// Note that "Keys" related to physical keys and are not the same concept as input "Characters", the latter are submitted via io.AddInputCharacter().
+// The keyboard key enum values are named after the keys on a standard US keyboard, and on other keyboard types the keys reported may not match the keycaps.
+/**
+ * Forward declared enum type ImGuiKey
+ */
+export const ImGuiKey = {
+    /**
+     * Keyboard
+     */
+    _None: 0,
+    /**
+     * First valid key value (other than 0)
+     */
+    _NamedKey_BEGIN: 512,
+    /**
+     * == ImGuiKey_NamedKey_BEGIN
+     */
+    _Tab: 512,
+    _LeftArrow: 513,
+    _RightArrow: 514,
+    _UpArrow: 515,
+    _DownArrow: 516,
+    _PageUp: 517,
+    _PageDown: 518,
+    _Home: 519,
+    _End: 520,
+    _Insert: 521,
+    _Delete: 522,
+    _Backspace: 523,
+    _Space: 524,
+    _Enter: 525,
+    _Escape: 526,
+    _LeftCtrl: 527,
+    _LeftShift: 528,
+    _LeftAlt: 529,
+    /**
+     * Also see ImGuiMod_Ctrl, ImGuiMod_Shift, ImGuiMod_Alt, ImGuiMod_Super below!
+     */
+    _LeftSuper: 530,
+    _RightCtrl: 531,
+    _RightShift: 532,
+    _RightAlt: 533,
+    _RightSuper: 534,
+    _Menu: 535,
+    _0: 536,
+    _1: 537,
+    _2: 538,
+    _3: 539,
+    _4: 540,
+    _5: 541,
+    _6: 542,
+    _7: 543,
+    _8: 544,
+    _9: 545,
+    _A: 546,
+    _B: 547,
+    _C: 548,
+    _D: 549,
+    _E: 550,
+    _F: 551,
+    _G: 552,
+    _H: 553,
+    _I: 554,
+    _J: 555,
+    _K: 556,
+    _L: 557,
+    _M: 558,
+    _N: 559,
+    _O: 560,
+    _P: 561,
+    _Q: 562,
+    _R: 563,
+    _S: 564,
+    _T: 565,
+    _U: 566,
+    _V: 567,
+    _W: 568,
+    _X: 569,
+    _Y: 570,
+    _Z: 571,
+    _F1: 572,
+    _F2: 573,
+    _F3: 574,
+    _F4: 575,
+    _F5: 576,
+    _F6: 577,
+    _F7: 578,
+    _F8: 579,
+    _F9: 580,
+    _F10: 581,
+    _F11: 582,
+    _F12: 583,
+    _F13: 584,
+    _F14: 585,
+    _F15: 586,
+    _F16: 587,
+    _F17: 588,
+    _F18: 589,
+    _F19: 590,
+    _F20: 591,
+    _F21: 592,
+    _F22: 593,
+    _F23: 594,
+    _F24: 595,
+    /**
+     * '
+     */
+    _Apostrophe: 596,
+    /**
+     * ,
+     */
+    _Comma: 597,
+    /**
+     * -
+     */
+    _Minus: 598,
+    /**
+     * .
+     */
+    _Period: 599,
+    /**
+     * /
+     */
+    _Slash: 600,
+    /**
+     * ;
+     */
+    _Semicolon: 601,
+    /**
+     * =
+     */
+    _Equal: 602,
+    /**
+     * [
+     */
+    _LeftBracket: 603,
+    /**
+     * \ (this text inhibit multiline comment caused by backslash)
+     */
+    _Backslash: 604,
+    /**
+     * ]
+     */
+    _RightBracket: 605,
+    /**
+     * `
+     */
+    _GraveAccent: 606,
+    _CapsLock: 607,
+    _ScrollLock: 608,
+    _NumLock: 609,
+    _PrintScreen: 610,
+    _Pause: 611,
+    _Keypad0: 612,
+    _Keypad1: 613,
+    _Keypad2: 614,
+    _Keypad3: 615,
+    _Keypad4: 616,
+    _Keypad5: 617,
+    _Keypad6: 618,
+    _Keypad7: 619,
+    _Keypad8: 620,
+    _Keypad9: 621,
+    _KeypadDecimal: 622,
+    _KeypadDivide: 623,
+    _KeypadMultiply: 624,
+    _KeypadSubtract: 625,
+    _KeypadAdd: 626,
+    _KeypadEnter: 627,
+    _KeypadEqual: 628,
+    /**
+     * Available on some keyboard/mouses. Often referred as "Browser Back"
+     */
+    _AppBack: 629,
+    _AppForward: 630,
+    /**
+     * Non-US backslash.
+     */
+    _Oem102: 631,
+    // Gamepad
+    // (analog values are 0.0f to 1.0f)
+    // (download controller mapping PNG/PSD at http://dearimgui.com/controls_sheets)
+    //                              // XBOX        | SWITCH  | PLAYSTA. | -> ACTION
+    /**
+     * Menu        | +       | Options  |
+     */
+    _GamepadStart: 632,
+    /**
+     * View        | -       | Share    |
+     */
+    _GamepadBack: 633,
+    /**
+     * X           | Y       | Square   | Toggle Menu. Hold for Windowing mode (Focus/Move/Resize windows)
+     */
+    _GamepadFaceLeft: 634,
+    /**
+     * B           | A       | Circle   | Cancel / Close / Exit
+     */
+    _GamepadFaceRight: 635,
+    /**
+     * Y           | X       | Triangle | Open Context Menu
+     */
+    _GamepadFaceUp: 636,
+    /**
+     * A           | B       | Cross    | Activate / Open / Toggle. Hold for 0.60f to Activate in Text Input mode (e.g. wired to an on-screen keyboard).
+     */
+    _GamepadFaceDown: 637,
+    /**
+     * D-pad Left  | "       | "        | Move / Tweak / Resize Window (in Windowing mode)
+     */
+    _GamepadDpadLeft: 638,
+    /**
+     * D-pad Right | "       | "        | Move / Tweak / Resize Window (in Windowing mode)
+     */
+    _GamepadDpadRight: 639,
+    /**
+     * D-pad Up    | "       | "        | Move / Tweak / Resize Window (in Windowing mode)
+     */
+    _GamepadDpadUp: 640,
+    /**
+     * D-pad Down  | "       | "        | Move / Tweak / Resize Window (in Windowing mode)
+     */
+    _GamepadDpadDown: 641,
+    /**
+     * L Bumper    | L       | L1       | Tweak Slower / Focus Previous (in Windowing mode)
+     */
+    _GamepadL1: 642,
+    /**
+     * R Bumper    | R       | R1       | Tweak Faster / Focus Next (in Windowing mode)
+     */
+    _GamepadR1: 643,
+    /**
+     * L Trigger   | ZL      | L2       | [Analog]
+     */
+    _GamepadL2: 644,
+    /**
+     * R Trigger   | ZR      | R2       | [Analog]
+     */
+    _GamepadR2: 645,
+    /**
+     * L Stick     | L3      | L3       |
+     */
+    _GamepadL3: 646,
+    /**
+     * R Stick     | R3      | R3       |
+     */
+    _GamepadR3: 647,
+    /**
+     *             |         |          | [Analog] Move Window (in Windowing mode)
+     */
+    _GamepadLStickLeft: 648,
+    /**
+     *             |         |          | [Analog] Move Window (in Windowing mode)
+     */
+    _GamepadLStickRight: 649,
+    /**
+     *             |         |          | [Analog] Move Window (in Windowing mode)
+     */
+    _GamepadLStickUp: 650,
+    /**
+     *             |         |          | [Analog] Move Window (in Windowing mode)
+     */
+    _GamepadLStickDown: 651,
+    /**
+     *             |         |          | [Analog]
+     */
+    _GamepadRStickLeft: 652,
+    /**
+     *             |         |          | [Analog]
+     */
+    _GamepadRStickRight: 653,
+    /**
+     *             |         |          | [Analog]
+     */
+    _GamepadRStickUp: 654,
+    /**
+     *             |         |          | [Analog]
+     */
+    _GamepadRStickDown: 655,
+    /**
+     * Aliases: Mouse Buttons (auto-submitted from AddMouseButtonEvent() calls)
+     * - This is mirroring the data also written to io.MouseDown[], io.MouseWheel, in a format allowing them to be accessed via standard key API.
+     */
+    _MouseLeft: 656,
+    _MouseRight: 657,
+    _MouseMiddle: 658,
+    _MouseX1: 659,
+    _MouseX2: 660,
+    _MouseWheelX: 661,
+    _MouseWheelY: 662,
+    /**
+     * Keyboard Modifiers (explicitly submitted by backend via AddKeyEvent() calls)
+     * - Any functions taking a ImGuiKeyChord parameter can binary-or those with regular keys, e.g. Shortcut(ImGuiMod_Ctrl | ImGuiKey_S).
+     * - Those are written back into io.KeyCtrl, io.KeyShift, io.KeyAlt, io.KeySuper for convenience,
+     *   but may be accessed via standard key API such as IsKeyPressed(), IsKeyReleased(), querying duration etc.
+     * - Code polling every key (e.g. an interface to detect a key press for input mapping) might want to ignore those
+     *   and prefer using the real keys (e.g. ImGuiKey_LeftCtrl, ImGuiKey_RightCtrl instead of ImGuiMod_Ctrl).
+     * - In theory the value of keyboard modifiers should be roughly equivalent to a logical or of the equivalent left/right keys.
+     *   In practice: it's complicated; mods are often provided from different sources. Keyboard layout, IME, sticky keys and
+     *   backends tend to interfere and break that equivalence. The safer decision is to relay that ambiguity down to the end-user...
+     * - On macOS, we swap Cmd(Super) and Ctrl keys at the time of the io.AddKeyEvent() call.
+     */
+    ImGuiMod_None: 0,
+    /**
+     * Ctrl (non-macOS), Cmd (macOS)
+     */
+    ImGuiMod_Ctrl: 4096,
+    /**
+     * Shift
+     */
+    ImGuiMod_Shift: 8192,
+    /**
+     * Option/Menu
+     */
+    ImGuiMod_Alt: 16384,
+    /**
+     * Windows/Super (non-macOS), Ctrl (macOS)
+     */
+    ImGuiMod_Super: 32768,
+};
+/**
+ * Flags for Shortcut(), SetNextItemShortcut(),
+ * (and for upcoming extended versions of IsKeyPressed(), IsMouseClicked(), Shortcut(), SetKeyOwner(), SetItemKeyOwner() that are still in imgui_internal.h)
+ * Don't mistake with ImGuiInputTextFlags! (which is for ImGui::InputText() function)
+ */
+export const ImGuiInputFlags = {
+    None: 0,
+    /**
+     * Enable repeat. Return true on successive repeats. Default for legacy IsKeyPressed(). NOT Default for legacy IsMouseClicked(). MUST BE == 1.
+     */
+    Repeat: 1,
+    // Flags for Shortcut(), SetNextItemShortcut()
+    // - Routing policies: RouteGlobal+OverActive >> RouteActive or RouteFocused (if owner is active item) >> RouteGlobal+OverFocused >> RouteFocused (if in focused window stack) >> RouteGlobal.
+    // - Default policy is RouteFocused. Can select only 1 policy among all available.
+    /**
+     * Route to active item only.
+     */
+    RouteActive: 1024,
+    /**
+     * Route to windows in the focus stack (DEFAULT). Deep-most focused window takes inputs. Active item takes inputs over deep-most focused window.
+     */
+    RouteFocused: 2048,
+    /**
+     * Global route (unless a focused window or active item registered the route).
+     */
+    RouteGlobal: 4096,
+    /**
+     * Do not register route, poll keys directly.
+     */
+    RouteAlways: 8192,
+    // - Routing options
+    /**
+     * Option: global route: higher priority than focused route (unless active item in focused route).
+     */
+    RouteOverFocused: 16384,
+    /**
+     * Option: global route: higher priority than active item. Unlikely you need to use that: will interfere with every active items, e.g. Ctrl+A registered by InputText will be overridden by this. May not be fully honored as user/internal code is likely to always assume they can access keys when active.
+     */
+    RouteOverActive: 32768,
+    /**
+     * Option: global route: will not be applied if underlying background/void is focused (== no Dear ImGui windows are focused). Useful for overlay applications.
+     */
+    RouteUnlessBgFocused: 65536,
+    /**
+     * Option: route evaluated from the point of view of root window rather than current window.
+     */
+    RouteFromRootWindow: 131072,
+    // Flags for SetNextItemShortcut()
+    /**
+     * Automatically display a tooltip when hovering item [BETA] Unsure of right api (opt-in/opt-out)
+     */
+    Tooltip: 262144,
+};
+/**
+ * Configuration flags stored in io.ConfigFlags. Set by user/application.
+ * Note that nowadays most of our configuration options are in other ImGuiIO fields, e.g. io.ConfigWindowsMoveFromTitleBarOnly.
+ */
+export const ImGuiConfigFlags = {
+    None: 0,
+    /**
+     * Master keyboard navigation enable flag. Enable full Tabbing + directional arrows + Space/Enter to activate. Note: some features such as basic Tabbing and CtrL+Tab are enabled by regardless of this flag (and may be disabled via other means, see #4828, #9218).
+     */
+    NavEnableKeyboard: 1,
+    /**
+     * Master gamepad navigation enable flag. Backend also needs to set ImGuiBackendFlags_HasGamepad.
+     */
+    NavEnableGamepad: 2,
+    /**
+     * Instruct dear imgui to disable mouse inputs and interactions.
+     */
+    NoMouse: 16,
+    /**
+     * Instruct backend to not alter mouse cursor shape and visibility. Use if the backend cursor changes are interfering with yours and you don't want to use SetMouseCursor() to change mouse cursor. You may want to honor requests from imgui by reading GetMouseCursor() yourself instead.
+     */
+    NoMouseCursorChange: 32,
+    /**
+     * Instruct dear imgui to disable keyboard inputs and interactions. This is done by ignoring keyboard events and clearing existing states.
+     */
+    NoKeyboard: 64,
+    // [BETA] Docking
+    /**
+     * Docking enable flags.
+     */
+    DockingEnable: 128,
+    // [BETA] Viewports
+    // When using viewports it is recommended that your default value for ImGuiCol_WindowBg is opaque (Alpha=1.0) so transition to a viewport won't be noticeable.
+    /**
+     * Viewport enable flags (require both ImGuiBackendFlags_PlatformHasViewports + ImGuiBackendFlags_RendererHasViewports set by the respective backends)
+     */
+    ViewportsEnable: 1024,
+    // [Unused] User storage (to allow your backend/engine to communicate to code that may be shared between multiple projects. Those flags are NOT used by core Dear ImGui)
+    /**
+     * Application is SRGB-aware.
+     */
+    IsSRGB: 1048576,
+    /**
+     * Application is using a touch screen instead of a mouse.
+     */
+    IsTouchScreen: 2097152,
+};
+/**
+ * Backend capabilities flags stored in io.BackendFlags. Set by imgui_impl_xxx or custom backend.
+ */
+export const ImGuiBackendFlags = {
+    None: 0,
+    /**
+     * Backend Platform supports gamepad and currently has one connected.
+     */
+    HasGamepad: 1,
+    /**
+     * Backend Platform supports honoring GetMouseCursor() value to change the OS cursor shape.
+     */
+    HasMouseCursors: 2,
+    /**
+     * Backend Platform supports io.WantSetMousePos requests to reposition the OS mouse position (only used if io.ConfigNavMoveSetMousePos is set).
+     */
+    HasSetMousePos: 4,
+    /**
+     * Backend Renderer supports ImDrawCmd::VtxOffset. This enables output of large meshes (64K+ vertices) while still using 16-bit indices.
+     */
+    RendererHasVtxOffset: 8,
+    /**
+     * Backend Renderer supports ImTextureData requests to create/update/destroy textures. This enables incremental texture updates and texture reloads. See https://github.com/ocornut/imgui/blob/master/docs/BACKENDS.md for instructions on how to upgrade your custom backend.
+     */
+    RendererHasTextures: 16,
+    // [BETA] Multi-Viewports
+    /**
+     * Backend Renderer supports multiple viewports.
+     */
+    RendererHasViewports: 1024,
+    /**
+     * Backend Platform supports multiple viewports.
+     */
+    PlatformHasViewports: 2048,
+    /**
+     * Backend Platform supports calling io.AddMouseViewportEvent() with the viewport under the mouse. IF POSSIBLE, ignore viewports with the ImGuiViewportFlags_NoInputs flag (Win32 backend, GLFW 3.30+ backend can do this, SDL backend cannot). If this cannot be done, Dear ImGui needs to use a flawed heuristic to find the viewport under.
+     */
+    HasMouseHoveredViewport: 4096,
+    /**
+     * Backend Platform supports honoring viewport->ParentViewport/ParentViewportId value, by applying the corresponding parent/child relationship at the Platform level. Child windows always appear in front of their parent window.
+     */
+    HasParentViewport: 8192,
+};
+/**
+ * Enumeration for PushStyleColor() / PopStyleColor()
+ */
+export const ImGuiCol = {
+    Text: 0,
+    TextDisabled: 1,
+    /**
+     * Background of normal windows
+     */
+    WindowBg: 2,
+    /**
+     * Background of child windows
+     */
+    ChildBg: 3,
+    /**
+     * Background of popups, menus, tooltips windows
+     */
+    PopupBg: 4,
+    Border: 5,
+    BorderShadow: 6,
+    /**
+     * Background of checkbox, radio button, plot, slider, text input
+     */
+    FrameBg: 7,
+    FrameBgHovered: 8,
+    FrameBgActive: 9,
+    /**
+     * Title bar
+     */
+    TitleBg: 10,
+    /**
+     * Title bar when focused
+     */
+    TitleBgActive: 11,
+    /**
+     * Title bar when collapsed
+     */
+    TitleBgCollapsed: 12,
+    MenuBarBg: 13,
+    ScrollbarBg: 14,
+    ScrollbarGrab: 15,
+    ScrollbarGrabHovered: 16,
+    ScrollbarGrabActive: 17,
+    /**
+     * Checkbox tick and RadioButton circle
+     */
+    CheckMark: 18,
+    /**
+     * Checkbox background when Selected, otherwise use FrameBg
+     */
+    CheckboxSelectedBg: 19,
+    SliderGrab: 20,
+    SliderGrabActive: 21,
+    Button: 22,
+    ButtonHovered: 23,
+    ButtonActive: 24,
+    /**
+     * Header* colors are used for CollapsingHeader, TreeNode, Selectable, MenuItem
+     */
+    Header: 25,
+    HeaderHovered: 26,
+    HeaderActive: 27,
+    Separator: 28,
+    SeparatorHovered: 29,
+    SeparatorActive: 30,
+    /**
+     * Resize grip in lower-right and lower-left corners of windows.
+     */
+    ResizeGrip: 31,
+    ResizeGripHovered: 32,
+    ResizeGripActive: 33,
+    /**
+     * InputText cursor/caret
+     */
+    InputTextCursor: 34,
+    /**
+     * Tab background, when hovered
+     */
+    TabHovered: 35,
+    /**
+     * Tab background, when tab-bar is focused & tab is unselected
+     */
+    Tab: 36,
+    /**
+     * Tab background, when tab-bar is focused & tab is selected
+     */
+    TabSelected: 37,
+    /**
+     * Tab horizontal overline, when tab-bar is focused & tab is selected
+     */
+    TabSelectedOverline: 38,
+    /**
+     * Tab background, when tab-bar is unfocused & tab is unselected
+     */
+    TabDimmed: 39,
+    /**
+     * Tab background, when tab-bar is unfocused & tab is selected
+     */
+    TabDimmedSelected: 40,
+    /**
+     * .horizontal overline, when tab-bar is unfocused & tab is selected
+     */
+    TabDimmedSelectedOverline: 41,
+    /**
+     * Preview overlay color when about to docking something
+     */
+    DockingPreview: 42,
+    /**
+     * Background color for empty node (e.g. CentralNode with no window docked into it)
+     */
+    DockingEmptyBg: 43,
+    PlotLines: 44,
+    PlotLinesHovered: 45,
+    PlotHistogram: 46,
+    PlotHistogramHovered: 47,
+    /**
+     * Table header background
+     */
+    TableHeaderBg: 48,
+    /**
+     * Table outer and header borders (prefer using Alpha=1.0 here)
+     */
+    TableBorderStrong: 49,
+    /**
+     * Table inner borders (prefer using Alpha=1.0 here)
+     */
+    TableBorderLight: 50,
+    /**
+     * Table row background (even rows)
+     */
+    TableRowBg: 51,
+    /**
+     * Table row background (odd rows)
+     */
+    TableRowBgAlt: 52,
+    /**
+     * Hyperlink color
+     */
+    TextLink: 53,
+    /**
+     * Selected text inside an InputText
+     */
+    TextSelectedBg: 54,
+    /**
+     * Tree node hierarchy outlines when using ImGuiTreeNodeFlags_DrawLines
+     */
+    TreeLines: 55,
+    /**
+     * Rectangle border highlighting a drop target
+     */
+    DragDropTarget: 56,
+    /**
+     * Rectangle background highlighting a drop target
+     */
+    DragDropTargetBg: 57,
+    /**
+     * Unsaved Document marker (in window title and tabs)
+     */
+    UnsavedMarker: 58,
+    /**
+     * Color of keyboard/gamepad navigation cursor/rectangle, when visible
+     */
+    NavCursor: 59,
+    /**
+     * Highlight window when using Ctrl+Tab
+     */
+    NavWindowingHighlight: 60,
+    /**
+     * Darken/colorize entire screen behind the Ctrl+Tab window list, when active
+     */
+    NavWindowingDimBg: 61,
+    /**
+     * Darken/colorize entire screen behind a modal window, when one is active
+     */
+    ModalWindowDimBg: 62,
+    COUNT: 63,
+};
+/**
+ * Enumeration for PushStyleVar() / PopStyleVar() to temporarily modify the ImGuiStyle structure.
+ * - The enum only refers to fields of ImGuiStyle which makes sense to be pushed/popped inside UI code.
+ *   During initialization or between frames, feel free to just poke into ImGuiStyle directly.
+ * - Tip: Use your programming IDE navigation facilities on the names in the _second column_ below to find the actual members and their description.
+ *   - In Visual Studio: Ctrl+Comma ("Edit.GoToAll") can follow symbols inside comments, whereas Ctrl+F12 ("Edit.GoToImplementation") cannot.
+ *   - In Visual Studio w/ Visual Assist installed: Alt+G ("VAssistX.GoToImplementation") can also follow symbols inside comments.
+ *   - In VS Code, CLion, etc.: Ctrl+Click can follow symbols inside comments.
+ * - When changing this enum, you need to update the associated internal table GStyleVarInfo[] accordingly. This is where we link enum values to members offset/type.
+ */
+export const ImGuiStyleVar = {
+    // Enum name -------------------------- // Member in ImGuiStyle structure (see ImGuiStyle for descriptions)
+    /**
+     * float     Alpha
+     */
+    Alpha: 0,
+    /**
+     * float     DisabledAlpha
+     */
+    DisabledAlpha: 1,
+    /**
+     * ImVec2    WindowPadding
+     */
+    WindowPadding: 2,
+    /**
+     * float     WindowRounding
+     */
+    WindowRounding: 3,
+    /**
+     * float     WindowBorderSize
+     */
+    WindowBorderSize: 4,
+    /**
+     * ImVec2    WindowMinSize
+     */
+    WindowMinSize: 5,
+    /**
+     * ImVec2    WindowTitleAlign
+     */
+    WindowTitleAlign: 6,
+    /**
+     * float     ChildRounding
+     */
+    ChildRounding: 7,
+    /**
+     * float     ChildBorderSize
+     */
+    ChildBorderSize: 8,
+    /**
+     * float     PopupRounding
+     */
+    PopupRounding: 9,
+    /**
+     * float     PopupBorderSize
+     */
+    PopupBorderSize: 10,
+    /**
+     * ImVec2    FramePadding
+     */
+    FramePadding: 11,
+    /**
+     * float     FrameRounding
+     */
+    FrameRounding: 12,
+    /**
+     * float     FrameBorderSize
+     */
+    FrameBorderSize: 13,
+    /**
+     * ImVec2    ItemSpacing
+     */
+    ItemSpacing: 14,
+    /**
+     * ImVec2    ItemInnerSpacing
+     */
+    ItemInnerSpacing: 15,
+    /**
+     * float     IndentSpacing
+     */
+    IndentSpacing: 16,
+    /**
+     * ImVec2    CellPadding
+     */
+    CellPadding: 17,
+    /**
+     * float     ScrollbarSize
+     */
+    ScrollbarSize: 18,
+    /**
+     * float     ScrollbarRounding
+     */
+    ScrollbarRounding: 19,
+    /**
+     * float     ScrollbarPadding
+     */
+    ScrollbarPadding: 20,
+    /**
+     * float     GrabMinSize
+     */
+    GrabMinSize: 21,
+    /**
+     * float     GrabRounding
+     */
+    GrabRounding: 22,
+    /**
+     * float     ImageRounding
+     */
+    ImageRounding: 23,
+    /**
+     * float     ImageBorderSize
+     */
+    ImageBorderSize: 24,
+    /**
+     * float     TabRounding
+     */
+    TabRounding: 25,
+    /**
+     * float     TabBorderSize
+     */
+    TabBorderSize: 26,
+    /**
+     * float     TabMinWidthBase
+     */
+    TabMinWidthBase: 27,
+    /**
+     * float     TabMinWidthShrink
+     */
+    TabMinWidthShrink: 28,
+    /**
+     * float     TabBarBorderSize
+     */
+    TabBarBorderSize: 29,
+    /**
+     * float     TabBarOverlineSize
+     */
+    TabBarOverlineSize: 30,
+    /**
+     * float     TableAngledHeadersAngle
+     */
+    TableAngledHeadersAngle: 31,
+    /**
+     * ImVec2  TableAngledHeadersTextAlign
+     */
+    TableAngledHeadersTextAlign: 32,
+    /**
+     * float     TreeLinesSize
+     */
+    TreeLinesSize: 33,
+    /**
+     * float     TreeLinesRounding
+     */
+    TreeLinesRounding: 34,
+    /**
+     * float     DragDropTargetRounding
+     */
+    DragDropTargetRounding: 35,
+    /**
+     * ImVec2    ButtonTextAlign
+     */
+    ButtonTextAlign: 36,
+    /**
+     * ImVec2    SelectableTextAlign
+     */
+    SelectableTextAlign: 37,
+    /**
+     * float     SeparatorSize
+     */
+    SeparatorSize: 38,
+    /**
+     * float     SeparatorTextBorderSize
+     */
+    SeparatorTextBorderSize: 39,
+    /**
+     * ImVec2    SeparatorTextAlign
+     */
+    SeparatorTextAlign: 40,
+    /**
+     * ImVec2    SeparatorTextPadding
+     */
+    SeparatorTextPadding: 41,
+    /**
+     * float     DockingSeparatorSize
+     */
+    DockingSeparatorSize: 42,
+    COUNT: 43,
+};
+/**
+ * Flags for InvisibleButton() [extended in imgui_internal.h]
+ */
+export const ImGuiButtonFlags = {
+    None: 0,
+    /**
+     * React on left mouse button (default)
+     */
+    MouseButtonLeft: 1,
+    /**
+     * React on right mouse button
+     */
+    MouseButtonRight: 2,
+    /**
+     * React on center mouse button
+     */
+    MouseButtonMiddle: 4,
+    /**
+     * InvisibleButton(): do not disable navigation/tabbing. Otherwise disabled by default.
+     */
+    EnableNav: 8,
+    /**
+     * Hit testing will allow subsequent widgets to overlap this one. Require previous frame HoveredId to match before being usable. Shortcut to calling SetNextItemAllowOverlap().
+     */
+    AllowOverlap: 4096,
+};
+/**
+ * Flags for ColorEdit3() / ColorEdit4() / ColorPicker3() / ColorPicker4() / ColorButton()
+ */
+export const ImGuiColorEditFlags = {
+    None: 0,
+    /**
+     *              // ColorEdit, ColorPicker, ColorButton: ignore Alpha component (will only read 3 components from the input pointer).
+     */
+    NoAlpha: 2,
+    /**
+     *              // ColorEdit: disable picker when clicking on color square.
+     */
+    NoPicker: 4,
+    /**
+     *              // ColorEdit: disable toggling options menu when right-clicking on inputs/small preview.
+     */
+    NoOptions: 8,
+    /**
+     *              // ColorEdit, ColorPicker: disable color square preview next to the inputs. (e.g. to show only the inputs)
+     */
+    NoSmallPreview: 16,
+    /**
+     *              // ColorEdit, ColorPicker: disable inputs sliders/text widgets (e.g. to show only the small preview color square).
+     */
+    NoInputs: 32,
+    /**
+     *              // ColorEdit, ColorPicker, ColorButton: disable tooltip when hovering the preview.
+     */
+    NoTooltip: 64,
+    /**
+     *              // ColorEdit, ColorPicker: disable display of inline text label (the label is still forwarded to the tooltip and picker).
+     */
+    NoLabel: 128,
+    /**
+     *              // ColorPicker: disable bigger color preview on right side of the picker, use small color square preview instead.
+     */
+    NoSidePreview: 256,
+    /**
+     *              // ColorEdit: disable drag and drop target/source. ColorButton: disable drag and drop source.
+     */
+    NoDragDrop: 512,
+    /**
+     *              // ColorButton: disable border (which is enforced by default)
+     */
+    NoBorder: 1024,
+    /**
+     *              // ColorEdit: disable rendering R/G/B/A color marker. May also be disabled globally by setting style.ColorMarkerSize = 0.
+     */
+    NoColorMarkers: 2048,
+    // Alpha preview
+    // - Prior to 1.91.8 (2025/01/21): alpha was made opaque in the preview by default using old name ImGuiColorEditFlags_AlphaPreview.
+    // - We now display the preview as transparent by default. You can use ImGuiColorEditFlags_AlphaOpaque to use old behavior.
+    // - The new flags may be combined better and allow finer controls.
+    /**
+     *              // ColorEdit, ColorPicker, ColorButton: disable alpha in the preview,. Contrary to _NoAlpha it may still be edited when calling ColorEdit4()/ColorPicker4(). For ColorButton() this does the same as _NoAlpha.
+     */
+    AlphaOpaque: 4096,
+    /**
+     *              // ColorEdit, ColorPicker, ColorButton: disable rendering a checkerboard background behind transparent color.
+     */
+    AlphaNoBg: 8192,
+    /**
+     *              // ColorEdit, ColorPicker, ColorButton: display half opaque / half transparent preview.
+     */
+    AlphaPreviewHalf: 16384,
+    // User Options (right-click on widget to change some of them).
+    /**
+     *              // ColorEdit, ColorPicker: show vertical alpha bar/gradient in picker.
+     */
+    AlphaBar: 262144,
+    /**
+     *              // (WIP) ColorEdit: Currently only disable 0.0f..1.0f limits in RGBA edition (note: you probably want to use ImGuiColorEditFlags_Float flag as well).
+     */
+    HDR: 524288,
+    /**
+     * [Display]    // ColorEdit: override _display_ type among RGB/HSV/Hex. ColorPicker: select any combination using one or more of RGB/HSV/Hex.
+     */
+    DisplayRGB: 1048576,
+    /**
+     * [Display]    // "
+     */
+    DisplayHSV: 2097152,
+    /**
+     * [Display]    // "
+     */
+    DisplayHex: 4194304,
+    /**
+     * [DataType]   // ColorEdit, ColorPicker, ColorButton: _display_ values formatted as 0..255.
+     */
+    Uint8: 8388608,
+    /**
+     * [DataType]   // ColorEdit, ColorPicker, ColorButton: _display_ values formatted as 0.0f..1.0f floats instead of 0..255 integers. No round-trip of value via integers.
+     */
+    Float: 16777216,
+    /**
+     * [Picker]     // ColorPicker: bar for Hue, rectangle for Sat/Value.
+     */
+    PickerHueBar: 33554432,
+    /**
+     * [Picker]     // ColorPicker: wheel for Hue, triangle for Sat/Value.
+     */
+    PickerHueWheel: 67108864,
+    /**
+     * [Input]      // ColorEdit, ColorPicker: input and output data in RGB format.
+     */
+    InputRGB: 134217728,
+    /**
+     * [Input]      // ColorEdit, ColorPicker: input and output data in HSV format.
+     */
+    InputHSV: 268435456,
+};
+/**
+ * Flags for DragFloat(), DragInt(), SliderFloat(), SliderInt() etc.
+ * We use the same sets of flags for DragXXX() and SliderXXX() functions as the features are the same and it makes it easier to swap them.
+ * (Those are per-item flags. There is shared behavior flag too: ImGuiIO: io.ConfigDragClickToInputText)
+ */
+export const ImGuiSliderFlags = {
+    None: 0,
+    /**
+     * Make the widget logarithmic (linear otherwise). Consider using ImGuiSliderFlags_NoRoundToFormat with this if using a format-string with small amount of digits.
+     */
+    Logarithmic: 32,
+    /**
+     * Disable rounding underlying value to match precision of the display format string (e.g. %.3f values are rounded to those 3 digits).
+     */
+    NoRoundToFormat: 64,
+    /**
+     * Disable Ctrl+Click or Enter key allowing to input text directly into the widget.
+     */
+    NoInput: 128,
+    /**
+     * Enable wrapping around from max to min and from min to max. Only supported by DragXXX() functions for now.
+     */
+    WrapAround: 256,
+    /**
+     * Clamp value to min/max bounds when input manually with Ctrl+Click. By default Ctrl+Click allows going out of bounds.
+     */
+    ClampOnInput: 512,
+    /**
+     * Clamp even if min==max==0.0f. Otherwise due to legacy reason DragXXX functions don't clamp with those values. When your clamping limits are dynamic you almost always want to use it.
+     */
+    ClampZeroRange: 1024,
+    /**
+     * Disable keyboard modifiers altering tweak speed. Useful if you want to alter tweak speed yourself based on your own logic.
+     */
+    NoSpeedTweaks: 2048,
+    /**
+     * DragScalarN(), SliderScalarN(): Draw R/G/B/A color markers on each component.
+     */
+    ColorMarkers: 4096,
+    AlwaysClamp: 1536,
+};
+/**
+ * Identify a mouse button.
+ * Those values are guaranteed to be stable and we frequently use 0/1 directly. Named enums provided for convenience.
+ */
+export const ImGuiMouseButton = {
+    Left: 0,
+    Right: 1,
+    Middle: 2,
+    COUNT: 5,
+};
+/**
+ * Enumeration for GetMouseCursor()
+ * User code may request backend to display given cursor by calling SetMouseCursor(), which is why we have some cursors that are marked unused here
+ */
+export const ImGuiMouseCursor = {
+    None: -1,
+    Arrow: 0,
+    /**
+     * When hovering over InputText, etc.
+     */
+    TextInput: 1,
+    /**
+     * (Unused by Dear ImGui functions)
+     */
+    ResizeAll: 2,
+    /**
+     * When hovering over a horizontal border
+     */
+    ResizeNS: 3,
+    /**
+     * When hovering over a vertical border or a column
+     */
+    ResizeEW: 4,
+    /**
+     * When hovering over the bottom-left corner of a window
+     */
+    ResizeNESW: 5,
+    /**
+     * When hovering over the bottom-right corner of a window
+     */
+    ResizeNWSE: 6,
+    /**
+     * (Unused by Dear ImGui functions. Use for e.g. hyperlinks)
+     */
+    Hand: 7,
+    /**
+     * When waiting for something to process/load.
+     */
+    Wait: 8,
+    /**
+     * When waiting for something to process/load, but application is still interactive.
+     */
+    Progress: 9,
+    /**
+     * When hovering something with disallowed interaction. Usually a crossed circle.
+     */
+    NotAllowed: 10,
+    COUNT: 11,
+};
+// Enumeration for AddMouseSourceEvent() actual source of Mouse Input data.
+// Historically we use "Mouse" terminology everywhere to indicate pointer data, e.g. MousePos, IsMousePressed(), io.AddMousePosEvent()
+// But that "Mouse" data can come from different source which occasionally may be useful for application to know about.
+// You can submit a change of pointer type using io.AddMouseSourceEvent().
+/**
+ * Forward declared enum type ImGuiMouseSource
+ */
+export const ImGuiMouseSource = {
+    /**
+     * Input is coming from an actual mouse.
+     */
+    _Mouse: 0,
+    /**
+     * Input is coming from a touch screen (no hovering prior to initial press, less precise initial press aiming, dual-axis wheeling possible).
+     */
+    _TouchScreen: 1,
+    /**
+     * Input is coming from a pressure/magnetic pen (often used in conjunction with high-sampling rates).
+     */
+    _Pen: 2,
+    _COUNT: 3,
+};
+/**
+ * Enumeration for ImGui::SetNextWindow***(), SetWindow***(), SetNextItem***() functions
+ * Represent a condition.
+ * Important: Treat as a regular enum! Do NOT combine multiple values using binary operators! All the functions above treat 0 as a shortcut to ImGuiCond_Always.
+ */
+export const ImGuiCond = {
+    /**
+     * No condition (always set the variable), same as _Always
+     */
+    None: 0,
+    /**
+     * No condition (always set the variable), same as _None
+     */
+    Always: 1,
+    /**
+     * Set the variable once per runtime session (only the first call will succeed)
+     */
+    Once: 2,
+    /**
+     * Set the variable if the object/window has no persistently saved data (no entry in .ini file)
+     */
+    FirstUseEver: 4,
+    /**
+     * Set the variable if the object/window is appearing after being hidden/inactive (or the first time)
+     */
+    Appearing: 8,
+};
+/**
+ * Flags for ImGui::BeginTable()
+ * - Important! Sizing policies have complex and subtle side effects, much more so than you would expect.
+ *   Read comments/demos carefully + experiment with live demos to get acquainted with them.
+ * - The DEFAULT sizing policies are:
+ *    - Default to ImGuiTableFlags_SizingFixedFit    if ScrollX is on, or if host window has ImGuiWindowFlags_AlwaysAutoResize.
+ *    - Default to ImGuiTableFlags_SizingStretchSame if ScrollX is off.
+ * - When ScrollX is off:
+ *    - Table defaults to ImGuiTableFlags_SizingStretchSame -> all Columns defaults to ImGuiTableColumnFlags_WidthStretch with same weight.
+ *    - Columns sizing policy allowed: Stretch (default), Fixed/Auto.
+ *    - Fixed Columns (if any) will generally obtain their requested width (unless the table cannot fit them all).
+ *    - Stretch Columns will share the remaining width according to their respective weight.
+ *    - Mixed Fixed/Stretch columns is possible but has various side-effects on resizing behaviors.
+ *      The typical use of mixing sizing policies is: any number of LEADING Fixed columns, followed by one or two TRAILING Stretch columns.
+ *      (this is because the visible order of columns have subtle but necessary effects on how they react to manual resizing).
+ * - When ScrollX is on:
+ *    - Table defaults to ImGuiTableFlags_SizingFixedFit -> all Columns defaults to ImGuiTableColumnFlags_WidthFixed
+ *    - Columns sizing policy allowed: Fixed/Auto mostly.
+ *    - Fixed Columns can be enlarged as needed. Table will show a horizontal scrollbar if needed.
+ *    - When using auto-resizing (non-resizable) fixed columns, querying the content width to use item right-alignment e.g. SetNextItemWidth(-FLT_MIN) doesn't make sense, would create a feedback loop.
+ *    - Using Stretch columns OFTEN DOES NOT MAKE SENSE if ScrollX is on, UNLESS you have specified a value for 'inner_width' in BeginTable().
+ *      If you specify a value for 'inner_width' then effectively the scrolling space is known and Stretch or mixed Fixed/Stretch columns become meaningful again.
+ * - Read on documentation at the top of imgui_tables.cpp for details.
+ */
+export const ImGuiTableFlags = {
+    /**
+     * Features
+     */
+    None: 0,
+    /**
+     * Enable resizing columns.
+     */
+    Resizable: 1,
+    /**
+     * Enable reordering columns in header row. (Need calling TableSetupColumn() + TableHeadersRow() to display headers, or using ImGuiTableFlags_ContextMenuInBody to access context-menu without headers).
+     */
+    Reorderable: 2,
+    /**
+     * Enable hiding/disabling columns in context menu.
+     */
+    Hideable: 4,
+    /**
+     * Enable sorting. Call TableGetSortSpecs() to obtain sort specs. Also see ImGuiTableFlags_SortMulti and ImGuiTableFlags_SortTristate.
+     */
+    Sortable: 8,
+    /**
+     * Disable persisting columns order, width, visibility and sort settings in the .ini file.
+     */
+    NoSavedSettings: 16,
+    /**
+     * Right-click on columns body/contents will also display table context menu. By default it is available in TableHeadersRow().
+     */
+    ContextMenuInBody: 32,
+    // Decorations
+    /**
+     * Set each RowBg color with ImGuiCol_TableRowBg or ImGuiCol_TableRowBgAlt (equivalent of calling TableSetBgColor with ImGuiTableBgFlags_RowBg0 on each row manually)
+     */
+    RowBg: 64,
+    /**
+     * Draw horizontal borders between rows.
+     */
+    BordersInnerH: 128,
+    /**
+     * Draw horizontal borders at the top and bottom.
+     */
+    BordersOuterH: 256,
+    /**
+     * Draw vertical borders between columns.
+     */
+    BordersInnerV: 512,
+    /**
+     * Draw vertical borders on the left and right sides.
+     */
+    BordersOuterV: 1024,
+    /**
+     * Draw horizontal borders.
+     */
+    BordersH: 384,
+    /**
+     * Draw vertical borders.
+     */
+    BordersV: 1536,
+    /**
+     * Draw inner borders.
+     */
+    BordersInner: 640,
+    /**
+     * Draw outer borders.
+     */
+    BordersOuter: 1280,
+    /**
+     * Draw all borders.
+     */
+    Borders: 1920,
+    /**
+     * [ALPHA] Disable vertical borders in columns Body (borders will always appear in Headers). -> May move to style
+     */
+    NoBordersInBody: 2048,
+    /**
+     * [ALPHA] Disable vertical borders in columns Body until hovered for resize (borders will always appear in Headers). -> May move to style
+     */
+    NoBordersInBodyUntilResize: 4096,
+    // Sizing Policy (read above for defaults)
+    /**
+     * Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width.
+     */
+    SizingFixedFit: 8192,
+    /**
+     * Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching the maximum contents width of all columns. Implicitly enable ImGuiTableFlags_NoKeepColumnsVisible.
+     */
+    SizingFixedSame: 16384,
+    /**
+     * Columns default to _WidthStretch with default weights proportional to each columns contents widths.
+     */
+    SizingStretchProp: 24576,
+    /**
+     * Columns default to _WidthStretch with default weights all equal, unless overridden by TableSetupColumn().
+     */
+    SizingStretchSame: 32768,
+    // Sizing Extra Options
+    /**
+     * Make outer width auto-fit to columns, overriding outer_size.x value. Only available when ScrollX/ScrollY are disabled and Stretch columns are not used.
+     */
+    NoHostExtendX: 65536,
+    /**
+     * Make outer height stop exactly at outer_size.y (prevent auto-extending table past the limit). Only available when ScrollX/ScrollY are disabled. Data below the limit will be clipped and not visible.
+     */
+    NoHostExtendY: 131072,
+    /**
+     * Disable keeping column always minimally visible when ScrollX is off and table gets too small. Not recommended if columns are resizable.
+     */
+    NoKeepColumnsVisible: 262144,
+    /**
+     * Disable distributing remainder width to stretched columns (width allocation on a 100-wide table with 3 columns: Without this flag: 33,33,34. With this flag: 33,33,33). With larger number of columns, resizing will appear to be less smooth.
+     */
+    PreciseWidths: 524288,
+    // Clipping
+    /**
+     * Disable clipping rectangle for every individual columns (reduce draw command count, items will be able to overflow into other columns). Generally incompatible with TableSetupScrollFreeze().
+     */
+    NoClip: 1048576,
+    // Padding
+    /**
+     * Default if BordersOuterV is on. Enable outermost padding. Generally desirable if you have headers.
+     */
+    PadOuterX: 2097152,
+    /**
+     * Default if BordersOuterV is off. Disable outermost padding.
+     */
+    NoPadOuterX: 4194304,
+    /**
+     * Disable inner padding between columns (double inner padding if BordersOuterV is on, single inner padding if BordersOuterV is off).
+     */
+    NoPadInnerX: 8388608,
+    // Scrolling
+    /**
+     * Enable horizontal scrolling. Require 'outer_size' parameter of BeginTable() to specify the container size. Changes default sizing policy. Because this creates a child window, ScrollY is currently generally recommended when using ScrollX.
+     */
+    ScrollX: 16777216,
+    /**
+     * Enable vertical scrolling. Require 'outer_size' parameter of BeginTable() to specify the container size.
+     */
+    ScrollY: 33554432,
+    // Sorting
+    /**
+     * Hold shift when clicking headers to sort on multiple column. TableGetSortSpecs() may return specs where (SpecsCount > 1).
+     */
+    SortMulti: 67108864,
+    /**
+     * Allow no sorting, disable default sorting. TableGetSortSpecs() may return specs where (SpecsCount == 0).
+     */
+    SortTristate: 134217728,
+    // Miscellaneous
+    /**
+     * Highlight column headers when hovered (may evolve into a fuller highlight)
+     */
+    HighlightHoveredColumn: 268435456,
+};
+/**
+ * Flags for ImGui::TableSetupColumn()
+ */
+export const ImGuiTableColumnFlags = {
+    /**
+     * Input configuration flags
+     */
+    None: 0,
+    /**
+     * Overriding/master disable flag: hide column, won't show in context menu (unlike calling TableSetColumnEnabled() which manipulates the user accessible state)
+     */
+    Disabled: 1,
+    /**
+     * Default as a hidden/disabled column.
+     */
+    DefaultHide: 2,
+    /**
+     * Default as a sorting column.
+     */
+    DefaultSort: 4,
+    /**
+     * Column will stretch. Preferable with horizontal scrolling disabled (default if table sizing policy is _SizingStretchSame or _SizingStretchProp).
+     */
+    WidthStretch: 8,
+    /**
+     * Column will not stretch. Preferable with horizontal scrolling enabled (default if table sizing policy is _SizingFixedFit and table is resizable).
+     */
+    WidthFixed: 16,
+    /**
+     * Disable manual resizing.
+     */
+    NoResize: 32,
+    /**
+     * Disable manual reordering this column, this will also prevent other columns from crossing over this column.
+     */
+    NoReorder: 64,
+    /**
+     * Disable ability to hide/disable this column.
+     */
+    NoHide: 128,
+    /**
+     * Disable clipping for this column (all NoClip columns will render in a same draw command).
+     */
+    NoClip: 256,
+    /**
+     * Disable ability to sort on this field (even if ImGuiTableFlags_Sortable is set on the table).
+     */
+    NoSort: 512,
+    /**
+     * Disable ability to sort in the ascending direction.
+     */
+    NoSortAscending: 1024,
+    /**
+     * Disable ability to sort in the descending direction.
+     */
+    NoSortDescending: 2048,
+    /**
+     * TableHeadersRow() will submit an empty label for this column. Convenient for some small columns. Name will still appear in context menu or in angled headers. You may append into this cell by calling TableSetColumnIndex() right after the TableHeadersRow() call.
+     */
+    NoHeaderLabel: 4096,
+    /**
+     * Disable header text width contribution to automatic column width.
+     */
+    NoHeaderWidth: 8192,
+    /**
+     * Make the initial sort direction Ascending when first sorting on this column (default).
+     */
+    PreferSortAscending: 16384,
+    /**
+     * Make the initial sort direction Descending when first sorting on this column.
+     */
+    PreferSortDescending: 32768,
+    /**
+     * Use current Indent value when entering cell (default for column 0).
+     */
+    IndentEnable: 65536,
+    /**
+     * Ignore current Indent value when entering cell (default for columns > 0). Indentation changes _within_ the cell will still be honored.
+     */
+    IndentDisable: 131072,
+    /**
+     * TableHeadersRow() will submit an angled header row for this column. Note this will add an extra row.
+     */
+    AngledHeader: 262144,
+    // Output status flags, read-only via TableGetColumnFlags()
+    /**
+     * Status: is enabled == not hidden by user/api (referred to as "Hide" in _DefaultHide and _NoHide) flags.
+     */
+    IsEnabled: 16777216,
+    /**
+     * Status: is visible == is enabled AND not clipped by scrolling.
+     */
+    IsVisible: 33554432,
+    /**
+     * Status: is currently part of the sort specs
+     */
+    IsSorted: 67108864,
+    /**
+     * Status: is hovered by mouse
+     */
+    IsHovered: 134217728,
+};
+/**
+ * Flags for ImGui::TableNextRow()
+ */
+export const ImGuiTableRowFlags = {
+    None: 0,
+    /**
+     * Identify header row (set default background color + width of its contents accounted differently for auto column width)
+     */
+    Headers: 1,
+};
+/**
+ * Enum for ImGui::TableSetBgColor()
+ * Background colors are rendering in 3 layers:
+ *  - Layer 0: draw with RowBg0 color if set, otherwise draw with ColumnBg0 if set.
+ *  - Layer 1: draw with RowBg1 color if set, otherwise draw with ColumnBg1 if set.
+ *  - Layer 2: draw with CellBg color if set.
+ * The purpose of the two row/columns layers is to let you decide if a background color change should override or blend with the existing color.
+ * When using ImGuiTableFlags_RowBg on the table, each row has the RowBg0 color automatically set for odd/even rows.
+ * If you set the color of RowBg0 target, your color will override the existing RowBg0 color.
+ * If you set the color of RowBg1 or ColumnBg1 target, your color will blend over the RowBg0 color.
+ */
+export const ImGuiTableBgTarget = {
+    None: 0,
+    /**
+     * Set row background color 0 (generally used for background, automatically set when ImGuiTableFlags_RowBg is used)
+     */
+    RowBg0: 1,
+    /**
+     * Set row background color 1 (generally used for selection marking)
+     */
+    RowBg1: 2,
+    /**
+     * Set cell background color (top-most color)
+     */
+    CellBg: 3,
+};
+/**
+ * Flags for ImGuiListClipper (currently not fully exposed in function calls: a future refactor will likely add this to ImGuiListClipper::Begin function equivalent)
+ */
+export const ImGuiListClipperFlags = {
+    None: 0,
+    /**
+     * [Internal] Disabled modifying table row counters. Avoid assumption that 1 clipper item == 1 table row.
+     */
+    NoSetTableRowCounters: 1,
+};
+/**
+ * Flags for BeginMultiSelect()
+ */
+export const ImGuiMultiSelectFlags = {
+    None: 0,
+    /**
+     * Disable selecting more than one item. This is available to allow single-selection code to share same code/logic if desired. It essentially disables the main purpose of BeginMultiSelect() tho!
+     */
+    SingleSelect: 1,
+    /**
+     * Disable Ctrl+A shortcut to select all.
+     */
+    NoSelectAll: 2,
+    /**
+     * Disable Shift+selection mouse/keyboard support (useful for unordered 2D selection). With BoxSelect is also ensure contiguous SetRange requests are not combined into one. This allows not handling interpolation in SetRange requests.
+     */
+    NoRangeSelect: 4,
+    /**
+     * Disable selecting items when navigating (useful for e.g. supporting range-select in a list of checkboxes).
+     */
+    NoAutoSelect: 8,
+    /**
+     * Disable clearing selection when navigating or selecting another one (generally used with ImGuiMultiSelectFlags_NoAutoSelect. useful for e.g. supporting range-select in a list of checkboxes).
+     */
+    NoAutoClear: 16,
+    /**
+     * Disable clearing selection when clicking/selecting an already selected item.
+     */
+    NoAutoClearOnReselect: 32,
+    /**
+     * Enable box-selection with same width and same x pos items (e.g. full row Selectable()). Box-selection works better with little bit of spacing between items hit-box in order to be able to aim at empty space.
+     */
+    BoxSelect1d: 64,
+    /**
+     * Enable box-selection with varying width or varying x pos items support (e.g. different width labels, or 2D layout/grid). This is slower: alters clipping logic so that e.g. horizontal movements will update selection of normally clipped items.
+     */
+    BoxSelect2d: 128,
+    /**
+     * Disable scrolling when box-selecting and moving mouse near edges of scope.
+     */
+    BoxSelectNoScroll: 256,
+    /**
+     * Clear selection when pressing Escape while scope is focused.
+     */
+    ClearOnEscape: 512,
+    /**
+     * Clear selection when clicking on empty location within scope.
+     */
+    ClearOnClickVoid: 1024,
+    /**
+     * Scope for _BoxSelect and _ClearOnClickVoid is whole window (Default). Use if BeginMultiSelect() covers a whole window or used a single time in same window.
+     */
+    ScopeWindow: 2048,
+    /**
+     * Scope for _BoxSelect and _ClearOnClickVoid is rectangle encompassing BeginMultiSelect()/EndMultiSelect(). Use if BeginMultiSelect() is called multiple times in same window.
+     */
+    ScopeRect: 4096,
+    /**
+     * Apply selection on mouse down when clicking on unselected item, on mouse up when clicking on selected item. (Default)
+     */
+    SelectOnAuto: 8192,
+    /**
+     * Apply selection on mouse down when clicking on any items. Prevents Drag and Drop from being used on multiple-selection, but allows e.g. BoxSelect to always reselect even when clicking inside an existing selection. (Excel style behavior)
+     */
+    SelectOnClickAlways: 16384,
+    /**
+     * Apply selection on mouse release when clicking an unselected item. Allow dragging an unselected item without altering selection.
+     */
+    SelectOnClickRelease: 32768,
+    // mGuiMultiSelectFlags_RangeSelect2d       = 1 << 15,  // Shift+Selection uses 2d geometry instead of linear sequence, so possible to use Shift+up/down to select vertically in grid. Analogous to what BoxSelect does.
+    /**
+     * [Temporary] Enable navigation wrapping on X axis. Provided as a convenience because we don't have a design for the general Nav API for this yet. When the more general feature be public we may obsolete this flag in favor of new one.
+     */
+    NavWrapX: 65536,
+    /**
+     * Disable default right-click processing, which selects item on mouse down, and is designed for context-menus.
+     */
+    NoSelectOnRightClick: 131072,
+};
+/**
+ * Selection request type
+ */
+export const ImGuiSelectionRequestType = {
+    _None: 0,
+    /**
+     * Request app to clear selection (if Selected==false) or select all items (if Selected==true). We cannot set RangeFirstItem/RangeLastItem as its contents is entirely up to user (not necessarily an index)
+     */
+    _SetAll: 1,
+    /**
+     * Request app to select/unselect [RangeFirstItem..RangeLastItem] items (inclusive) based on value of Selected. Only EndMultiSelect() request this, app code can read after BeginMultiSelect() and it will always be false.
+     */
+    _SetRange: 2,
+};
+/**
+ * Flags for ImDrawList functions
+ */
+export const ImDrawFlags = {
+    None: 0,
+    /**
+     * AddRect(), AddRectFilled(), PathRect(): enable rounding top-left corner only (when rounding > 0.0f, we default to all corners). Was 0x01.
+     */
+    RoundCornersTopLeft: 16,
+    /**
+     * AddRect(), AddRectFilled(), PathRect(): enable rounding top-right corner only (when rounding > 0.0f, we default to all corners). Was 0x02.
+     */
+    RoundCornersTopRight: 32,
+    /**
+     * AddRect(), AddRectFilled(), PathRect(): enable rounding bottom-left corner only (when rounding > 0.0f, we default to all corners). Was 0x04.
+     */
+    RoundCornersBottomLeft: 64,
+    /**
+     * AddRect(), AddRectFilled(), PathRect(): enable rounding bottom-right corner only (when rounding > 0.0f, we default to all corners). Wax 0x08.
+     */
+    RoundCornersBottomRight: 128,
+    /**
+     * AddRect(), AddRectFilled(), PathRect(): disable rounding on all corners (when rounding > 0.0f). This is NOT zero, NOT an implicit flag!
+     */
+    RoundCornersNone: 256,
+    /**
+     * PathStroke(), AddPolyline(): specify that shape should be closed (Important: this is always == 1 for legacy reason)
+     */
+    Closed: 512,
+    RoundCornersTop: 48,
+    RoundCornersBottom: 192,
+    RoundCornersLeft: 80,
+    RoundCornersRight: 160,
+    RoundCornersAll: 240,
+};
+/**
+ * Flags for ImDrawList instance. Those are set automatically by ImGui:: functions from ImGuiIO settings, and generally not manipulated directly.
+ * It is however possible to temporarily alter flags between calls to ImDrawList:: functions.
+ */
+export const ImDrawListFlags = {
+    None: 0,
+    /**
+     * Enable anti-aliased lines/borders (*2 the number of triangles for 1.0f wide line or lines thin enough to be drawn using textures, otherwise *3 the number of triangles)
+     */
+    AntiAliasedLines: 1,
+    /**
+     * Enable anti-aliased lines/borders using textures when possible. Require backend to render with bilinear filtering (NOT point/nearest filtering).
+     */
+    AntiAliasedLinesUseTex: 2,
+    /**
+     * Enable anti-aliased edge around filled shapes (rounded rectangles, circles).
+     */
+    AntiAliasedFill: 4,
+    /**
+     * Can emit 'VtxOffset > 0' to allow large meshes. Set when 'ImGuiBackendFlags_RendererHasVtxOffset' is enabled.
+     */
+    AllowVtxOffset: 8,
+};
+/**
+ * Most standard backends only support RGBA32 but we provide a single channel option for low-resource/embedded systems.
+ */
+export const ImTextureFormat = {
+    /**
+     * 4 components per pixel, each is unsigned 8-bit. Total size = TexWidth * TexHeight * 4
+     */
+    _RGBA32: 0,
+    /**
+     * 1 component per pixel, each is unsigned 8-bit. Total size = TexWidth * TexHeight
+     */
+    _Alpha8: 1,
+};
+/**
+ * Status of a texture to communicate with Renderer Backend.
+ */
+export const ImTextureStatus = {
+    _OK: 0,
+    /**
+     * Backend destroyed the texture.
+     */
+    _Destroyed: 1,
+    /**
+     * Requesting backend to create the texture. Set status OK when done.
+     */
+    _WantCreate: 2,
+    /**
+     * Requesting backend to update specific blocks of pixels (write to texture portions which have never been used before). Set status OK when done.
+     */
+    _WantUpdates: 3,
+    /**
+     * Requesting backend to destroy the texture. Set status to Destroyed when done.
+     */
+    _WantDestroy: 4,
+};
+/**
+ * Flags for ImFontAtlas build
+ */
+export const ImFontAtlasFlags = {
+    None: 0,
+    /**
+     * Don't round the height to next power of two
+     */
+    NoPowerOfTwoHeight: 1,
+    /**
+     * Don't build software mouse cursors into the atlas (save a little texture memory)
+     */
+    NoMouseCursors: 2,
+    /**
+     * Don't build thick line textures into the atlas (save a little texture memory, allow support for point/nearest filtering). The AntiAliasedLinesUseTex features uses them, otherwise they will be rendered using polygons (more expensive for CPU/GPU).
+     */
+    NoBakedLines: 4,
+};
+/**
+ * Font flags
+ * (in future versions as we redesign font loading API, this will become more important and better documented. for now please consider this as internal/advanced use)
+ */
+export const ImFontFlags = {
+    None: 0,
+    /**
+     * Disable throwing an error/assert when calling AddFontXXX() with missing file/data. Calling code is expected to check AddFontXXX() return value.
+     */
+    NoLoadError: 2,
+    /**
+     * [Internal] Disable loading new glyphs.
+     */
+    NoLoadGlyphs: 4,
+    /**
+     * [Internal] Disable loading new baked sizes, disable garbage collecting current ones. e.g. if you want to lock a font to a single size. Important: if you use this to preload given sizes, consider the possibility of multiple font density used on Retina display.
+     */
+    LockBakedSizes: 8,
+    /**
+     * [Internal] Reference size was not set explicitly.
+     */
+    ImplicitRefSize: 16,
+};
+/**
+ * Flags stored in ImGuiViewport::Flags, giving indications to the platform backends.
+ */
+export const ImGuiViewportFlags = {
+    None: 0,
+    /**
+     * Represent a Platform Window
+     */
+    IsPlatformWindow: 1,
+    /**
+     * Represent a Platform Monitor (unused yet)
+     */
+    IsPlatformMonitor: 2,
+    /**
+     * Platform Window: Is created/managed by the user application? (rather than our backend)
+     */
+    OwnedByApp: 4,
+    /**
+     * Platform Window: Disable platform decorations: title bar, borders, etc. (generally set all windows, but if ImGuiConfigFlags_ViewportsDecoration is set we only set this on popups/tooltips)
+     */
+    NoDecoration: 8,
+    /**
+     * Platform Window: Disable platform task bar icon (generally set on popups/tooltips, or all windows if ImGuiConfigFlags_ViewportsNoTaskBarIcon is set)
+     */
+    NoTaskBarIcon: 16,
+    /**
+     * Platform Window: Don't take focus when created.
+     */
+    NoFocusOnAppearing: 32,
+    /**
+     * Platform Window: Don't take focus when clicked on.
+     */
+    NoFocusOnClick: 64,
+    /**
+     * Platform Window: Make mouse pass through so we can drag this window while peaking behind it.
+     */
+    NoInputs: 128,
+    /**
+     * Platform Window: Renderer doesn't need to clear the framebuffer ahead (because we will fill it entirely).
+     */
+    NoRendererClear: 256,
+    /**
+     * Platform Window: Avoid merging this window into another host window. This can only be set via ImGuiWindowClass viewport flags override (because we need to now ahead if we are going to create a viewport in the first place!).
+     */
+    NoAutoMerge: 512,
+    /**
+     * Platform Window: Display on top (for tooltips only).
+     */
+    TopMost: 1024,
+    /**
+     * Viewport can host multiple imgui windows (secondary viewports are associated to a single window). // FIXME: In practice there's still probably code making the assumption that this is always and only on the MainViewport. Will fix once we add support for "no main viewport".
+     */
+    CanHostOtherWindows: 2048,
+    // Output status flags (from Platform)
+    /**
+     * Platform Window: Window is minimized, can skip render. When minimized we tend to avoid using the viewport pos/size for clipping window or testing if they are contained in the viewport.
+     */
+    IsMinimized: 4096,
+    /**
+     * Platform Window: Window is focused (last call to Platform_GetWindowFocus() returned true)
+     */
+    IsFocused: 8192,
+};
+export const FreeTypeLoaderFlags = {
+    NoHinting: 1,
+    NoAutoHint: 2,
+    ForceAutoHint: 4,
+    LightHinting: 8,
+    MonoHinting: 16,
+    Bold: 32,
+    Oblique: 64,
+    Monochrome: 128,
+    LoadColor: 256,
+    Bitmap: 512,
+};
+export class ImVec2 extends ValueStruct {
+    x;
+    y;
+    constructor(x, y) {
+        super();
+        this.x = x;
+        this.y = y;
+    }
+    static From(obj) {
+        return new ImVec2(obj.x, obj.y);
+    }
+}
+/**
+ * ImVec4: 4D vector used to store clipping rectangles, colors etc. [Compile-time configurable type]
+ */
+export class ImVec4 extends ValueStruct {
+    x;
+    y;
+    z;
+    w;
+    constructor(x, y, z, w) {
+        super();
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.w = w;
+    }
+    static From(obj) {
+        return new ImVec4(obj.x, obj.y, obj.z, obj.w);
+    }
+}
+export class ImTextureRef extends ValueStruct {
+    _TexID;
+    constructor(_TexID) {
+        super();
+        this._TexID = _TexID;
+    }
+    static From(obj) {
+        return new ImTextureRef(obj._TexID);
+    }
+} /**
+ * Data shared among multiple draw lists (typically owned by parent ImGui context, but you may create one yourself)
+ */
+export class ImDrawListSharedData extends ReferenceStruct {
+}
+/**
+ * Opaque storage for building a ImFontAtlas
+ */
+export class ImFontAtlasBuilder extends ReferenceStruct {
+}
+/**
+ * Opaque interface to a font loading backend (stb_truetype, FreeType etc.).
+ */
+export class ImFontLoader extends ReferenceStruct {
+}
+// Forward declarations: ImGui layer
+/**
+ * Dear ImGui context (opaque structure, unless including imgui_internal.h)
+ */
+export class ImGuiContext extends ReferenceStruct {
+}
+/**
+ * Sorting specifications for a table (often handling sort specs for a single column, occasionally more)
+ * Obtained by calling TableGetSortSpecs().
+ * When 'SpecsDirty == true' you can sort your data. It will be true with sorting specs have changed since last call, or the first time.
+ * Make sure to set 'SpecsDirty = false' after sorting, else you may wastefully sort your data every frame!
+ */
+export class ImGuiTableSortSpecs extends ReferenceStruct {
+    /**
+     * Pointer to sort spec array.
+     */
+    get Specs() {
+        return ImGuiTableColumnSortSpecs.From(this.ptr.get_Specs());
+    }
+    set Specs(v) {
+        this.ptr.set_Specs(v);
+    }
+    /**
+     * Sort spec count. Most often 1. May be > 1 when ImGuiTableFlags_SortMulti is enabled. May be == 0 when ImGuiTableFlags_SortTristate is enabled.
+     */
+    get SpecsCount() {
+        return this.ptr.get_SpecsCount();
+    }
+    set SpecsCount(v) {
+        this.ptr.set_SpecsCount(v);
+    }
+    /**
+     * Set to true when specs have changed since last time! Use this to sort again, then clear the flag.
+     */
+    get SpecsDirty() {
+        return this.ptr.get_SpecsDirty();
+    }
+    set SpecsDirty(v) {
+        this.ptr.set_SpecsDirty(v);
+    }
+}
+/**
+ * Sorting specification for one column of a table (sizeof == 12 bytes)
+ */
+export class ImGuiTableColumnSortSpecs extends ReferenceStruct {
+    /**
+     * User id of the column (if specified by a TableSetupColumn() call)
+     */
+    get ColumnUserID() {
+        return this.ptr.get_ColumnUserID();
+    }
+    set ColumnUserID(v) {
+        this.ptr.set_ColumnUserID(v);
+    }
+    /**
+     * Index of the column
+     */
+    get ColumnIndex() {
+        return this.ptr.get_ColumnIndex();
+    }
+    set ColumnIndex(v) {
+        this.ptr.set_ColumnIndex(v);
+    }
+    /**
+     * Index within parent ImGuiTableSortSpecs (always stored in order starting from 0, tables sorted on a single criteria will always have a 0 here)
+     */
+    get SortOrder() {
+        return this.ptr.get_SortOrder();
+    }
+    set SortOrder(v) {
+        this.ptr.set_SortOrder(v);
+    }
+    /**
+     * ImGuiSortDirection_Ascending or ImGuiSortDirection_Descending
+     */
+    get SortDirection() {
+        return this.ptr.get_SortDirection();
+    }
+    set SortDirection(v) {
+        this.ptr.set_SortDirection(v);
+    }
+}
+export class ImGuiStyle extends ReferenceStruct {
+    // Font scaling
+    // - recap: ImGui::GetFontSize() == FontSizeBase * (FontScaleMain * FontScaleDpi * other_scaling_factors)
+    /**
+     * Current base font size before external global factors are applied. Use PushFont(NULL, size) to modify. Use ImGui::GetFontSize() to obtain scaled value.
+     */
+    get FontSizeBase() {
+        return this.ptr.get_FontSizeBase();
+    }
+    set FontSizeBase(v) {
+        this.ptr.set_FontSizeBase(v);
+    }
+    /**
+     * Main global scale factor. May be set by application once, or exposed to end-user.
+     */
+    get FontScaleMain() {
+        return this.ptr.get_FontScaleMain();
+    }
+    set FontScaleMain(v) {
+        this.ptr.set_FontScaleMain(v);
+    }
+    /**
+     * Additional global scale factor from viewport/monitor contents scale. In docking branch: when io.ConfigDpiScaleFonts is enabled, this is automatically overwritten when changing monitor DPI.
+     */
+    get FontScaleDpi() {
+        return this.ptr.get_FontScaleDpi();
+    }
+    set FontScaleDpi(v) {
+        this.ptr.set_FontScaleDpi(v);
+    }
+    /**
+     * Global alpha applies to everything in Dear ImGui.
+     */
+    get Alpha() {
+        return this.ptr.get_Alpha();
+    }
+    set Alpha(v) {
+        this.ptr.set_Alpha(v);
+    }
+    /**
+     * Additional alpha multiplier applied by BeginDisabled(). Multiply over current value of Alpha.
+     */
+    get DisabledAlpha() {
+        return this.ptr.get_DisabledAlpha();
+    }
+    set DisabledAlpha(v) {
+        this.ptr.set_DisabledAlpha(v);
+    }
+    /**
+     * Padding within a window.
+     */
+    get WindowPadding() {
+        return ImVec2.From(this.ptr.get_WindowPadding());
+    }
+    set WindowPadding(v) {
+        this.ptr.set_WindowPadding(v);
+    }
+    /**
+     * Radius of window corners rounding. Set to 0.0f to have rectangular windows. Large values tend to lead to variety of artifacts and are not recommended.
+     */
+    get WindowRounding() {
+        return this.ptr.get_WindowRounding();
+    }
+    set WindowRounding(v) {
+        this.ptr.set_WindowRounding(v);
+    }
+    /**
+     * Thickness of border around windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+     */
+    get WindowBorderSize() {
+        return this.ptr.get_WindowBorderSize();
+    }
+    set WindowBorderSize(v) {
+        this.ptr.set_WindowBorderSize(v);
+    }
+    /**
+     * Hit-testing extent outside/inside resizing border. Also extend determination of hovered window. Generally meaningfully larger than WindowBorderSize to make it easy to reach borders.
+     */
+    get WindowBorderHoverPadding() {
+        return this.ptr.get_WindowBorderHoverPadding();
+    }
+    set WindowBorderHoverPadding(v) {
+        this.ptr.set_WindowBorderHoverPadding(v);
+    }
+    /**
+     * Minimum window size. This is a global setting. If you want to constrain individual windows, use SetNextWindowSizeConstraints().
+     */
+    get WindowMinSize() {
+        return ImVec2.From(this.ptr.get_WindowMinSize());
+    }
+    set WindowMinSize(v) {
+        this.ptr.set_WindowMinSize(v);
+    }
+    /**
+     * Alignment for title bar text. Defaults to (0.0f,0.5f) for left-aligned,vertically centered.
+     */
+    get WindowTitleAlign() {
+        return ImVec2.From(this.ptr.get_WindowTitleAlign());
+    }
+    set WindowTitleAlign(v) {
+        this.ptr.set_WindowTitleAlign(v);
+    }
+    /**
+     * Side of the collapsing/docking button in the title bar (None/Left/Right). Defaults to ImGuiDir_Left.
+     */
+    get WindowMenuButtonPosition() {
+        return this.ptr.get_WindowMenuButtonPosition();
+    }
+    set WindowMenuButtonPosition(v) {
+        this.ptr.set_WindowMenuButtonPosition(v);
+    }
+    /**
+     * Radius of child window corners rounding. Set to 0.0f to have rectangular windows.
+     */
+    get ChildRounding() {
+        return this.ptr.get_ChildRounding();
+    }
+    set ChildRounding(v) {
+        this.ptr.set_ChildRounding(v);
+    }
+    /**
+     * Thickness of border around child windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+     */
+    get ChildBorderSize() {
+        return this.ptr.get_ChildBorderSize();
+    }
+    set ChildBorderSize(v) {
+        this.ptr.set_ChildBorderSize(v);
+    }
+    /**
+     * Radius of popup window corners rounding. (Note that tooltip windows use WindowRounding)
+     */
+    get PopupRounding() {
+        return this.ptr.get_PopupRounding();
+    }
+    set PopupRounding(v) {
+        this.ptr.set_PopupRounding(v);
+    }
+    /**
+     * Thickness of border around popup/tooltip windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+     */
+    get PopupBorderSize() {
+        return this.ptr.get_PopupBorderSize();
+    }
+    set PopupBorderSize(v) {
+        this.ptr.set_PopupBorderSize(v);
+    }
+    /**
+     * Padding within a framed rectangle (used by most widgets).
+     */
+    get FramePadding() {
+        return ImVec2.From(this.ptr.get_FramePadding());
+    }
+    set FramePadding(v) {
+        this.ptr.set_FramePadding(v);
+    }
+    /**
+     * Radius of frame corners rounding. Set to 0.0f to have rectangular frame (used by most widgets).
+     */
+    get FrameRounding() {
+        return this.ptr.get_FrameRounding();
+    }
+    set FrameRounding(v) {
+        this.ptr.set_FrameRounding(v);
+    }
+    /**
+     * Thickness of border around frames. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+     */
+    get FrameBorderSize() {
+        return this.ptr.get_FrameBorderSize();
+    }
+    set FrameBorderSize(v) {
+        this.ptr.set_FrameBorderSize(v);
+    }
+    /**
+     * Horizontal and vertical spacing between widgets/lines.
+     */
+    get ItemSpacing() {
+        return ImVec2.From(this.ptr.get_ItemSpacing());
+    }
+    set ItemSpacing(v) {
+        this.ptr.set_ItemSpacing(v);
+    }
+    /**
+     * Horizontal and vertical spacing between within elements of a composed widget (e.g. a slider and its label).
+     */
+    get ItemInnerSpacing() {
+        return ImVec2.From(this.ptr.get_ItemInnerSpacing());
+    }
+    set ItemInnerSpacing(v) {
+        this.ptr.set_ItemInnerSpacing(v);
+    }
+    /**
+     * Padding within a table cell. Cellpadding.x is locked for entire table. CellPadding.y may be altered between different rows.
+     */
+    get CellPadding() {
+        return ImVec2.From(this.ptr.get_CellPadding());
+    }
+    set CellPadding(v) {
+        this.ptr.set_CellPadding(v);
+    }
+    /**
+     * Expand reactive bounding box for touch-based system where touch position is not accurate enough. Unfortunately we don't sort widgets so priority on overlap will always be given to the first widget. So don't grow this too much!
+     */
+    get TouchExtraPadding() {
+        return ImVec2.From(this.ptr.get_TouchExtraPadding());
+    }
+    set TouchExtraPadding(v) {
+        this.ptr.set_TouchExtraPadding(v);
+    }
+    /**
+     * Horizontal indentation when e.g. entering a tree node. Generally == (FontSize + FramePadding.x*2).
+     */
+    get IndentSpacing() {
+        return this.ptr.get_IndentSpacing();
+    }
+    set IndentSpacing(v) {
+        this.ptr.set_IndentSpacing(v);
+    }
+    /**
+     * Minimum horizontal spacing between two columns. Preferably > (FramePadding.x + 1).
+     */
+    get ColumnsMinSpacing() {
+        return this.ptr.get_ColumnsMinSpacing();
+    }
+    set ColumnsMinSpacing(v) {
+        this.ptr.set_ColumnsMinSpacing(v);
+    }
+    /**
+     * Width of the vertical scrollbar, Height of the horizontal scrollbar.
+     */
+    get ScrollbarSize() {
+        return this.ptr.get_ScrollbarSize();
+    }
+    set ScrollbarSize(v) {
+        this.ptr.set_ScrollbarSize(v);
+    }
+    /**
+     * Radius of grab corners for scrollbar.
+     */
+    get ScrollbarRounding() {
+        return this.ptr.get_ScrollbarRounding();
+    }
+    set ScrollbarRounding(v) {
+        this.ptr.set_ScrollbarRounding(v);
+    }
+    /**
+     * Padding of scrollbar grab within its frame (same for both axes).
+     */
+    get ScrollbarPadding() {
+        return this.ptr.get_ScrollbarPadding();
+    }
+    set ScrollbarPadding(v) {
+        this.ptr.set_ScrollbarPadding(v);
+    }
+    /**
+     * Minimum width/height of a grab box for slider/scrollbar.
+     */
+    get GrabMinSize() {
+        return this.ptr.get_GrabMinSize();
+    }
+    set GrabMinSize(v) {
+        this.ptr.set_GrabMinSize(v);
+    }
+    /**
+     * Radius of grabs corners rounding. Set to 0.0f to have rectangular slider grabs.
+     */
+    get GrabRounding() {
+        return this.ptr.get_GrabRounding();
+    }
+    set GrabRounding(v) {
+        this.ptr.set_GrabRounding(v);
+    }
+    /**
+     * The size in pixels of the dead-zone around zero on logarithmic sliders that cross zero.
+     */
+    get LogSliderDeadzone() {
+        return this.ptr.get_LogSliderDeadzone();
+    }
+    set LogSliderDeadzone(v) {
+        this.ptr.set_LogSliderDeadzone(v);
+    }
+    /**
+     * Rounding of Image() calls.
+     */
+    get ImageRounding() {
+        return this.ptr.get_ImageRounding();
+    }
+    set ImageRounding(v) {
+        this.ptr.set_ImageRounding(v);
+    }
+    /**
+     * Thickness of border around Image() calls.
+     */
+    get ImageBorderSize() {
+        return this.ptr.get_ImageBorderSize();
+    }
+    set ImageBorderSize(v) {
+        this.ptr.set_ImageBorderSize(v);
+    }
+    /**
+     * Radius of upper corners of a tab. Set to 0.0f to have rectangular tabs.
+     */
+    get TabRounding() {
+        return this.ptr.get_TabRounding();
+    }
+    set TabRounding(v) {
+        this.ptr.set_TabRounding(v);
+    }
+    /**
+     * Thickness of border around tabs.
+     */
+    get TabBorderSize() {
+        return this.ptr.get_TabBorderSize();
+    }
+    set TabBorderSize(v) {
+        this.ptr.set_TabBorderSize(v);
+    }
+    /**
+     * Minimum tab width, to make tabs larger than their contents. TabBar buttons are not affected.
+     */
+    get TabMinWidthBase() {
+        return this.ptr.get_TabMinWidthBase();
+    }
+    set TabMinWidthBase(v) {
+        this.ptr.set_TabMinWidthBase(v);
+    }
+    /**
+     * Minimum tab width after shrinking, when using ImGuiTabBarFlags_FittingPolicyMixed policy.
+     */
+    get TabMinWidthShrink() {
+        return this.ptr.get_TabMinWidthShrink();
+    }
+    set TabMinWidthShrink(v) {
+        this.ptr.set_TabMinWidthShrink(v);
+    }
+    /**
+     * -1: always visible. 0.0f: visible when hovered. >0.0f: visible when hovered if minimum width. FLT_MAX: never shrink, will behave like ImGuiTabBarFlags_FittingPolicyScroll.
+     */
+    get TabCloseButtonMinWidthSelected() {
+        return this.ptr.get_TabCloseButtonMinWidthSelected();
+    }
+    set TabCloseButtonMinWidthSelected(v) {
+        this.ptr.set_TabCloseButtonMinWidthSelected(v);
+    }
+    /**
+     * -1: always visible. 0.0f: visible when hovered. >0.0f: visible when hovered if minimum width. FLT_MAX: never show close button when unselected.
+     */
+    get TabCloseButtonMinWidthUnselected() {
+        return this.ptr.get_TabCloseButtonMinWidthUnselected();
+    }
+    set TabCloseButtonMinWidthUnselected(v) {
+        this.ptr.set_TabCloseButtonMinWidthUnselected(v);
+    }
+    /**
+     * Thickness of tab-bar separator, which takes on the tab active color to denote focus.
+     */
+    get TabBarBorderSize() {
+        return this.ptr.get_TabBarBorderSize();
+    }
+    set TabBarBorderSize(v) {
+        this.ptr.set_TabBarBorderSize(v);
+    }
+    /**
+     * Thickness of tab-bar overline, which highlights the selected tab-bar.
+     */
+    get TabBarOverlineSize() {
+        return this.ptr.get_TabBarOverlineSize();
+    }
+    set TabBarOverlineSize(v) {
+        this.ptr.set_TabBarOverlineSize(v);
+    }
+    /**
+     * Angle of angled headers (supported values range from -50.0f degrees to +50.0f degrees).
+     */
+    get TableAngledHeadersAngle() {
+        return this.ptr.get_TableAngledHeadersAngle();
+    }
+    set TableAngledHeadersAngle(v) {
+        this.ptr.set_TableAngledHeadersAngle(v);
+    }
+    /**
+     * Alignment of angled headers within the cell
+     */
+    get TableAngledHeadersTextAlign() {
+        return ImVec2.From(this.ptr.get_TableAngledHeadersTextAlign());
+    }
+    set TableAngledHeadersTextAlign(v) {
+        this.ptr.set_TableAngledHeadersTextAlign(v);
+    }
+    /**
+     * Default way to draw lines connecting TreeNode hierarchy. ImGuiTreeNodeFlags_DrawLinesNone or ImGuiTreeNodeFlags_DrawLinesFull or ImGuiTreeNodeFlags_DrawLinesToNodes.
+     */
+    get TreeLinesFlags() {
+        return this.ptr.get_TreeLinesFlags();
+    }
+    set TreeLinesFlags(v) {
+        this.ptr.set_TreeLinesFlags(v);
+    }
+    /**
+     * Thickness of outlines when using ImGuiTreeNodeFlags_DrawLines.
+     */
+    get TreeLinesSize() {
+        return this.ptr.get_TreeLinesSize();
+    }
+    set TreeLinesSize(v) {
+        this.ptr.set_TreeLinesSize(v);
+    }
+    /**
+     * Radius of lines connecting child nodes to the vertical line.
+     */
+    get TreeLinesRounding() {
+        return this.ptr.get_TreeLinesRounding();
+    }
+    set TreeLinesRounding(v) {
+        this.ptr.set_TreeLinesRounding(v);
+    }
+    /**
+     * Radius of the drag and drop target frame. When <0.0f: use FrameRounding.
+     */
+    get DragDropTargetRounding() {
+        return this.ptr.get_DragDropTargetRounding();
+    }
+    set DragDropTargetRounding(v) {
+        this.ptr.set_DragDropTargetRounding(v);
+    }
+    /**
+     * Thickness of the drag and drop target border.
+     */
+    get DragDropTargetBorderSize() {
+        return this.ptr.get_DragDropTargetBorderSize();
+    }
+    set DragDropTargetBorderSize(v) {
+        this.ptr.set_DragDropTargetBorderSize(v);
+    }
+    /**
+     * Size to expand the drag and drop target from actual target item size.
+     */
+    get DragDropTargetPadding() {
+        return this.ptr.get_DragDropTargetPadding();
+    }
+    set DragDropTargetPadding(v) {
+        this.ptr.set_DragDropTargetPadding(v);
+    }
+    /**
+     * Size of R/G/B/A color markers for ColorEdit4() and for Drags/Sliders when using ImGuiSliderFlags_ColorMarkers.
+     */
+    get ColorMarkerSize() {
+        return this.ptr.get_ColorMarkerSize();
+    }
+    set ColorMarkerSize(v) {
+        this.ptr.set_ColorMarkerSize(v);
+    }
+    /**
+     * Side of the color button in the ColorEdit4 widget (left/right). Defaults to ImGuiDir_Right.
+     */
+    get ColorButtonPosition() {
+        return this.ptr.get_ColorButtonPosition();
+    }
+    set ColorButtonPosition(v) {
+        this.ptr.set_ColorButtonPosition(v);
+    }
+    /**
+     * Alignment of button text when button is larger than text. Defaults to (0.5f, 0.5f) (centered).
+     */
+    get ButtonTextAlign() {
+        return ImVec2.From(this.ptr.get_ButtonTextAlign());
+    }
+    set ButtonTextAlign(v) {
+        this.ptr.set_ButtonTextAlign(v);
+    }
+    /**
+     * Alignment of selectable text. Defaults to (0.0f, 0.0f) (top-left aligned). It's generally important to keep this left-aligned if you want to lay multiple items on a same line.
+     */
+    get SelectableTextAlign() {
+        return ImVec2.From(this.ptr.get_SelectableTextAlign());
+    }
+    set SelectableTextAlign(v) {
+        this.ptr.set_SelectableTextAlign(v);
+    }
+    /**
+     * Thickness of border in Separator(). Must be >= 1.0f.
+     */
+    get SeparatorSize() {
+        return this.ptr.get_SeparatorSize();
+    }
+    set SeparatorSize(v) {
+        this.ptr.set_SeparatorSize(v);
+    }
+    /**
+     * Thickness of border in SeparatorText()
+     */
+    get SeparatorTextBorderSize() {
+        return this.ptr.get_SeparatorTextBorderSize();
+    }
+    set SeparatorTextBorderSize(v) {
+        this.ptr.set_SeparatorTextBorderSize(v);
+    }
+    /**
+     * Alignment of text within the separator. Defaults to (0.0f, 0.5f) (left aligned, center).
+     */
+    get SeparatorTextAlign() {
+        return ImVec2.From(this.ptr.get_SeparatorTextAlign());
+    }
+    set SeparatorTextAlign(v) {
+        this.ptr.set_SeparatorTextAlign(v);
+    }
+    /**
+     * Horizontal offset of text from each edge of the separator + spacing on other axis. Generally small values. .y is recommended to be == FramePadding.y.
+     */
+    get SeparatorTextPadding() {
+        return ImVec2.From(this.ptr.get_SeparatorTextPadding());
+    }
+    set SeparatorTextPadding(v) {
+        this.ptr.set_SeparatorTextPadding(v);
+    }
+    /**
+     * Apply to regular windows: amount which we enforce to keep visible when moving near edges of your screen.
+     */
+    get DisplayWindowPadding() {
+        return ImVec2.From(this.ptr.get_DisplayWindowPadding());
+    }
+    set DisplayWindowPadding(v) {
+        this.ptr.set_DisplayWindowPadding(v);
+    }
+    /**
+     * Apply to every windows, menus, popups, tooltips: amount where we avoid displaying contents. Adjust if you cannot see the edges of your screen (e.g. on a TV where scaling has not been configured).
+     */
+    get DisplaySafeAreaPadding() {
+        return ImVec2.From(this.ptr.get_DisplaySafeAreaPadding());
+    }
+    set DisplaySafeAreaPadding(v) {
+        this.ptr.set_DisplaySafeAreaPadding(v);
+    }
+    /**
+     * Docking node has their own CloseButton() to close all docked windows.
+     */
+    get DockingNodeHasCloseButton() {
+        return this.ptr.get_DockingNodeHasCloseButton();
+    }
+    set DockingNodeHasCloseButton(v) {
+        this.ptr.set_DockingNodeHasCloseButton(v);
+    }
+    /**
+     * Thickness of resizing border between docked windows
+     */
+    get DockingSeparatorSize() {
+        return this.ptr.get_DockingSeparatorSize();
+    }
+    set DockingSeparatorSize(v) {
+        this.ptr.set_DockingSeparatorSize(v);
+    }
+    /**
+     * Scale software rendered mouse cursor (when io.MouseDrawCursor is enabled). We apply per-monitor DPI scaling over this scale. May be removed later.
+     */
+    get MouseCursorScale() {
+        return this.ptr.get_MouseCursorScale();
+    }
+    set MouseCursorScale(v) {
+        this.ptr.set_MouseCursorScale(v);
+    }
+    /**
+     * Enable anti-aliased lines/borders. Disable if you are really tight on CPU/GPU. Latched at the beginning of the frame (copied to ImDrawList).
+     */
+    get AntiAliasedLines() {
+        return this.ptr.get_AntiAliasedLines();
+    }
+    set AntiAliasedLines(v) {
+        this.ptr.set_AntiAliasedLines(v);
+    }
+    /**
+     * Enable anti-aliased lines/borders using textures where possible. Require backend to render with bilinear filtering (NOT point/nearest filtering). Latched at the beginning of the frame (copied to ImDrawList).
+     */
+    get AntiAliasedLinesUseTex() {
+        return this.ptr.get_AntiAliasedLinesUseTex();
+    }
+    set AntiAliasedLinesUseTex(v) {
+        this.ptr.set_AntiAliasedLinesUseTex(v);
+    }
+    /**
+     * Enable anti-aliased edges around filled shapes (rounded rectangles, circles, etc.). Disable if you are really tight on CPU/GPU. Latched at the beginning of the frame (copied to ImDrawList).
+     */
+    get AntiAliasedFill() {
+        return this.ptr.get_AntiAliasedFill();
+    }
+    set AntiAliasedFill(v) {
+        this.ptr.set_AntiAliasedFill(v);
+    }
+    /**
+     * Tessellation tolerance when using PathBezierCurveTo() without a specific number of segments. Decrease for highly tessellated curves (higher quality, more polygons), increase to reduce quality.
+     */
+    get CurveTessellationTol() {
+        return this.ptr.get_CurveTessellationTol();
+    }
+    set CurveTessellationTol(v) {
+        this.ptr.set_CurveTessellationTol(v);
+    }
+    /**
+     * Maximum error (in pixels) allowed when using AddCircle()/AddCircleFilled() or drawing rounded corner rectangles with no explicit segment count specified. Decrease for higher quality but more geometry.
+     */
+    get CircleTessellationMaxError() {
+        return this.ptr.get_CircleTessellationMaxError();
+    }
+    set CircleTessellationMaxError(v) {
+        this.ptr.set_CircleTessellationMaxError(v);
+    }
+    get Colors() {
+        return this.ptr.get_Colors();
+    }
+    set Colors(v) {
+        this.ptr.set_Colors(v);
+    }
+    // Behaviors
+    // (It is possible to modify those fields mid-frame if specific behavior need it, unlike e.g. configuration fields in ImGuiIO)
+    /**
+     * Delay for IsItemHovered(ImGuiHoveredFlags_Stationary). Time required to consider mouse stationary.
+     */
+    get HoverStationaryDelay() {
+        return this.ptr.get_HoverStationaryDelay();
+    }
+    set HoverStationaryDelay(v) {
+        this.ptr.set_HoverStationaryDelay(v);
+    }
+    /**
+     * Delay for IsItemHovered(ImGuiHoveredFlags_DelayShort). Usually used along with HoverStationaryDelay.
+     */
+    get HoverDelayShort() {
+        return this.ptr.get_HoverDelayShort();
+    }
+    set HoverDelayShort(v) {
+        this.ptr.set_HoverDelayShort(v);
+    }
+    /**
+     * Delay for IsItemHovered(ImGuiHoveredFlags_DelayNormal). "
+     */
+    get HoverDelayNormal() {
+        return this.ptr.get_HoverDelayNormal();
+    }
+    set HoverDelayNormal(v) {
+        this.ptr.set_HoverDelayNormal(v);
+    }
+    /**
+     * Default flags when using IsItemHovered(ImGuiHoveredFlags_ForTooltip) or BeginItemTooltip()/SetItemTooltip() while using mouse.
+     */
+    get HoverFlagsForTooltipMouse() {
+        return this.ptr.get_HoverFlagsForTooltipMouse();
+    }
+    set HoverFlagsForTooltipMouse(v) {
+        this.ptr.set_HoverFlagsForTooltipMouse(v);
+    }
+    /**
+     * Default flags when using IsItemHovered(ImGuiHoveredFlags_ForTooltip) or BeginItemTooltip()/SetItemTooltip() while using keyboard/gamepad.
+     */
+    get HoverFlagsForTooltipNav() {
+        return this.ptr.get_HoverFlagsForTooltipNav();
+    }
+    set HoverFlagsForTooltipNav(v) {
+        this.ptr.set_HoverFlagsForTooltipNav(v);
+    }
+    /**
+     * Scale all spacing/padding/thickness values. Do not scale fonts. See comments in definition. Consider not calling this if your initial scale factor if <1.0.
+     */
+    ScaleAllSizes(scale_factor) {
+        this.ptr.ImGuiStyle_ScaleAllSizes(scale_factor);
+    }
+}
+export class ImGuiIO extends ReferenceStruct {
+    /**
+     * = 0              // See ImGuiConfigFlags_ enum. Set by user/application. Keyboard/Gamepad navigation options, etc.
+     */
+    get ConfigFlags() {
+        return this.ptr.get_ConfigFlags();
+    }
+    set ConfigFlags(v) {
+        this.ptr.set_ConfigFlags(v);
+    }
+    /**
+     * = 0              // See ImGuiBackendFlags_ enum. Set by backend (imgui_impl_xxx files or custom backend) to communicate features supported by the backend.
+     */
+    get BackendFlags() {
+        return this.ptr.get_BackendFlags();
+    }
+    set BackendFlags(v) {
+        this.ptr.set_BackendFlags(v);
+    }
+    /**
+     * <unset>          // Main display size, in pixels (== GetMainViewport()->Size). May change every frame.
+     */
+    get DisplaySize() {
+        return ImVec2.From(this.ptr.get_DisplaySize());
+    }
+    set DisplaySize(v) {
+        this.ptr.set_DisplaySize(v);
+    }
+    /**
+     * = (1, 1)         // Main display density. For retina display where window coordinates are different from framebuffer coordinates. This will affect font density + will end up in ImDrawData::FramebufferScale.
+     */
+    get DisplayFramebufferScale() {
+        return ImVec2.From(this.ptr.get_DisplayFramebufferScale());
+    }
+    set DisplayFramebufferScale(v) {
+        this.ptr.set_DisplayFramebufferScale(v);
+    }
+    /**
+     * = 1.0f/60.0f     // Time elapsed since last frame, in seconds. May change every frame.
+     */
+    get DeltaTime() {
+        return this.ptr.get_DeltaTime();
+    }
+    set DeltaTime(v) {
+        this.ptr.set_DeltaTime(v);
+    }
+    /**
+     * = 5.0f           // Minimum time between saving positions/sizes to .ini file, in seconds.
+     */
+    get IniSavingRate() {
+        return this.ptr.get_IniSavingRate();
+    }
+    set IniSavingRate(v) {
+        this.ptr.set_IniSavingRate(v);
+    }
+    /**
+     * = "imgui.ini"    // Path to .ini file (important: default "imgui.ini" is relative to current working dir!). Set NULL to disable automatic .ini loading/saving or if you want to manually call LoadIniSettingsXXX() / SaveIniSettingsXXX() functions.
+     */
+    get IniFilename() {
+        return this.ptr.get_IniFilename();
+    }
+    set IniFilename(v) {
+        this.ptr.set_IniFilename(v);
+    }
+    /**
+     * = "imgui_log.txt"// Path to .log file (default parameter to ImGui::LogToFile when no file is specified).
+     */
+    get LogFilename() {
+        return this.ptr.get_LogFilename();
+    }
+    set LogFilename(v) {
+        this.ptr.set_LogFilename(v);
+    }
+    /**
+     * = NULL           // Store your own data.
+     */
+    get UserData() {
+        return this.ptr.get_UserData();
+    }
+    set UserData(v) {
+        this.ptr.set_UserData(v);
+    }
+    // Font system
+    /**
+     * <auto>           // Font atlas: load, rasterize and pack one or more fonts into a single texture.
+     */
+    get Fonts() {
+        return ImFontAtlas.From(this.ptr.get_Fonts());
+    }
+    set Fonts(v) {
+        this.ptr.set_Fonts(v);
+    }
+    /**
+     * = NULL           // Font to use on NewFrame(). Use NULL to uses Fonts->Fonts[0].
+     */
+    get FontDefault() {
+        return ImFont.From(this.ptr.get_FontDefault());
+    }
+    set FontDefault(v) {
+        this.ptr.set_FontDefault(v);
+    }
+    /**
+     * = false          // Allow user scaling text of individual window with Ctrl+Wheel.
+     */
+    get FontAllowUserScaling() {
+        return this.ptr.get_FontAllowUserScaling();
+    }
+    set FontAllowUserScaling(v) {
+        this.ptr.set_FontAllowUserScaling(v);
+    }
+    // Keyboard/Gamepad Navigation options
+    /**
+     * = false          // Swap Activate<>Cancel (A<>B) buttons, matching typical "Nintendo/Japanese style" gamepad layout.
+     */
+    get ConfigNavSwapGamepadButtons() {
+        return this.ptr.get_ConfigNavSwapGamepadButtons();
+    }
+    set ConfigNavSwapGamepadButtons(v) {
+        this.ptr.set_ConfigNavSwapGamepadButtons(v);
+    }
+    /**
+     * = false          // Directional/tabbing navigation teleports the mouse cursor. May be useful on TV/console systems where moving a virtual mouse is difficult. Will update io.MousePos and set io.WantSetMousePos=true.
+     */
+    get ConfigNavMoveSetMousePos() {
+        return this.ptr.get_ConfigNavMoveSetMousePos();
+    }
+    set ConfigNavMoveSetMousePos(v) {
+        this.ptr.set_ConfigNavMoveSetMousePos(v);
+    }
+    /**
+     * = true           // Sets io.WantCaptureKeyboard when io.NavActive is set.
+     */
+    get ConfigNavCaptureKeyboard() {
+        return this.ptr.get_ConfigNavCaptureKeyboard();
+    }
+    set ConfigNavCaptureKeyboard(v) {
+        this.ptr.set_ConfigNavCaptureKeyboard(v);
+    }
+    /**
+     * = true           // Pressing Escape can clear focused item + navigation id/highlight. Set to false if you want to always keep highlight on.
+     */
+    get ConfigNavEscapeClearFocusItem() {
+        return this.ptr.get_ConfigNavEscapeClearFocusItem();
+    }
+    set ConfigNavEscapeClearFocusItem(v) {
+        this.ptr.set_ConfigNavEscapeClearFocusItem(v);
+    }
+    /**
+     * = false          // Pressing Escape can clear focused window as well (super set of io.ConfigNavEscapeClearFocusItem).
+     */
+    get ConfigNavEscapeClearFocusWindow() {
+        return this.ptr.get_ConfigNavEscapeClearFocusWindow();
+    }
+    set ConfigNavEscapeClearFocusWindow(v) {
+        this.ptr.set_ConfigNavEscapeClearFocusWindow(v);
+    }
+    /**
+     * = true           // Using directional navigation key makes the cursor visible. Mouse click hides the cursor.
+     */
+    get ConfigNavCursorVisibleAuto() {
+        return this.ptr.get_ConfigNavCursorVisibleAuto();
+    }
+    set ConfigNavCursorVisibleAuto(v) {
+        this.ptr.set_ConfigNavCursorVisibleAuto(v);
+    }
+    /**
+     * = false          // Navigation cursor is always visible.
+     */
+    get ConfigNavCursorVisibleAlways() {
+        return this.ptr.get_ConfigNavCursorVisibleAlways();
+    }
+    set ConfigNavCursorVisibleAlways(v) {
+        this.ptr.set_ConfigNavCursorVisibleAlways(v);
+    }
+    // Docking options (when ImGuiConfigFlags_DockingEnable is set)
+    /**
+     * = false          // Simplified docking mode: disable window splitting, so docking is limited to merging multiple windows together into tab-bars.
+     */
+    get ConfigDockingNoSplit() {
+        return this.ptr.get_ConfigDockingNoSplit();
+    }
+    set ConfigDockingNoSplit(v) {
+        this.ptr.set_ConfigDockingNoSplit(v);
+    }
+    /**
+     * = false          // Simplified docking mode: disable window merging into a same tab-bar, so docking is limited to splitting windows.
+     */
+    get ConfigDockingNoDockingOver() {
+        return this.ptr.get_ConfigDockingNoDockingOver();
+    }
+    set ConfigDockingNoDockingOver(v) {
+        this.ptr.set_ConfigDockingNoDockingOver(v);
+    }
+    /**
+     * = false          // Enable docking with holding Shift key (reduce visual noise, allows dropping in wider space)
+     */
+    get ConfigDockingWithShift() {
+        return this.ptr.get_ConfigDockingWithShift();
+    }
+    set ConfigDockingWithShift(v) {
+        this.ptr.set_ConfigDockingWithShift(v);
+    }
+    /**
+     * = false          // [BETA] [FIXME: This currently creates regression with auto-sizing and general overhead] Make every single floating window display within a docking node.
+     */
+    get ConfigDockingAlwaysTabBar() {
+        return this.ptr.get_ConfigDockingAlwaysTabBar();
+    }
+    set ConfigDockingAlwaysTabBar(v) {
+        this.ptr.set_ConfigDockingAlwaysTabBar(v);
+    }
+    /**
+     * = false          // [BETA] Make window or viewport transparent when docking and only display docking boxes on the target viewport. Useful if rendering of multiple viewport cannot be synced. Best used with ConfigViewportsNoAutoMerge.
+     */
+    get ConfigDockingTransparentPayload() {
+        return this.ptr.get_ConfigDockingTransparentPayload();
+    }
+    set ConfigDockingTransparentPayload(v) {
+        this.ptr.set_ConfigDockingTransparentPayload(v);
+    }
+    // Viewport options (when ImGuiConfigFlags_ViewportsEnable is set)
+    // (sorry for the amount of "NoXXXX" flags, which may be harder to reason about! may rework someday)
+    /**
+     * = false;         // Set to make all floating imgui windows always create their own viewport. Otherwise, they are merged into the main host viewports when overlapping it. May also set ImGuiViewportFlags_NoAutoMerge on individual viewport.
+     */
+    get ConfigViewportsNoAutoMerge() {
+        return this.ptr.get_ConfigViewportsNoAutoMerge();
+    }
+    set ConfigViewportsNoAutoMerge(v) {
+        this.ptr.set_ConfigViewportsNoAutoMerge(v);
+    }
+    /**
+     * = false          // Disable default OS task bar icon flag for secondary viewports. When a viewport doesn't want a task bar icon, ImGuiViewportFlags_NoTaskBarIcon will be set on it.
+     */
+    get ConfigViewportsNoTaskBarIcon() {
+        return this.ptr.get_ConfigViewportsNoTaskBarIcon();
+    }
+    set ConfigViewportsNoTaskBarIcon(v) {
+        this.ptr.set_ConfigViewportsNoTaskBarIcon(v);
+    }
+    /**
+     * = true           // Disable default OS window decoration flag for secondary viewports. When a viewport doesn't want window decorations, ImGuiViewportFlags_NoDecoration will be set on it. Enabling decoration can create subsequent issues at OS levels (e.g. minimum window size).
+     */
+    get ConfigViewportsNoDecoration() {
+        return this.ptr.get_ConfigViewportsNoDecoration();
+    }
+    set ConfigViewportsNoDecoration(v) {
+        this.ptr.set_ConfigViewportsNoDecoration(v);
+    }
+    /**
+     * = true           // Disable setting OS window parent to main viewport by default. The platform backend is expected to honor `viewport->ParentViewportID` to setup a parent/child relationship between the OS windows (supported if ImGuiBackendFlags_HasParentViewport is set). When parented: child windows always appear in front of their parent. Set to false if you want viewports to automatically be parent of main viewport, otherwise all viewports will be top-level OS windows. Parent/child relationship may be set on a per-window basis using ImGuiWindowClass.
+     */
+    get ConfigViewportsNoDefaultParent() {
+        return this.ptr.get_ConfigViewportsNoDefaultParent();
+    }
+    set ConfigViewportsNoDefaultParent(v) {
+        this.ptr.set_ConfigViewportsNoDefaultParent(v);
+    }
+    /**
+     *  true // When a platform window is focused (e.g. using Alt+Tab, clicking Platform Title Bar), apply corresponding focus on imgui windows (may clear focus/active id from imgui windows location in other platform windows). In principle this is better enabled but we provide an opt-out, because some Linux window managers tend to eagerly focus windows (e.g. on mouse hover, or even a simple window pos/size change).
+     */
+    get ConfigViewportsPlatformFocusSetsImGuiFocus() {
+        return this.ptr.get_ConfigViewportsPlatformFocusSetsImGuiFocus();
+    }
+    set ConfigViewportsPlatformFocusSetsImGuiFocus(v) {
+        this.ptr.set_ConfigViewportsPlatformFocusSetsImGuiFocus(v);
+    }
+    // DPI/Scaling options
+    // This may keep evolving during 1.92.x releases. Expect some turbulence.
+    /**
+     * = false          // [EXPERIMENTAL] Automatically overwrite style.FontScaleDpi when Monitor DPI changes. This will scale fonts but _NOT_ scale sizes/padding for now.
+     */
+    get ConfigDpiScaleFonts() {
+        return this.ptr.get_ConfigDpiScaleFonts();
+    }
+    set ConfigDpiScaleFonts(v) {
+        this.ptr.set_ConfigDpiScaleFonts(v);
+    }
+    /**
+     * = false          // [EXPERIMENTAL] Scale Dear ImGui and Platform Windows when Monitor DPI changes.
+     */
+    get ConfigDpiScaleViewports() {
+        return this.ptr.get_ConfigDpiScaleViewports();
+    }
+    set ConfigDpiScaleViewports(v) {
+        this.ptr.set_ConfigDpiScaleViewports(v);
+    }
+    // Miscellaneous options
+    // (you can visualize and interact with all options in 'Demo->Configuration')
+    /**
+     * = false          // Request ImGui to draw a mouse cursor for you (if you are on a platform without a mouse cursor). Cannot be easily renamed to 'io.ConfigXXX' because this is frequently used by backend implementations.
+     */
+    get MouseDrawCursor() {
+        return this.ptr.get_MouseDrawCursor();
+    }
+    set MouseDrawCursor(v) {
+        this.ptr.set_MouseDrawCursor(v);
+    }
+    /**
+     * = defined(__APPLE__) // Swap Cmd<>Ctrl keys + OS X style text editing cursor movement using Alt instead of Ctrl, Shortcuts using Cmd/Super instead of Ctrl, Line/Text Start and End using Cmd+Arrows instead of Home/End, Double click selects by word instead of selecting whole text, Multi-selection in lists uses Cmd/Super instead of Ctrl.
+     */
+    get ConfigMacOSXBehaviors() {
+        return this.ptr.get_ConfigMacOSXBehaviors();
+    }
+    set ConfigMacOSXBehaviors(v) {
+        this.ptr.set_ConfigMacOSXBehaviors(v);
+    }
+    /**
+     * = true           // Enable input queue trickling: some types of events submitted during the same frame (e.g. button down + up) will be spread over multiple frames, improving interactions with low framerates.
+     */
+    get ConfigInputTrickleEventQueue() {
+        return this.ptr.get_ConfigInputTrickleEventQueue();
+    }
+    set ConfigInputTrickleEventQueue(v) {
+        this.ptr.set_ConfigInputTrickleEventQueue(v);
+    }
+    /**
+     * = true           // Enable blinking cursor (optional as some users consider it to be distracting).
+     */
+    get ConfigInputTextCursorBlink() {
+        return this.ptr.get_ConfigInputTextCursorBlink();
+    }
+    set ConfigInputTextCursorBlink(v) {
+        this.ptr.set_ConfigInputTextCursorBlink(v);
+    }
+    /**
+     * = false          // [BETA] Pressing Enter will reactivate item and select all text (single-line only).
+     */
+    get ConfigInputTextEnterKeepActive() {
+        return this.ptr.get_ConfigInputTextEnterKeepActive();
+    }
+    set ConfigInputTextEnterKeepActive(v) {
+        this.ptr.set_ConfigInputTextEnterKeepActive(v);
+    }
+    /**
+     * = false          // [BETA] Enable turning DragXXX widgets into text input with a simple mouse click-release (without moving). Not desirable on devices without a keyboard.
+     */
+    get ConfigDragClickToInputText() {
+        return this.ptr.get_ConfigDragClickToInputText();
+    }
+    set ConfigDragClickToInputText(v) {
+        this.ptr.set_ConfigDragClickToInputText(v);
+    }
+    /**
+     * = true           // Enable resizing of windows from their edges and from the lower-left corner. This requires ImGuiBackendFlags_HasMouseCursors for better mouse cursor feedback. (This used to be a per-window ImGuiWindowFlags_ResizeFromAnySide flag)
+     */
+    get ConfigWindowsResizeFromEdges() {
+        return this.ptr.get_ConfigWindowsResizeFromEdges();
+    }
+    set ConfigWindowsResizeFromEdges(v) {
+        this.ptr.set_ConfigWindowsResizeFromEdges(v);
+    }
+    /**
+     * = false      // Enable allowing to move windows only when clicking on their title bar. Does not apply to windows without a title bar.
+     */
+    get ConfigWindowsMoveFromTitleBarOnly() {
+        return this.ptr.get_ConfigWindowsMoveFromTitleBarOnly();
+    }
+    set ConfigWindowsMoveFromTitleBarOnly(v) {
+        this.ptr.set_ConfigWindowsMoveFromTitleBarOnly(v);
+    }
+    /**
+     * = false      // [EXPERIMENTAL] Ctrl+C copy the contents of focused window into the clipboard. Experimental because: (1) has known issues with nested Begin/End pairs (2) text output quality varies (3) text output is in submission order rather than spatial order.
+     */
+    get ConfigWindowsCopyContentsWithCtrlC() {
+        return this.ptr.get_ConfigWindowsCopyContentsWithCtrlC();
+    }
+    set ConfigWindowsCopyContentsWithCtrlC(v) {
+        this.ptr.set_ConfigWindowsCopyContentsWithCtrlC(v);
+    }
+    /**
+     * = true           // Enable scrolling page by page when clicking outside the scrollbar grab. When disabled, always scroll to clicked location. When enabled, Shift+Click scrolls to clicked location.
+     */
+    get ConfigScrollbarScrollByPage() {
+        return this.ptr.get_ConfigScrollbarScrollByPage();
+    }
+    set ConfigScrollbarScrollByPage(v) {
+        this.ptr.set_ConfigScrollbarScrollByPage(v);
+    }
+    /**
+     * = 60.0f          // Timer (in seconds) to free transient windows/tables memory buffers when unused. Set to -1.0f to disable.
+     */
+    get ConfigMemoryCompactTimer() {
+        return this.ptr.get_ConfigMemoryCompactTimer();
+    }
+    set ConfigMemoryCompactTimer(v) {
+        this.ptr.set_ConfigMemoryCompactTimer(v);
+    }
+    // Inputs Behaviors
+    // (other variables, ones which are expected to be tweaked within UI code, are exposed in ImGuiStyle)
+    /**
+     * = 0.30f          // Time for a double-click, in seconds.
+     */
+    get MouseDoubleClickTime() {
+        return this.ptr.get_MouseDoubleClickTime();
+    }
+    set MouseDoubleClickTime(v) {
+        this.ptr.set_MouseDoubleClickTime(v);
+    }
+    /**
+     * = 6.0f           // Distance threshold to stay in to validate a double-click, in pixels.
+     */
+    get MouseDoubleClickMaxDist() {
+        return this.ptr.get_MouseDoubleClickMaxDist();
+    }
+    set MouseDoubleClickMaxDist(v) {
+        this.ptr.set_MouseDoubleClickMaxDist(v);
+    }
+    /**
+     * = 6.0f           // Distance threshold before considering we are dragging.
+     */
+    get MouseDragThreshold() {
+        return this.ptr.get_MouseDragThreshold();
+    }
+    set MouseDragThreshold(v) {
+        this.ptr.set_MouseDragThreshold(v);
+    }
+    /**
+     * = 0.275f         // When holding a key/button, time before it starts repeating, in seconds (for buttons in Repeat mode, etc.).
+     */
+    get KeyRepeatDelay() {
+        return this.ptr.get_KeyRepeatDelay();
+    }
+    set KeyRepeatDelay(v) {
+        this.ptr.set_KeyRepeatDelay(v);
+    }
+    /**
+     * = 0.050f         // When holding a key/button, rate at which it repeats, in seconds.
+     */
+    get KeyRepeatRate() {
+        return this.ptr.get_KeyRepeatRate();
+    }
+    set KeyRepeatRate(v) {
+        this.ptr.set_KeyRepeatRate(v);
+    }
+    // Options to configure Error Handling and how we handle recoverable errors [EXPERIMENTAL]
+    // - Error recovery is provided as a way to facilitate:
+    //    - Recovery after a programming error (native code or scripting language - the latter tends to facilitate iterating on code while running).
+    //    - Recovery after running an exception handler or any error processing which may skip code after an error has been detected.
+    // - Error recovery is not perfect nor guaranteed! It is a feature to ease development.
+    //   You not are not supposed to rely on it in the course of a normal application run.
+    // - Functions that support error recovery are using IM_ASSERT_USER_ERROR() instead of IM_ASSERT().
+    // - By design, we do NOT allow error recovery to be 100% silent. One of the three options needs to be checked!
+    // - Always ensure that on programmers seats you have at minimum Asserts or Tooltips enabled when making direct imgui API calls!
+    //   Otherwise it would severely hinder your ability to catch and correct mistakes!
+    // Read https://github.com/ocornut/imgui/wiki/Error-Handling for details.
+    // - Programmer seats: keep asserts (default), or disable asserts and keep error tooltips (new and nice!)
+    // - Non-programmer seats: maybe disable asserts, but make sure errors are resurfaced (tooltips, visible log entries, use callback etc.)
+    // - Recovery after error/exception: record stack sizes with ErrorRecoveryStoreState(), disable assert, set log callback (to e.g. trigger high-level breakpoint), recover with ErrorRecoveryTryToRecoverState(), restore settings.
+    /**
+     * = true       // Enable error recovery support. Some errors won't be detected and lead to direct crashes if recovery is disabled.
+     */
+    get ConfigErrorRecovery() {
+        return this.ptr.get_ConfigErrorRecovery();
+    }
+    set ConfigErrorRecovery(v) {
+        this.ptr.set_ConfigErrorRecovery(v);
+    }
+    /**
+     * = true       // Enable asserts on recoverable error. By default call IM_ASSERT() when returning from a failing IM_ASSERT_USER_ERROR()
+     */
+    get ConfigErrorRecoveryEnableAssert() {
+        return this.ptr.get_ConfigErrorRecoveryEnableAssert();
+    }
+    set ConfigErrorRecoveryEnableAssert(v) {
+        this.ptr.set_ConfigErrorRecoveryEnableAssert(v);
+    }
+    /**
+     * = true       // Enable debug log output on recoverable errors.
+     */
+    get ConfigErrorRecoveryEnableDebugLog() {
+        return this.ptr.get_ConfigErrorRecoveryEnableDebugLog();
+    }
+    set ConfigErrorRecoveryEnableDebugLog(v) {
+        this.ptr.set_ConfigErrorRecoveryEnableDebugLog(v);
+    }
+    /**
+     * = true       // Enable tooltip on recoverable errors. The tooltip include a way to enable asserts if they were disabled.
+     */
+    get ConfigErrorRecoveryEnableTooltip() {
+        return this.ptr.get_ConfigErrorRecoveryEnableTooltip();
+    }
+    set ConfigErrorRecoveryEnableTooltip(v) {
+        this.ptr.set_ConfigErrorRecoveryEnableTooltip(v);
+    }
+    // Option to enable various debug tools showing buttons that will call the IM_DEBUG_BREAK() macro.
+    // - The Item Picker tool will be available regardless of this being enabled, in order to maximize its discoverability.
+    // - Requires a debugger being attached, otherwise IM_DEBUG_BREAK() options will appear to crash your application.
+    //   e.g. io.ConfigDebugIsDebuggerPresent = ::IsDebuggerPresent() on Win32, or refer to ImOsIsDebuggerPresent() imgui_test_engine/imgui_te_utils.cpp for a Unix compatible version.
+    /**
+     * = false          // Enable various tools calling IM_DEBUG_BREAK().
+     */
+    get ConfigDebugIsDebuggerPresent() {
+        return this.ptr.get_ConfigDebugIsDebuggerPresent();
+    }
+    set ConfigDebugIsDebuggerPresent(v) {
+        this.ptr.set_ConfigDebugIsDebuggerPresent(v);
+    }
+    // Tools to detect code submitting items with conflicting/duplicate IDs
+    // - Code should use PushID()/PopID() in loops, or append "##xx" to same-label identifiers.
+    // - Empty label e.g. Button("") == same ID as parent widget/node. Use Button("##xx") instead!
+    // - See FAQ https://github.com/ocornut/imgui/blob/master/docs/FAQ.md#q-about-the-id-stack-system
+    /**
+     * = true           // Highlight and show an error message popup when multiple items have conflicting identifiers.
+     */
+    get ConfigDebugHighlightIdConflicts() {
+        return this.ptr.get_ConfigDebugHighlightIdConflicts();
+    }
+    set ConfigDebugHighlightIdConflicts(v) {
+        this.ptr.set_ConfigDebugHighlightIdConflicts(v);
+    }
+    /**
+     * true // Show "Item Picker" button in aforementioned popup.
+     */
+    get ConfigDebugHighlightIdConflictsShowItemPicker() {
+        return this.ptr.get_ConfigDebugHighlightIdConflictsShowItemPicker();
+    }
+    set ConfigDebugHighlightIdConflictsShowItemPicker(v) {
+        this.ptr.set_ConfigDebugHighlightIdConflictsShowItemPicker(v);
+    }
+    // Tools to test correct Begin/End and BeginChild/EndChild behaviors.
+    // - Presently Begin()/End() and BeginChild()/EndChild() needs to ALWAYS be called in tandem, regardless of return value of BeginXXX()
+    // - This is inconsistent with other BeginXXX functions and create confusion for many users.
+    // - We expect to update the API eventually. In the meanwhile we provide tools to facilitate checking user-code behavior.
+    /**
+     * = false          // First-time calls to Begin()/BeginChild() will return false. NEEDS TO BE SET AT APPLICATION BOOT TIME if you don't want to miss windows.
+     */
+    get ConfigDebugBeginReturnValueOnce() {
+        return this.ptr.get_ConfigDebugBeginReturnValueOnce();
+    }
+    set ConfigDebugBeginReturnValueOnce(v) {
+        this.ptr.set_ConfigDebugBeginReturnValueOnce(v);
+    }
+    /**
+     * = false          // Some calls to Begin()/BeginChild() will return false. Will cycle through window depths then repeat. Suggested use: add "io.ConfigDebugBeginReturnValue = io.KeyShift" in your main loop then occasionally press SHIFT. Windows should be flickering while running.
+     */
+    get ConfigDebugBeginReturnValueLoop() {
+        return this.ptr.get_ConfigDebugBeginReturnValueLoop();
+    }
+    set ConfigDebugBeginReturnValueLoop(v) {
+        this.ptr.set_ConfigDebugBeginReturnValueLoop(v);
+    }
+    // Option to deactivate io.AddFocusEvent(false) handling.
+    // - May facilitate interactions with a debugger when focus loss leads to clearing inputs data.
+    // - Backends may have other side-effects on focus loss, so this will reduce side-effects but not necessary remove all of them.
+    /**
+     * = false          // Ignore io.AddFocusEvent(false), consequently not calling io.ClearInputKeys()/io.ClearInputMouse() in input processing.
+     */
+    get ConfigDebugIgnoreFocusLoss() {
+        return this.ptr.get_ConfigDebugIgnoreFocusLoss();
+    }
+    set ConfigDebugIgnoreFocusLoss(v) {
+        this.ptr.set_ConfigDebugIgnoreFocusLoss(v);
+    }
+    // Option to audit .ini data
+    /**
+     * = false          // Save .ini data with extra comments (particularly helpful for Docking, but makes saving slower)
+     */
+    get ConfigDebugIniSettings() {
+        return this.ptr.get_ConfigDebugIniSettings();
+    }
+    set ConfigDebugIniSettings(v) {
+        this.ptr.set_ConfigDebugIniSettings(v);
+    }
+    // Nowadays those would be stored in ImGuiPlatformIO but we are leaving them here for legacy reasons.
+    // Optional: Platform/Renderer backend name (informational only! will be displayed in About Window) + User data for backend/wrappers to store their own stuff.
+    /**
+     * = NULL
+     */
+    get BackendPlatformName() {
+        return this.ptr.get_BackendPlatformName();
+    }
+    set BackendPlatformName(v) {
+        this.ptr.set_BackendPlatformName(v);
+    }
+    /**
+     * = NULL
+     */
+    get BackendRendererName() {
+        return this.ptr.get_BackendRendererName();
+    }
+    set BackendRendererName(v) {
+        this.ptr.set_BackendRendererName(v);
+    }
+    /**
+     * = NULL           // User data for platform backend
+     */
+    get BackendPlatformUserData() {
+        return this.ptr.get_BackendPlatformUserData();
+    }
+    set BackendPlatformUserData(v) {
+        this.ptr.set_BackendPlatformUserData(v);
+    }
+    /**
+     * = NULL           // User data for renderer backend
+     */
+    get BackendRendererUserData() {
+        return this.ptr.get_BackendRendererUserData();
+    }
+    set BackendRendererUserData(v) {
+        this.ptr.set_BackendRendererUserData(v);
+    }
+    /**
+     * = NULL           // User data for non C++ programming language backend
+     */
+    get BackendLanguageUserData() {
+        return this.ptr.get_BackendLanguageUserData();
+    }
+    set BackendLanguageUserData(v) {
+        this.ptr.set_BackendLanguageUserData(v);
+    }
+    /**
+     * Set when Dear ImGui will use mouse inputs, in this case do not dispatch them to your main game/application (either way, always pass on mouse inputs to imgui). (e.g. unclicked mouse is hovering over an imgui window, widget is active, mouse was clicked over an imgui window, etc.).
+     */
+    get WantCaptureMouse() {
+        return this.ptr.get_WantCaptureMouse();
+    }
+    set WantCaptureMouse(v) {
+        this.ptr.set_WantCaptureMouse(v);
+    }
+    /**
+     * Set when Dear ImGui will use keyboard inputs, in this case do not dispatch them to your main game/application (either way, always pass keyboard inputs to imgui). (e.g. InputText active, or an imgui window is focused and navigation is enabled, etc.).
+     */
+    get WantCaptureKeyboard() {
+        return this.ptr.get_WantCaptureKeyboard();
+    }
+    set WantCaptureKeyboard(v) {
+        this.ptr.set_WantCaptureKeyboard(v);
+    }
+    /**
+     * Mobile/console: when set, you may display an on-screen keyboard. This is set by Dear ImGui when it wants textual keyboard input to happen (e.g. when a InputText widget is active).
+     */
+    get WantTextInput() {
+        return this.ptr.get_WantTextInput();
+    }
+    set WantTextInput(v) {
+        this.ptr.set_WantTextInput(v);
+    }
+    /**
+     * MousePos has been altered, backend should reposition mouse on next frame. Rarely used! Set only when io.ConfigNavMoveSetMousePos is enabled.
+     */
+    get WantSetMousePos() {
+        return this.ptr.get_WantSetMousePos();
+    }
+    set WantSetMousePos(v) {
+        this.ptr.set_WantSetMousePos(v);
+    }
+    /**
+     * When manual .ini load/save is active (io.IniFilename == NULL), this will be set to notify your application that you can call SaveIniSettingsToMemory() and save yourself. Important: clear io.WantSaveIniSettings yourself after saving!
+     */
+    get WantSaveIniSettings() {
+        return this.ptr.get_WantSaveIniSettings();
+    }
+    set WantSaveIniSettings(v) {
+        this.ptr.set_WantSaveIniSettings(v);
+    }
+    /**
+     * Keyboard/Gamepad navigation is currently allowed (will handle ImGuiKey_NavXXX events) = a window is focused and it doesn't use the ImGuiWindowFlags_NoNavInputs flag.
+     */
+    get NavActive() {
+        return this.ptr.get_NavActive();
+    }
+    set NavActive(v) {
+        this.ptr.set_NavActive(v);
+    }
+    /**
+     * Keyboard/Gamepad navigation highlight is visible and allowed (will handle ImGuiKey_NavXXX events).
+     */
+    get NavVisible() {
+        return this.ptr.get_NavVisible();
+    }
+    set NavVisible(v) {
+        this.ptr.set_NavVisible(v);
+    }
+    /**
+     * Estimate of application framerate (rolling average over 60 frames, based on io.DeltaTime), in frame per second. Solely for convenience. Slow applications may not want to use a moving average or may want to reset underlying buffers occasionally.
+     */
+    get Framerate() {
+        return this.ptr.get_Framerate();
+    }
+    set Framerate(v) {
+        this.ptr.set_Framerate(v);
+    }
+    /**
+     * Vertices output during last call to Render()
+     */
+    get MetricsRenderVertices() {
+        return this.ptr.get_MetricsRenderVertices();
+    }
+    set MetricsRenderVertices(v) {
+        this.ptr.set_MetricsRenderVertices(v);
+    }
+    /**
+     * Indices output during last call to Render() = number of triangles * 3
+     */
+    get MetricsRenderIndices() {
+        return this.ptr.get_MetricsRenderIndices();
+    }
+    set MetricsRenderIndices(v) {
+        this.ptr.set_MetricsRenderIndices(v);
+    }
+    /**
+     * Number of visible windows
+     */
+    get MetricsRenderWindows() {
+        return this.ptr.get_MetricsRenderWindows();
+    }
+    set MetricsRenderWindows(v) {
+        this.ptr.set_MetricsRenderWindows(v);
+    }
+    /**
+     * Number of active windows
+     */
+    get MetricsActiveWindows() {
+        return this.ptr.get_MetricsActiveWindows();
+    }
+    set MetricsActiveWindows(v) {
+        this.ptr.set_MetricsActiveWindows(v);
+    }
+    /**
+     * Mouse delta. Note that this is zero if either current or previous position are invalid (-FLT_MAX,-FLT_MAX), so a disappearing/reappearing mouse won't have a huge delta.
+     */
+    get MouseDelta() {
+        return ImVec2.From(this.ptr.get_MouseDelta());
+    }
+    set MouseDelta(v) {
+        this.ptr.set_MouseDelta(v);
+    }
+    /**
+     * Parent UI context (needs to be set explicitly by parent).
+     */
+    get Ctx() {
+        return ImGuiContext.From(this.ptr.get_Ctx());
+    }
+    set Ctx(v) {
+        this.ptr.set_Ctx(v);
+    }
+    // Main Input State
+    // (this block used to be written by backend, since 1.87 it is best to NOT write to those directly, call the AddXXX functions above instead)
+    // (reading from those variables is fair game, as they are extremely unlikely to be moving anywhere)
+    /**
+     * Mouse position, in pixels. Set to ImVec2(-FLT_MAX, -FLT_MAX) if mouse is unavailable (on another screen, etc.)
+     */
+    get MousePos() {
+        return ImVec2.From(this.ptr.get_MousePos());
+    }
+    set MousePos(v) {
+        this.ptr.set_MousePos(v);
+    }
+    /**
+     * Mouse wheel Vertical: 1 unit scrolls about 5 lines text. >0 scrolls Up, <0 scrolls Down. Hold Shift to turn vertical scroll into horizontal scroll.
+     */
+    get MouseWheel() {
+        return this.ptr.get_MouseWheel();
+    }
+    set MouseWheel(v) {
+        this.ptr.set_MouseWheel(v);
+    }
+    /**
+     * Mouse wheel Horizontal. >0 scrolls Left, <0 scrolls Right. Most users don't have a mouse with a horizontal wheel, may not be filled by all backends.
+     */
+    get MouseWheelH() {
+        return this.ptr.get_MouseWheelH();
+    }
+    set MouseWheelH(v) {
+        this.ptr.set_MouseWheelH(v);
+    }
+    /**
+     * Mouse actual input peripheral (Mouse/TouchScreen/Pen).
+     */
+    get MouseSource() {
+        return this.ptr.get_MouseSource();
+    }
+    set MouseSource(v) {
+        this.ptr.set_MouseSource(v);
+    }
+    /**
+     * (Optional) Modify using io.AddMouseViewportEvent(). With multi-viewports: viewport the OS mouse is hovering. If possible _IGNORING_ viewports with the ImGuiViewportFlags_NoInputs flag is much better (few backends can handle that). Set io.BackendFlags |= ImGuiBackendFlags_HasMouseHoveredViewport if you can provide this info. If you don't imgui will infer the value using the rectangles and last focused time of the viewports it knows about (ignoring other OS windows).
+     */
+    get MouseHoveredViewport() {
+        return this.ptr.get_MouseHoveredViewport();
+    }
+    set MouseHoveredViewport(v) {
+        this.ptr.set_MouseHoveredViewport(v);
+    }
+    /**
+     * Keyboard modifier down: Ctrl (non-macOS), Cmd (macOS)
+     */
+    get KeyCtrl() {
+        return this.ptr.get_KeyCtrl();
+    }
+    set KeyCtrl(v) {
+        this.ptr.set_KeyCtrl(v);
+    }
+    /**
+     * Keyboard modifier down: Shift
+     */
+    get KeyShift() {
+        return this.ptr.get_KeyShift();
+    }
+    set KeyShift(v) {
+        this.ptr.set_KeyShift(v);
+    }
+    /**
+     * Keyboard modifier down: Alt
+     */
+    get KeyAlt() {
+        return this.ptr.get_KeyAlt();
+    }
+    set KeyAlt(v) {
+        this.ptr.set_KeyAlt(v);
+    }
+    /**
+     * Keyboard modifier down: Windows/Super (non-macOS), Ctrl (macOS)
+     */
+    get KeySuper() {
+        return this.ptr.get_KeySuper();
+    }
+    set KeySuper(v) {
+        this.ptr.set_KeySuper(v);
+    }
+    // Other state maintained from data above + IO function calls
+    /**
+     * Key mods flags (any of ImGuiMod_Ctrl/ImGuiMod_Shift/ImGuiMod_Alt/ImGuiMod_Super flags, same as io.KeyCtrl/KeyShift/KeyAlt/KeySuper but merged into flags). Read-only, updated by NewFrame()
+     */
+    get KeyMods() {
+        return this.ptr.get_KeyMods();
+    }
+    set KeyMods(v) {
+        this.ptr.set_KeyMods(v);
+    }
+    /**
+     * Alternative to WantCaptureMouse: (WantCaptureMouse == true && WantCaptureMouseUnlessPopupClose == false) when a click over void is expected to close a popup.
+     */
+    get WantCaptureMouseUnlessPopupClose() {
+        return this.ptr.get_WantCaptureMouseUnlessPopupClose();
+    }
+    set WantCaptureMouseUnlessPopupClose(v) {
+        this.ptr.set_WantCaptureMouseUnlessPopupClose(v);
+    }
+    /**
+     * Previous mouse position (note that MouseDelta is not necessary == MousePos-MousePosPrev, in case either position is invalid)
+     */
+    get MousePosPrev() {
+        return ImVec2.From(this.ptr.get_MousePosPrev());
+    }
+    set MousePosPrev(v) {
+        this.ptr.set_MousePosPrev(v);
+    }
+    /**
+     * On a non-Mac system, holding Shift requests WheelY to perform the equivalent of a WheelX event. On a Mac system this is already enforced by the system.
+     */
+    get MouseWheelRequestAxisSwap() {
+        return this.ptr.get_MouseWheelRequestAxisSwap();
+    }
+    set MouseWheelRequestAxisSwap(v) {
+        this.ptr.set_MouseWheelRequestAxisSwap(v);
+    }
+    /**
+     * (OSX) Set to true when the current click was a Ctrl+Click that spawned a simulated right click
+     */
+    get MouseCtrlLeftAsRightClick() {
+        return this.ptr.get_MouseCtrlLeftAsRightClick();
+    }
+    set MouseCtrlLeftAsRightClick(v) {
+        this.ptr.set_MouseCtrlLeftAsRightClick(v);
+    }
+    /**
+     * Touch/Pen pressure (0.0f to 1.0f, should be >0.0f only when MouseDown[0] == true). Helper storage currently unused by Dear ImGui.
+     */
+    get PenPressure() {
+        return this.ptr.get_PenPressure();
+    }
+    set PenPressure(v) {
+        this.ptr.set_PenPressure(v);
+    }
+    /**
+     * Only modify via AddFocusEvent()
+     */
+    get AppFocusLost() {
+        return this.ptr.get_AppFocusLost();
+    }
+    set AppFocusLost(v) {
+        this.ptr.set_AppFocusLost(v);
+    }
+    /**
+     * Only modify via SetAppAcceptingEvents()
+     */
+    get AppAcceptingEvents() {
+        return this.ptr.get_AppAcceptingEvents();
+    }
+    set AppAcceptingEvents(v) {
+        this.ptr.set_AppAcceptingEvents(v);
+    }
+    /**
+     * For AddInputCharacterUTF16()
+     */
+    get InputQueueSurrogate() {
+        return this.ptr.get_InputQueueSurrogate();
+    }
+    set InputQueueSurrogate(v) {
+        this.ptr.set_InputQueueSurrogate(v);
+    }
+    // Input Functions
+    /**
+     * Queue a new key down/up event. Key should be "translated" (as in, generally ImGuiKey_A matches the key end-user would use to emit an 'A' character)
+     */
+    AddKeyEvent(key, down) {
+        this.ptr.ImGuiIO_AddKeyEvent(key, down);
+    }
+    /**
+     * Queue a new key down/up event for analog values (e.g. ImGuiKey_Gamepad_ values). Dead-zones should be handled by the backend.
+     */
+    AddKeyAnalogEvent(key, down, v) {
+        this.ptr.ImGuiIO_AddKeyAnalogEvent(key, down, v);
+    }
+    /**
+     * Queue a mouse position update. Use -FLT_MAX,-FLT_MAX to signify no mouse (e.g. app not focused and not hovered)
+     */
+    AddMousePosEvent(x, y) {
+        this.ptr.ImGuiIO_AddMousePosEvent(x, y);
+    }
+    /**
+     * Queue a mouse button change
+     */
+    AddMouseButtonEvent(button, down) {
+        this.ptr.ImGuiIO_AddMouseButtonEvent(button, down);
+    }
+    /**
+     * Queue a mouse wheel update. wheel_y<0: scroll down, wheel_y>0: scroll up, wheel_x<0: scroll right, wheel_x>0: scroll left.
+     */
+    AddMouseWheelEvent(wheel_x, wheel_y) {
+        this.ptr.ImGuiIO_AddMouseWheelEvent(wheel_x, wheel_y);
+    }
+    /**
+     * Queue a mouse source change (Mouse/TouchScreen/Pen)
+     */
+    AddMouseSourceEvent(source) {
+        this.ptr.ImGuiIO_AddMouseSourceEvent(source);
+    }
+    /**
+     * Queue a mouse hovered viewport. Requires backend to set ImGuiBackendFlags_HasMouseHoveredViewport to call this (for multi-viewport support).
+     */
+    AddMouseViewportEvent(id) {
+        this.ptr.ImGuiIO_AddMouseViewportEvent(id);
+    }
+    /**
+     * Queue a gain/loss of focus for the application (generally based on OS/platform focus of your window)
+     */
+    AddFocusEvent(focused) {
+        this.ptr.ImGuiIO_AddFocusEvent(focused);
+    }
+    /**
+     * Queue a new character input
+     */
+    AddInputCharacter(c) {
+        this.ptr.ImGuiIO_AddInputCharacter(c);
+    }
+    /**
+     * Queue a new character input from a UTF-16 character, it can be a surrogate
+     */
+    AddInputCharacterUTF16(c) {
+        this.ptr.ImGuiIO_AddInputCharacterUTF16(c);
+    }
+    /**
+     * Queue a new characters input from a UTF-8 string
+     */
+    AddInputCharactersUTF8(str) {
+        this.ptr.ImGuiIO_AddInputCharactersUTF8(str);
+    }
+    /**
+     * [Optional] Specify index for legacy <1.87 IsKeyXXX() functions with native indices + specify native keycode, scancode.
+     */
+    SetKeyEventNativeData(key, native_keycode, native_scancode, native_legacy_index = -1) {
+        this.ptr.ImGuiIO_SetKeyEventNativeData(key, native_keycode, native_scancode, native_legacy_index);
+    }
+    /**
+     * Set master flag for accepting key/mouse/text events (default to true). Useful if you have native dialog boxes that are interrupting your application loop/refresh, and you want to disable events being queued while your app is frozen.
+     */
+    SetAppAcceptingEvents(accepting_events) {
+        this.ptr.ImGuiIO_SetAppAcceptingEvents(accepting_events);
+    }
+    /**
+     * Clear all incoming events.
+     */
+    ClearEventsQueue() {
+        this.ptr.ImGuiIO_ClearEventsQueue();
+    }
+    /**
+     * Clear current keyboard/gamepad state + current frame text input buffer. Equivalent to releasing all keys/buttons.
+     */
+    ClearInputKeys() {
+        this.ptr.ImGuiIO_ClearInputKeys();
+    }
+    /**
+     * Clear current mouse state.
+     */
+    ClearInputMouse() {
+        this.ptr.ImGuiIO_ClearInputMouse();
+    }
+}
+/**
+ * Shared state of InputText(), passed as an argument to your callback when a ImGuiInputTextFlags_Callback* flag is used.
+ * The callback function should return 0 by default.
+ * Callbacks (follow a flag name and see comments in ImGuiInputTextFlags_ declarations for more details)
+ * - ImGuiInputTextFlags_CallbackEdit:        Callback on buffer edit. Note that InputText() already returns true on edit + you can always use IsItemEdited(). The callback is useful to manipulate the underlying buffer while focus is active.
+ * - ImGuiInputTextFlags_CallbackAlways:      Callback on each iteration
+ * - ImGuiInputTextFlags_CallbackCompletion:  Callback on pressing TAB
+ * - ImGuiInputTextFlags_CallbackHistory:     Callback on pressing Up/Down arrows
+ * - ImGuiInputTextFlags_CallbackCharFilter:  Callback on character inputs to replace or discard them. Modify 'EventChar' to replace or discard, or return 1 in callback to discard.
+ * - ImGuiInputTextFlags_CallbackResize:      Callback on buffer capacity changes request (beyond 'buf_size' parameter value), allowing the string to grow.
+ */
+export class ImGuiInputTextCallbackData extends ReferenceStruct {
+    /**
+     * Parent UI context
+     */
+    get Ctx() {
+        return ImGuiContext.From(this.ptr.get_Ctx());
+    }
+    set Ctx(v) {
+        this.ptr.set_Ctx(v);
+    }
+    /**
+     * One ImGuiInputTextFlags_Callback*    // Read-only
+     */
+    get EventFlag() {
+        return this.ptr.get_EventFlag();
+    }
+    set EventFlag(v) {
+        this.ptr.set_EventFlag(v);
+    }
+    /**
+     * What user passed to InputText()      // Read-only
+     */
+    get Flags() {
+        return this.ptr.get_Flags();
+    }
+    set Flags(v) {
+        this.ptr.set_Flags(v);
+    }
+    /**
+     * What user passed to InputText()      // Read-only
+     */
+    get UserData() {
+        return this.ptr.get_UserData();
+    }
+    set UserData(v) {
+        this.ptr.set_UserData(v);
+    }
+    /**
+     * Widget ID                            // Read-only
+     */
+    get ID() {
+        return this.ptr.get_ID();
+    }
+    set ID(v) {
+        this.ptr.set_ID(v);
+    }
+    // Arguments for the different callback events
+    // - During Resize callback, Buf will be same as your input buffer.
+    // - However, during Completion/History/Always callback, Buf always points to our own internal data (it is not the same as your buffer)! Changes to it will be reflected into your own buffer shortly after the callback.
+    // - To modify the text buffer in a callback, prefer using the InsertChars() / DeleteChars() function. InsertChars() will take care of calling the resize callback if necessary.
+    // - If you know your edits are not going to resize the underlying buffer allocation, you may modify the contents of 'Buf[]' directly. You need to update 'BufTextLen' accordingly (0 <= BufTextLen < BufSize) and set 'BufDirty'' to true so InputText can update its internal state.
+    /**
+     * Key pressed (Up/Down/TAB)            // Read-only    // [Completion,History]
+     */
+    get EventKey() {
+        return this.ptr.get_EventKey();
+    }
+    set EventKey(v) {
+        this.ptr.set_EventKey(v);
+    }
+    /**
+     * Character input                      // Read-write   // [CharFilter] Replace character with another one, or set to zero to drop. return 1 is equivalent to setting EventChar=0;
+     */
+    get EventChar() {
+        return this.ptr.get_EventChar();
+    }
+    set EventChar(v) {
+        this.ptr.set_EventChar(v);
+    }
+    /**
+     * Input field just got activated       // Read-only    // [Always]
+     */
+    get EventActivated() {
+        return this.ptr.get_EventActivated();
+    }
+    set EventActivated(v) {
+        this.ptr.set_EventActivated(v);
+    }
+    /**
+     * Set if you modify Buf/BufTextLen!    // Write        // [Completion,History,Always]
+     */
+    get BufDirty() {
+        return this.ptr.get_BufDirty();
+    }
+    set BufDirty(v) {
+        this.ptr.set_BufDirty(v);
+    }
+    /**
+     * Text buffer                          // Read-write   // [Resize] Can replace pointer / [Completion,History,Always] Only write to pointed data, don't replace the actual pointer!
+     */
+    get Buf() {
+        return this.ptr.get_Buf();
+    }
+    set Buf(v) {
+        this.ptr.set_Buf(v);
+    }
+    /**
+     * Text length (in bytes)               // Read-write   // [Resize,Completion,History,Always] Exclude zero-terminator storage. In C land: == strlen(some_text), in C++ land: string.length()
+     */
+    get BufTextLen() {
+        return this.ptr.get_BufTextLen();
+    }
+    set BufTextLen(v) {
+        this.ptr.set_BufTextLen(v);
+    }
+    /**
+     * Buffer size (in bytes) = capacity+1  // Read-only    // [Resize,Completion,History,Always] Include zero-terminator storage. In C land: == ARRAYSIZE(my_char_array), in C++ land: string.capacity()+1
+     */
+    get BufSize() {
+        return this.ptr.get_BufSize();
+    }
+    set BufSize(v) {
+        this.ptr.set_BufSize(v);
+    }
+    /**
+     *                                      // Read-write   // [Completion,History,Always,CharFilter]
+     */
+    get CursorPos() {
+        return this.ptr.get_CursorPos();
+    }
+    set CursorPos(v) {
+        this.ptr.set_CursorPos(v);
+    }
+    /**
+     *                                      // Read-write   // [Completion,History,Always,CharFilter] == to SelectionEnd when no selection
+     */
+    get SelectionStart() {
+        return this.ptr.get_SelectionStart();
+    }
+    set SelectionStart(v) {
+        this.ptr.set_SelectionStart(v);
+    }
+    /**
+     *                                      // Read-write   // [Completion,History,Always,CharFilter]
+     */
+    get SelectionEnd() {
+        return this.ptr.get_SelectionEnd();
+    }
+    set SelectionEnd(v) {
+        this.ptr.set_SelectionEnd(v);
+    }
+    DeleteChars(pos, bytes_count) {
+        this.ptr.ImGuiInputTextCallbackData_DeleteChars(pos, bytes_count);
+    }
+    InsertChars(pos, text, text_end = "") {
+        this.ptr.ImGuiInputTextCallbackData_InsertChars(pos, text, text_end);
+    }
+    SelectAll() {
+        this.ptr.ImGuiInputTextCallbackData_SelectAll();
+    }
+    SetSelection(s, e) {
+        this.ptr.ImGuiInputTextCallbackData_SetSelection(s, e);
+    }
+    ClearSelection() {
+        this.ptr.ImGuiInputTextCallbackData_ClearSelection();
+    }
+    HasSelection() {
+        return this.ptr.ImGuiInputTextCallbackData_HasSelection();
+    }
+}
+/**
+ * Resizing callback data to apply custom constraint. As enabled by SetNextWindowSizeConstraints(). Callback is called during the next Begin().
+ * NB: For basic min/max size constraint on each axis you don't need to use the callback! The SetNextWindowSizeConstraints() parameters are enough.
+ */
+export class ImGuiSizeCallbackData extends ReferenceStruct {
+    /**
+     * Read-only.   What user passed to SetNextWindowSizeConstraints(). Generally store an integer or float in here (need reinterpret_cast<>).
+     */
+    get UserData() {
+        return this.ptr.get_UserData();
+    }
+    set UserData(v) {
+        this.ptr.set_UserData(v);
+    }
+    /**
+     * Read-only.   Window position, for reference.
+     */
+    get Pos() {
+        return ImVec2.From(this.ptr.get_Pos());
+    }
+    set Pos(v) {
+        this.ptr.set_Pos(v);
+    }
+    /**
+     * Read-only.   Current window size.
+     */
+    get CurrentSize() {
+        return ImVec2.From(this.ptr.get_CurrentSize());
+    }
+    set CurrentSize(v) {
+        this.ptr.set_CurrentSize(v);
+    }
+    /**
+     * Read-write.  Desired size, based on user's mouse position. Write to this field to restrain resizing.
+     */
+    get DesiredSize() {
+        return ImVec2.From(this.ptr.get_DesiredSize());
+    }
+    set DesiredSize(v) {
+        this.ptr.set_DesiredSize(v);
+    }
+}
+/**
+ * [ALPHA] Rarely used / very advanced uses only. Use with SetNextWindowClass() and DockSpace() functions.
+ * Important: the content of this class is still highly WIP and likely to change and be refactored
+ * before we stabilize Docking features. Please be mindful if using this.
+ * Provide hints:
+ * - To the platform backend via altered viewport flags (enable/disable OS decoration, OS task bar icons, etc.)
+ * - To the platform backend for OS level parent/child relationships of viewport (otherwise: default is configured via io.ConfigViewportsNoDefaultParent)
+ * - To the docking system for various options and filtering.
+ */
+export class ImGuiWindowClass extends ReferenceStruct {
+    /**
+     * User data. 0 = Default class (unclassed). Windows of different classes cannot be docked with each others.
+     */
+    get ClassId() {
+        return this.ptr.get_ClassId();
+    }
+    set ClassId(v) {
+        this.ptr.set_ClassId(v);
+    }
+    /**
+     * Hint for the platform backend. -1: use default. 0: request platform backend to not parent the platform. != 0: request platform backend to create a parent<>child relationship between the platform windows. Not conforming backends are free to e.g. parent every viewport to the main viewport or not.
+     */
+    get ParentViewportId() {
+        return this.ptr.get_ParentViewportId();
+    }
+    set ParentViewportId(v) {
+        this.ptr.set_ParentViewportId(v);
+    }
+    /**
+     * ID of parent window for shortcut focus route evaluation, e.g. Shortcut() call from Parent Window will succeed when this window is focused.
+     */
+    get FocusRouteParentWindowId() {
+        return this.ptr.get_FocusRouteParentWindowId();
+    }
+    set FocusRouteParentWindowId(v) {
+        this.ptr.set_FocusRouteParentWindowId(v);
+    }
+    /**
+     * Viewport flags to set when a window of this class owns a viewport. This allows you to enforce OS decoration or task bar icon, override the defaults on a per-window basis.
+     */
+    get ViewportFlagsOverrideSet() {
+        return this.ptr.get_ViewportFlagsOverrideSet();
+    }
+    set ViewportFlagsOverrideSet(v) {
+        this.ptr.set_ViewportFlagsOverrideSet(v);
+    }
+    /**
+     * Viewport flags to clear when a window of this class owns a viewport. This allows you to enforce OS decoration or task bar icon, override the defaults on a per-window basis.
+     */
+    get ViewportFlagsOverrideClear() {
+        return this.ptr.get_ViewportFlagsOverrideClear();
+    }
+    set ViewportFlagsOverrideClear(v) {
+        this.ptr.set_ViewportFlagsOverrideClear(v);
+    }
+    /**
+     * [EXPERIMENTAL] TabItem flags to set when a window of this class gets submitted into a dock node tab bar. May use with ImGuiTabItemFlags_Leading or ImGuiTabItemFlags_Trailing.
+     */
+    get TabItemFlagsOverrideSet() {
+        return this.ptr.get_TabItemFlagsOverrideSet();
+    }
+    set TabItemFlagsOverrideSet(v) {
+        this.ptr.set_TabItemFlagsOverrideSet(v);
+    }
+    /**
+     * [EXPERIMENTAL] Dock node flags to set when a window of this class is hosted by a dock node (it doesn't have to be selected!)
+     */
+    get DockNodeFlagsOverrideSet() {
+        return this.ptr.get_DockNodeFlagsOverrideSet();
+    }
+    set DockNodeFlagsOverrideSet(v) {
+        this.ptr.set_DockNodeFlagsOverrideSet(v);
+    }
+    /**
+     * Set to true to enforce single floating windows of this class always having their own docking node (equivalent of setting the global io.ConfigDockingAlwaysTabBar)
+     */
+    get DockingAlwaysTabBar() {
+        return this.ptr.get_DockingAlwaysTabBar();
+    }
+    set DockingAlwaysTabBar(v) {
+        this.ptr.set_DockingAlwaysTabBar(v);
+    }
+    /**
+     * Set to true to allow windows of this class to be docked/merged with an unclassed window. // FIXME-DOCK: Move to DockNodeFlags override?
+     */
+    get DockingAllowUnclassed() {
+        return this.ptr.get_DockingAllowUnclassed();
+    }
+    set DockingAllowUnclassed(v) {
+        this.ptr.set_DockingAllowUnclassed(v);
+    }
+    /**
+     * [EXPERIMENTAL] Pass opaque data for Platform backend to handle.
+     */
+    get PlatformIconData() {
+        return this.ptr.get_PlatformIconData();
+    }
+    set PlatformIconData(v) {
+        this.ptr.set_PlatformIconData(v);
+    }
+}
+/**
+ * Data payload for Drag and Drop operations: AcceptDragDropPayload(), GetDragDropPayload()
+ */
+export class ImGuiPayload extends ReferenceStruct {
+    get Data() {
+        return this.ptr.get_Data();
+    }
+    get DataSize() {
+        return this.ptr.get_DataSize();
+    }
+    Clear() {
+        this.ptr.ImGuiPayload_Clear();
+    }
+    IsDataType(type) {
+        return this.ptr.ImGuiPayload_IsDataType(type);
+    }
+    IsPreview() {
+        return this.ptr.ImGuiPayload_IsPreview();
+    }
+    IsDelivery() {
+        return this.ptr.ImGuiPayload_IsDelivery();
+    }
+}
+/**
+ * Helper: Manually clip large list of items.
+ * If you have lots evenly spaced items and you have random access to the list, you can perform coarse
+ * clipping based on visibility to only submit items that are in view.
+ * The clipper calculates the range of visible items and advance the cursor to compensate for the non-visible items we have skipped.
+ * (Dear ImGui already clip items based on their bounds but: it needs to first layout the item to do so, and generally
+ *  fetching/submitting your own data incurs additional cost. Coarse clipping using ImGuiListClipper allows you to easily
+ *  scale using lists with tens of thousands of items without a problem)
+ * Usage:
+ *   ImGuiListClipper clipper;
+ *   clipper.Begin(1000);         // We have 1000 elements, evenly spaced.
+ *   while (clipper.Step())
+ *       for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+ *           ImGui::Text("line number %d", i);
+ * Generally what happens is:
+ * - Clipper lets you process the first element (DisplayStart = 0, DisplayEnd = 1) regardless of it being visible or not.
+ * - User code submit that one element.
+ * - Clipper can measure the height of the first element
+ * - Clipper calculate the actual range of elements to display based on the current clipping rectangle, position the cursor before the first visible element.
+ * - User code submit visible elements.
+ * - The clipper also handles various subtleties related to keyboard/gamepad navigation, wrapping etc.
+ */
+export class ImGuiListClipper extends ReferenceStruct {
+    /**
+     * First item to display, updated by each call to Step()
+     */
+    get DisplayStart() {
+        return this.ptr.get_DisplayStart();
+    }
+    set DisplayStart(v) {
+        this.ptr.set_DisplayStart(v);
+    }
+    /**
+     * End of items to display (exclusive)
+     */
+    get DisplayEnd() {
+        return this.ptr.get_DisplayEnd();
+    }
+    set DisplayEnd(v) {
+        this.ptr.set_DisplayEnd(v);
+    }
+    /**
+     * Helper storage for user convenience/code. Optional, and otherwise unused if you don't use it.
+     */
+    get UserIndex() {
+        return this.ptr.get_UserIndex();
+    }
+    set UserIndex(v) {
+        this.ptr.set_UserIndex(v);
+    }
+    /**
+     * [Internal] Number of items
+     */
+    get ItemsCount() {
+        return this.ptr.get_ItemsCount();
+    }
+    set ItemsCount(v) {
+        this.ptr.set_ItemsCount(v);
+    }
+    /**
+     * [Internal] Height of item after a first step and item submission can calculate it
+     */
+    get ItemsHeight() {
+        return this.ptr.get_ItemsHeight();
+    }
+    set ItemsHeight(v) {
+        this.ptr.set_ItemsHeight(v);
+    }
+    /**
+     * [Internal] Flags, currently not yet well exposed.
+     */
+    get Flags() {
+        return this.ptr.get_Flags();
+    }
+    set Flags(v) {
+        this.ptr.set_Flags(v);
+    }
+    /**
+     * [Internal] Cursor position at the time of Begin() or after table frozen rows are all processed
+     */
+    get StartPosY() {
+        return this.ptr.get_StartPosY();
+    }
+    set StartPosY(v) {
+        this.ptr.set_StartPosY(v);
+    }
+    /**
+     * [Internal] Account for frozen rows in a table and initial loss of precision in very large windows.
+     */
+    get StartSeekOffsetY() {
+        return this.ptr.get_StartSeekOffsetY();
+    }
+    set StartSeekOffsetY(v) {
+        this.ptr.set_StartSeekOffsetY(v);
+    }
+    /**
+     * [Internal] Parent UI context
+     */
+    get Ctx() {
+        return ImGuiContext.From(this.ptr.get_Ctx());
+    }
+    set Ctx(v) {
+        this.ptr.set_Ctx(v);
+    }
+    /**
+     * [Internal] Internal data
+     */
+    get TempData() {
+        return this.ptr.get_TempData();
+    }
+    set TempData(v) {
+        this.ptr.set_TempData(v);
+    }
+    Begin(items_count, items_height = -1.0) {
+        this.ptr.ImGuiListClipper_Begin(items_count, items_height);
+    }
+    /**
+     * Automatically called on the last call of Step() that returns false.
+     */
+    End() {
+        this.ptr.ImGuiListClipper_End();
+    }
+    /**
+     * Call until it returns false. The DisplayStart/DisplayEnd fields will be set and you can process/draw those items.
+     */
+    Step() {
+        return this.ptr.ImGuiListClipper_Step();
+    }
+    /**
+     * Call IncludeItemByIndex() or IncludeItemsByIndex() *BEFORE* first call to Step() if you need a range of items to not be clipped, regardless of their visibility.
+     * (Due to alignment / padding of certain items it is possible that an extra item may be included on either end of the display range).
+     */
+    IncludeItemByIndex(item_index) {
+        this.ptr.ImGuiListClipper_IncludeItemByIndex(item_index);
+    }
+    /**
+     * item_end is exclusive e.g. use (42, 42+1) to make item 42 never clipped.
+     */
+    IncludeItemsByIndex(item_begin, item_end) {
+        this.ptr.ImGuiListClipper_IncludeItemsByIndex(item_begin, item_end);
+    }
+    /**
+     * Seek cursor toward given item. This is automatically called while stepping.
+     * - The only reason to call this is: you can use ImGuiListClipper::Begin(INT_MAX) if you don't know item count ahead of time.
+     * - In this case, after all steps are done, you'll want to call SeekCursorForItem(item_count).
+     */
+    SeekCursorForItem(item_index) {
+        this.ptr.ImGuiListClipper_SeekCursorForItem(item_index);
+    }
+}
+/**
+ * Helper: ImColor() implicitly converts colors to either ImU32 (packed 4x1 byte) or ImVec4 (4x1 float)
+ * Prefer using IM_COL32() macros if you want a guaranteed compile-time ImU32 for usage with ImDrawList API.
+ * **Avoid storing ImColor! Store either u32 of ImVec4. This is not a full-featured color class. MAY OBSOLETE.
+ * **None of the ImGui API are using ImColor directly but you can use it as a convenience to pass colors in either ImU32 or ImVec4 formats. Explicitly cast to ImU32 or ImVec4 if needed.
+ */
+export class ImColor extends ReferenceStruct {
+    get Value() {
+        return ImVec4.From(this.ptr.get_Value());
+    }
+    set Value(v) {
+        this.ptr.set_Value(v);
+    }
+    /**
+     * FIXME-OBSOLETE: May need to obsolete/cleanup those helpers.
+     */
+    SetHSV(h, s, v, a = 1.0) {
+        this.ptr.ImColor_SetHSV(h, s, v, a);
+    }
+    HSV(h, s, v, a = 1.0) {
+        return ImColor.From(this.ptr.ImColor_HSV(h, s, v, a));
+    }
+}
+/**
+ * Main IO structure returned by BeginMultiSelect()/EndMultiSelect().
+ * This mainly contains a list of selection requests.
+ * - Use 'Demo->Tools->Debug Log->Selection' to see requests as they happen.
+ * - Some fields are only useful if your list is dynamic and allows deletion (getting post-deletion focus/state right is shown in the demo)
+ * - Below: who reads/writes each fields? 'r'=read, 'w'=write, 'ms'=multi-select code, 'app'=application/user code.
+ */
+export class ImGuiMultiSelectIO extends ReferenceStruct {
+}
+/**
+ * Typically, 1 command = 1 GPU draw call (unless command is a callback)
+ * - VtxOffset: When 'io.BackendFlags & ImGuiBackendFlags_RendererHasVtxOffset' is enabled,
+ *   this fields allow us to render meshes larger than 64K vertices while keeping 16-bit indices.
+ *   Backends made for <1.71. will typically ignore the VtxOffset fields.
+ * - The ClipRect/TexRef/VtxOffset fields must be contiguous as we memcmp() them together (this is asserted for).
+ */
+export class ImDrawCmd extends ReferenceStruct {
+    /**
+     * 4*4  // Clipping rectangle (x1, y1, x2, y2). Subtract ImDrawData->DisplayPos to get clipping rectangle in "viewport" coordinates
+     */
+    get ClipRect() {
+        return ImVec4.From(this.ptr.get_ClipRect());
+    }
+    set ClipRect(v) {
+        this.ptr.set_ClipRect(v);
+    }
+    /**
+     * 16   // Reference to a font/texture atlas (where backend called ImTextureData::SetTexID()) or to a user-provided texture ID (via e.g. ImGui::Image() calls). Both will lead to a ImTextureID value.
+     */
+    get TexRef() {
+        return ImTextureRef.From(this.ptr.get_TexRef());
+    }
+    set TexRef(v) {
+        this.ptr.set_TexRef(v);
+    }
+    /**
+     * 4    // Start offset in vertex buffer. ImGuiBackendFlags_RendererHasVtxOffset: always 0, otherwise may be >0 to support meshes larger than 64K vertices with 16-bit indices.
+     */
+    get VtxOffset() {
+        return this.ptr.get_VtxOffset();
+    }
+    set VtxOffset(v) {
+        this.ptr.set_VtxOffset(v);
+    }
+    /**
+     * 4    // Start offset in index buffer.
+     */
+    get IdxOffset() {
+        return this.ptr.get_IdxOffset();
+    }
+    set IdxOffset(v) {
+        this.ptr.set_IdxOffset(v);
+    }
+    /**
+     * 4    // Number of indices (multiple of 3) to be rendered as triangles. Vertices are stored in the callee ImDrawList's vtx_buffer[] array, indices in idx_buffer[].
+     */
+    get ElemCount() {
+        return this.ptr.get_ElemCount();
+    }
+    set ElemCount(v) {
+        this.ptr.set_ElemCount(v);
+    }
+    /**
+     * 4-8  // If != NULL, call the function instead of rendering the vertices. clip_rect and texture_id will be set normally.
+     */
+    get UserCallback() {
+        return this.ptr.get_UserCallback();
+    }
+    set UserCallback(v) {
+        this.ptr.set_UserCallback(v);
+    }
+    /**
+     * 4-8  // Callback user data (when UserCallback != NULL). If called AddCallback() with size == 0, this is a copy of the AddCallback() argument. If called AddCallback() with size > 0, this is pointing to a buffer where data is stored.
+     */
+    get UserCallbackData() {
+        return this.ptr.get_UserCallbackData();
+    }
+    set UserCallbackData(v) {
+        this.ptr.set_UserCallbackData(v);
+    }
+    /**
+     * 4 // Size of callback user data when using storage, otherwise 0.
+     */
+    get UserCallbackDataSize() {
+        return this.ptr.get_UserCallbackDataSize();
+    }
+    set UserCallbackDataSize(v) {
+        this.ptr.set_UserCallbackDataSize(v);
+    }
+    /**
+     * 4 // [Internal] Offset of callback user data when using storage, otherwise -1.
+     */
+    get UserCallbackDataOffset() {
+        return this.ptr.get_UserCallbackDataOffset();
+    }
+    set UserCallbackDataOffset(v) {
+        this.ptr.set_UserCallbackDataOffset(v);
+    }
+    // Since 1.83: returns ImTextureID associated with this draw call. Warning: DO NOT assume this is always same as 'TextureId' (we will change this function for an upcoming feature)
+    // Since 1.92: removed ImDrawCmd::TextureId field, the getter function must be used!
+    /**
+     * == (TexRef._TexData ? TexRef._TexData->TexID : TexRef._TexID)
+     */
+    GetTexID() {
+        return this.ptr.ImDrawCmd_GetTexID();
+    }
+}
+/**
+ * Draw command list
+ * This is the low-level list of polygons that ImGui:: functions are filling. At the end of the frame,
+ * all command lists are passed to your ImGuiIO::RenderDrawListFn function for rendering.
+ * Each dear imgui window contains its own ImDrawList. You can use ImGui::GetWindowDrawList() to
+ * access the current window draw list and draw custom primitives.
+ * You can interleave normal ImGui:: calls and adding primitives to the current draw list.
+ * In single viewport mode, top-left is == GetMainViewport()->Pos (generally 0,0), bottom-right is == GetMainViewport()->Pos+Size (generally io.DisplaySize).
+ * You are totally free to apply whatever transformation matrix you want to the data (depending on the use of the transformation you may want to apply it to ClipRect as well!)
+ * Important: Primitives are always added to the list and not culled (culling is done at higher-level by ImGui:: functions), if you use this API a lot consider coarse culling your drawn objects.
+ */
+export class ImDrawList extends ReferenceStruct {
+    /**
+     * Flags, you may poke into these to adjust anti-aliasing settings per-primitive.
+     */
+    get Flags() {
+        return this.ptr.get_Flags();
+    }
+    set Flags(v) {
+        this.ptr.set_Flags(v);
+    }
+    /**
+     * Render-level scissoring. This is passed down to your render function but not used for CPU-side coarse clipping. Prefer using higher-level ImGui::PushClipRect() to affect logic (hit-testing and widget culling)
+     */
+    PushClipRect(clip_rect_min, clip_rect_max, intersect_with_current_clip_rect = false) {
+        this.ptr.ImDrawList_PushClipRect(clip_rect_min, clip_rect_max, intersect_with_current_clip_rect);
+    }
+    PushClipRectFullScreen() {
+        this.ptr.ImDrawList_PushClipRectFullScreen();
+    }
+    PopClipRect() {
+        this.ptr.ImDrawList_PopClipRect();
+    }
+    PushTexture(tex_ref) {
+        this.ptr.ImDrawList_PushTexture(tex_ref);
+    }
+    PopTexture() {
+        this.ptr.ImDrawList_PopTexture();
+    }
+    GetClipRectMin() {
+        return ImVec2.From(this.ptr.ImDrawList_GetClipRectMin());
+    }
+    GetClipRectMax() {
+        return ImVec2.From(this.ptr.ImDrawList_GetClipRectMax());
+    }
+    /**
+     * Primitives
+     * - Filled shapes must always use clockwise winding order. The anti-aliasing fringe depends on it. Counter-clockwise shapes will have "inward" anti-aliasing.
+     * - For rectangular primitives, "p_min" and "p_max" represent the upper-left and lower-right corners.
+     * - For circle primitives, use "num_segments == 0" to automatically calculate tessellation (preferred).
+     *   In older versions (until Dear ImGui 1.77) the AddCircle functions defaulted to num_segments == 12.
+     *   In future versions we will use textures to provide cheaper and higher-quality circles.
+     *   Use AddNgon() and AddNgonFilled() functions if you need to guarantee a specific number of sides.
+     */
+    AddLine(p1, p2, col, thickness = 1.0) {
+        this.ptr.ImDrawList_AddLine(p1, p2, col, thickness);
+    }
+    AddLineH(min_x, max_x, y, col, thickness = 1.0) {
+        this.ptr.ImDrawList_AddLineH(min_x, max_x, y, col, thickness);
+    }
+    AddLineV(x, min_y, max_y, col, thickness = 1.0) {
+        this.ptr.ImDrawList_AddLineV(x, min_y, max_y, col, thickness);
+    }
+    /**
+     * a: upper-left, b: lower-right (== upper-left + size)
+     */
+    AddRect(p_min, p_max, col, rounding = 0.0, thickness = 1.0, flags = 0) {
+        this.ptr.ImDrawList_AddRect(p_min, p_max, col, rounding, thickness, flags);
+    }
+    /**
+     * a: upper-left, b: lower-right (== upper-left + size)
+     */
+    AddRectFilled(p_min, p_max, col, rounding = 0.0, flags = 0) {
+        this.ptr.ImDrawList_AddRectFilled(p_min, p_max, col, rounding, flags);
+    }
+    AddRectFilledMultiColor(p_min, p_max, col_upr_left, col_upr_right, col_bot_right, col_bot_left) {
+        this.ptr.ImDrawList_AddRectFilledMultiColor(p_min, p_max, col_upr_left, col_upr_right, col_bot_right, col_bot_left);
+    }
+    AddQuad(p1, p2, p3, p4, col, thickness = 1.0) {
+        this.ptr.ImDrawList_AddQuad(p1, p2, p3, p4, col, thickness);
+    }
+    AddQuadFilled(p1, p2, p3, p4, col) {
+        this.ptr.ImDrawList_AddQuadFilled(p1, p2, p3, p4, col);
+    }
+    AddTriangle(p1, p2, p3, col, thickness = 1.0) {
+        this.ptr.ImDrawList_AddTriangle(p1, p2, p3, col, thickness);
+    }
+    AddTriangleFilled(p1, p2, p3, col) {
+        this.ptr.ImDrawList_AddTriangleFilled(p1, p2, p3, col);
+    }
+    AddCircle(center, radius, col, num_segments = 0, thickness = 1.0) {
+        this.ptr.ImDrawList_AddCircle(center, radius, col, num_segments, thickness);
+    }
+    AddCircleFilled(center, radius, col, num_segments = 0) {
+        this.ptr.ImDrawList_AddCircleFilled(center, radius, col, num_segments);
+    }
+    AddNgon(center, radius, col, num_segments, thickness = 1.0) {
+        this.ptr.ImDrawList_AddNgon(center, radius, col, num_segments, thickness);
+    }
+    AddNgonFilled(center, radius, col, num_segments) {
+        this.ptr.ImDrawList_AddNgonFilled(center, radius, col, num_segments);
+    }
+    AddEllipse(center, radius, col, rot = 0.0, num_segments = 0, thickness = 1.0) {
+        this.ptr.ImDrawList_AddEllipse(center, radius, col, rot, num_segments, thickness);
+    }
+    AddEllipseFilled(center, radius, col, rot = 0.0, num_segments = 0) {
+        this.ptr.ImDrawList_AddEllipseFilled(center, radius, col, rot, num_segments);
+    }
+    AddText(pos, col, text_begin, text_end = "") {
+        this.ptr.ImDrawList_AddText(pos, col, text_begin, text_end);
+    }
+    AddTextImFontPtr(font, font_size, pos, col, text_begin, text_end = "", wrap_width = 0.0, cpu_fine_clip_rect = null) {
+        this.ptr.ImDrawList_AddTextImFontPtr(font?.ptr ?? null, font_size, pos, col, text_begin, text_end, wrap_width, cpu_fine_clip_rect);
+    }
+    /**
+     * Cubic Bezier (4 control points)
+     */
+    AddBezierCubic(p1, p2, p3, p4, col, thickness, num_segments = 0) {
+        this.ptr.ImDrawList_AddBezierCubic(p1, p2, p3, p4, col, thickness, num_segments);
+    }
+    /**
+     * Quadratic Bezier (3 control points)
+     */
+    AddBezierQuadratic(p1, p2, p3, col, thickness, num_segments = 0) {
+        this.ptr.ImDrawList_AddBezierQuadratic(p1, p2, p3, col, thickness, num_segments);
+    }
+    /**
+     * General polygon
+     * - Only simple polygons are supported by filling functions (no self-intersections, no holes).
+     * - Concave polygon fill is more expensive than convex one: it has O(N^2) complexity. Provided as a convenience for the user but not used by the main library.
+     */
+    AddPolyline(points, num_points, col, thickness, flags = 0) {
+        this.ptr.ImDrawList_AddPolyline(points, num_points, col, thickness, flags);
+    }
+    AddConvexPolyFilled(points, num_points, col) {
+        this.ptr.ImDrawList_AddConvexPolyFilled(points, num_points, col);
+    }
+    AddConcavePolyFilled(points, num_points, col) {
+        this.ptr.ImDrawList_AddConcavePolyFilled(points, num_points, col);
+    }
+    /**
+     * Image primitives
+     * - Read FAQ to understand what ImTextureID/ImTextureRef are.
+     * - "p_min" and "p_max" represent the upper-left and lower-right corners of the rectangle.
+     * - "uv_min" and "uv_max" represent the normalized texture coordinates to use for those corners. Using (0,0)->(1,1) texture coordinates will generally display the entire texture.
+     */
+    AddImage(tex_ref, p_min, p_max, uv_min = new ImVec2(0, 0), uv_max = new ImVec2(1, 1), col = IM_COL32_WHITE) {
+        this.ptr.ImDrawList_AddImage(tex_ref, p_min, p_max, uv_min, uv_max, col);
+    }
+    AddImageQuad(tex_ref, p1, p2, p3, p4, uv1 = new ImVec2(0, 0), uv2 = new ImVec2(1, 0), uv3 = new ImVec2(1, 1), uv4 = new ImVec2(0, 1), col = IM_COL32_WHITE) {
+        this.ptr.ImDrawList_AddImageQuad(tex_ref, p1, p2, p3, p4, uv1, uv2, uv3, uv4, col);
+    }
+    AddImageRounded(tex_ref, p_min, p_max, uv_min, uv_max, col, rounding, flags = 0) {
+        this.ptr.ImDrawList_AddImageRounded(tex_ref, p_min, p_max, uv_min, uv_max, col, rounding, flags);
+    }
+    /**
+     * Stateful path API, add points then finish with PathFillConvex() or PathStroke()
+     * - Important: filled shapes must always use clockwise winding order! The anti-aliasing fringe depends on it. Counter-clockwise shapes will have "inward" anti-aliasing.
+     *   so e.g. 'PathArcTo(center, radius, PI * -0.5f, PI)' is ok, whereas 'PathArcTo(center, radius, PI, PI * -0.5f)' won't have correct anti-aliasing when followed by PathFillConvex().
+     */
+    PathClear() {
+        this.ptr.ImDrawList_PathClear();
+    }
+    PathLineTo(pos) {
+        this.ptr.ImDrawList_PathLineTo(pos);
+    }
+    PathLineToMergeDuplicate(pos) {
+        this.ptr.ImDrawList_PathLineToMergeDuplicate(pos);
+    }
+    PathFillConvex(col) {
+        this.ptr.ImDrawList_PathFillConvex(col);
+    }
+    PathFillConcave(col) {
+        this.ptr.ImDrawList_PathFillConcave(col);
+    }
+    PathStroke(col, thickness = 1.0, flags = 0) {
+        this.ptr.ImDrawList_PathStroke(col, thickness, flags);
+    }
+    PathArcTo(center, radius, a_min, a_max, num_segments = 0) {
+        this.ptr.ImDrawList_PathArcTo(center, radius, a_min, a_max, num_segments);
+    }
+    /**
+     * Use precomputed angles for a 12 steps circle
+     */
+    PathArcToFast(center, radius, a_min_of_12, a_max_of_12) {
+        this.ptr.ImDrawList_PathArcToFast(center, radius, a_min_of_12, a_max_of_12);
+    }
+    /**
+     * Ellipse
+     */
+    PathEllipticalArcTo(center, radius, rot, a_min, a_max, num_segments = 0) {
+        this.ptr.ImDrawList_PathEllipticalArcTo(center, radius, rot, a_min, a_max, num_segments);
+    }
+    /**
+     * Cubic Bezier (4 control points)
+     */
+    PathBezierCubicCurveTo(p2, p3, p4, num_segments = 0) {
+        this.ptr.ImDrawList_PathBezierCubicCurveTo(p2, p3, p4, num_segments);
+    }
+    /**
+     * Quadratic Bezier (3 control points)
+     */
+    PathBezierQuadraticCurveTo(p2, p3, num_segments = 0) {
+        this.ptr.ImDrawList_PathBezierQuadraticCurveTo(p2, p3, num_segments);
+    }
+    PathRect(rect_min, rect_max, rounding = 0.0, flags = 0) {
+        this.ptr.ImDrawList_PathRect(rect_min, rect_max, rounding, flags);
+    }
+    /**
+     * Advanced: Draw Callbacks
+     * - May be used to alter render state (change sampler, blending, current shader). May be used to emit custom rendering commands (difficult to do correctly, but possible).
+     * - Use special GetPlatformIO().DrawCallback_ResetRenderState callback to instruct backend to reset its render state to the default.
+     * - See other standard callbacks in GetPlatformIO(), which may or not be supported by your backend.
+     * - Your rendering loop must check for 'UserCallback' in ImDrawCmd and call the function instead of rendering triangles. All standard backends are honoring this.
+     * - For some backends, the callback may access selected render-states exposed by the backend in a ImGui_ImplXXXX_RenderState structure pointed to by platform_io.Renderer_RenderState.
+     * - IMPORTANT: please be mindful of the different level of indirection between using size==0 (copying argument) and using size>0 (copying pointed data into a buffer).
+     *   - If userdata_size == 0: we copy/store the 'userdata' argument as-is. It will be available unmodified in ImDrawCmd::UserCallbackData during render.
+     *   - If userdata_size > 0,  we copy/store 'userdata_size' bytes pointed to by 'userdata'. We store them in a buffer stored inside the drawlist. ImDrawCmd::UserCallbackData will point inside that buffer so you have to retrieve data from there. Your callback may need to use ImDrawCmd::UserCallbackDataSize if you expect dynamically-sized data.
+     *   - Support for userdata_size > 0 was added in v1.91.4, October 2024. So earlier code always only allowed to copy/store a simple void*.
+     */
+    AddCallback(callback, userdata = null, userdata_size = 0) {
+        this.ptr.ImDrawList_AddCallback(callback, userdata, userdata_size);
+    }
+    // Advanced: Miscellaneous
+    /**
+     * This is useful if you need to forcefully create a new draw call (to allow for dependent rendering / blending). Otherwise primitives are merged into the same draw-call as much as possible
+     */
+    AddDrawCmd() {
+        this.ptr.ImDrawList_AddDrawCmd();
+    }
+    /**
+     * Create a clone of the CmdBuffer/IdxBuffer/VtxBuffer. For multi-threaded rendering, consider using `imgui_threaded_rendering` from https://github.com/ocornut/imgui_club instead.
+     */
+    CloneOutput() {
+        return ImDrawList.From(this.ptr.ImDrawList_CloneOutput());
+    }
+    /**
+     * Advanced: Channels
+     * - Use to split render into layers. By switching channels to can render out-of-order (e.g. submit FG primitives before BG primitives)
+     * - Use to minimize draw calls (e.g. if going back-and-forth between multiple clipping rectangles, prefer to append into separate channels then merge at the end)
+     * - This API shouldn't have been in ImDrawList in the first place!
+     *   Prefer using your own persistent instance of ImDrawListSplitter as you can stack them.
+     *   Using the ImDrawList::ChannelsXXXX you cannot stack a split over another.
+     */
+    ChannelsSplit(count) {
+        this.ptr.ImDrawList_ChannelsSplit(count);
+    }
+    ChannelsMerge() {
+        this.ptr.ImDrawList_ChannelsMerge();
+    }
+    ChannelsSetCurrent(n) {
+        this.ptr.ImDrawList_ChannelsSetCurrent(n);
+    }
+    /**
+     * Advanced: Primitives allocations
+     * - We render triangles (three vertices)
+     * - All primitives needs to be reserved via PrimReserve() beforehand.
+     */
+    PrimReserve(idx_count, vtx_count) {
+        this.ptr.ImDrawList_PrimReserve(idx_count, vtx_count);
+    }
+    PrimUnreserve(idx_count, vtx_count) {
+        this.ptr.ImDrawList_PrimUnreserve(idx_count, vtx_count);
+    }
+    /**
+     * Axis aligned rectangle (composed of two triangles)
+     */
+    PrimRect(a, b, col) {
+        this.ptr.ImDrawList_PrimRect(a, b, col);
+    }
+    PrimRectUV(a, b, uv_a, uv_b, col) {
+        this.ptr.ImDrawList_PrimRectUV(a, b, uv_a, uv_b, col);
+    }
+    PrimQuadUV(a, b, c, d, uv_a, uv_b, uv_c, uv_d, col) {
+        this.ptr.ImDrawList_PrimQuadUV(a, b, c, d, uv_a, uv_b, uv_c, uv_d, col);
+    }
+    PrimWriteVtx(pos, uv, col) {
+        this.ptr.ImDrawList_PrimWriteVtx(pos, uv, col);
+    }
+    PrimWriteIdx(idx) {
+        this.ptr.ImDrawList_PrimWriteIdx(idx);
+    }
+    /**
+     * Write vertex with unique index
+     */
+    PrimVtx(pos, uv, col) {
+        this.ptr.ImDrawList_PrimVtx(pos, uv, col);
+    }
+    /**
+     * [Internal helpers]
+     */
+    _SetDrawListSharedData(data) {
+        this.ptr.ImDrawList__SetDrawListSharedData(data?.ptr ?? null);
+    }
+    _ResetForNewFrame() {
+        this.ptr.ImDrawList__ResetForNewFrame();
+    }
+    _ClearFreeMemory() {
+        this.ptr.ImDrawList__ClearFreeMemory();
+    }
+    _PopUnusedDrawCmd() {
+        this.ptr.ImDrawList__PopUnusedDrawCmd();
+    }
+    _TryMergeDrawCmds() {
+        this.ptr.ImDrawList__TryMergeDrawCmds();
+    }
+    _OnChangedClipRect() {
+        this.ptr.ImDrawList__OnChangedClipRect();
+    }
+    _OnChangedTexture() {
+        this.ptr.ImDrawList__OnChangedTexture();
+    }
+    _OnChangedVtxOffset() {
+        this.ptr.ImDrawList__OnChangedVtxOffset();
+    }
+    _SetTexture(tex_ref) {
+        this.ptr.ImDrawList__SetTexture(tex_ref);
+    }
+    _CalcCircleAutoSegmentCount(radius) {
+        return this.ptr.ImDrawList__CalcCircleAutoSegmentCount(radius);
+    }
+    _PathArcToFastEx(center, radius, a_min_sample, a_max_sample, a_step) {
+        this.ptr.ImDrawList__PathArcToFastEx(center, radius, a_min_sample, a_max_sample, a_step);
+    }
+    _PathArcToN(center, radius, a_min, a_max, num_segments) {
+        this.ptr.ImDrawList__PathArcToN(center, radius, a_min, a_max, num_segments);
+    }
+}
+/**
+ * All draw data to render a Dear ImGui frame
+ * (NB: the style and the naming convention here is a little inconsistent, we currently preserve them for backward compatibility purpose,
+ * as this is one of the oldest structure exposed by the library! Basically, ImDrawList == CmdList)
+ */
+export class ImDrawData extends ReferenceStruct {
+}
+/**
+ * A font input/source (we may rename this to ImFontSource in the future)
+ */
+export class ImFontConfig extends ReferenceStruct {
+    /**
+     *          // TTF/OTF data
+     */
+    get FontData() {
+        return this.ptr.get_FontData();
+    }
+    set FontData(v) {
+        this.ptr.set_FontData(v);
+    }
+    /**
+     *          // TTF/OTF data size
+     */
+    get FontDataSize() {
+        return this.ptr.get_FontDataSize();
+    }
+    set FontDataSize(v) {
+        this.ptr.set_FontDataSize(v);
+    }
+    /**
+     * true     // TTF/OTF data ownership taken by the owner ImFontAtlas (will delete memory itself). SINCE 1.92, THE DATA NEEDS TO PERSIST FOR WHOLE DURATION OF ATLAS.
+     */
+    get FontDataOwnedByAtlas() {
+        return this.ptr.get_FontDataOwnedByAtlas();
+    }
+    set FontDataOwnedByAtlas(v) {
+        this.ptr.set_FontDataOwnedByAtlas(v);
+    }
+    // Options
+    /**
+     * false    // Merge into previous ImFont, so you can combine multiple inputs font into one ImFont (e.g. ASCII font + icons + Japanese glyphs). You may want to use GlyphOffset.y when merge font of different heights.
+     */
+    get MergeMode() {
+        return this.ptr.get_MergeMode();
+    }
+    set MergeMode(v) {
+        this.ptr.set_MergeMode(v);
+    }
+    /**
+     * false    // Align every glyph AdvanceX to pixel boundaries. Prevents fractional font size from working correctly! Useful e.g. if you are merging a non-pixel aligned font with the default font. If enabled, OversampleH/V will default to 1.
+     */
+    get PixelSnapH() {
+        return this.ptr.get_PixelSnapH();
+    }
+    set PixelSnapH(v) {
+        this.ptr.set_PixelSnapH(v);
+    }
+    /**
+     * 0 (2)    // Rasterize at higher quality for sub-pixel positioning. 0 == auto == 1 or 2 depending on size. Note the difference between 2 and 3 is minimal. You can reduce this to 1 for large glyphs save memory. Read https://github.com/nothings/stb/blob/master/tests/oversample/README.md for details.
+     */
+    get OversampleH() {
+        return this.ptr.get_OversampleH();
+    }
+    set OversampleH(v) {
+        this.ptr.set_OversampleH(v);
+    }
+    /**
+     * 0 (1)    // Rasterize at higher quality for sub-pixel positioning. 0 == auto == 1. This is not really useful as we don't use sub-pixel positions on the Y axis.
+     */
+    get OversampleV() {
+        return this.ptr.get_OversampleV();
+    }
+    set OversampleV(v) {
+        this.ptr.set_OversampleV(v);
+    }
+    /**
+     * 0        // Explicitly specify Unicode codepoint of ellipsis character. When fonts are being merged first specified ellipsis will be used.
+     */
+    get EllipsisChar() {
+        return this.ptr.get_EllipsisChar();
+    }
+    set EllipsisChar(v) {
+        this.ptr.set_EllipsisChar(v);
+    }
+    /**
+     *          // Output size in pixels for rasterizer (more or less maps to the resulting font height).
+     */
+    get SizePixels() {
+        return this.ptr.get_SizePixels();
+    }
+    set SizePixels(v) {
+        this.ptr.set_SizePixels(v);
+    }
+    /**
+     * NULL     // *LEGACY* THE ARRAY DATA NEEDS TO PERSIST AS LONG AS THE FONT IS ALIVE. Pointer to a user-provided list of Unicode range (2 value per range, values are inclusive, zero-terminated list).
+     */
+    get GlyphRanges() {
+        return this.ptr.get_GlyphRanges();
+    }
+    set GlyphRanges(v) {
+        this.ptr.set_GlyphRanges(v);
+    }
+    /**
+     * NULL     // Pointer to a small user-provided list of Unicode ranges (2 value per range, values are inclusive, zero-terminated list). This is very close to GlyphRanges[] but designed to exclude ranges from a font source, when merging fonts with overlapping glyphs. Use "Input Glyphs Overlap Detection Tool" to find about your overlapping ranges.
+     */
+    get GlyphExcludeRanges() {
+        return this.ptr.get_GlyphExcludeRanges();
+    }
+    set GlyphExcludeRanges(v) {
+        this.ptr.set_GlyphExcludeRanges(v);
+    }
+    // mVec2        GlyphExtraSpacing;      // 0, 0     // (REMOVED AT IT SEEMS LARGELY OBSOLETE. PLEASE REPORT IF YOU WERE USING THIS). Extra spacing (in pixels) between glyphs when rendered: essentially add to glyph->AdvanceX. Only X axis is supported for now.
+    /**
+     * 0, 0     // Offset (in pixels) all glyphs from this font input. Absolute value for default size, other sizes will scale this value.
+     */
+    get GlyphOffset() {
+        return ImVec2.From(this.ptr.get_GlyphOffset());
+    }
+    set GlyphOffset(v) {
+        this.ptr.set_GlyphOffset(v);
+    }
+    /**
+     * 0        // Minimum AdvanceX for glyphs, set Min to align font icons, set both Min/Max to enforce mono-space font. Absolute value for default size, other sizes will scale this value.
+     */
+    get GlyphMinAdvanceX() {
+        return this.ptr.get_GlyphMinAdvanceX();
+    }
+    set GlyphMinAdvanceX(v) {
+        this.ptr.set_GlyphMinAdvanceX(v);
+    }
+    /**
+     * FLT_MAX  // Maximum AdvanceX for glyphs
+     */
+    get GlyphMaxAdvanceX() {
+        return this.ptr.get_GlyphMaxAdvanceX();
+    }
+    set GlyphMaxAdvanceX(v) {
+        this.ptr.set_GlyphMaxAdvanceX(v);
+    }
+    /**
+     * 0        // Extra spacing (in pixels) between glyphs. Please contact us if you are using this. // FIXME-NEWATLAS: Intentionally unscaled
+     */
+    get GlyphExtraAdvanceX() {
+        return this.ptr.get_GlyphExtraAdvanceX();
+    }
+    set GlyphExtraAdvanceX(v) {
+        this.ptr.set_GlyphExtraAdvanceX(v);
+    }
+    /**
+     * 0        // Index of font within TTF/OTF file
+     */
+    get FontNo() {
+        return this.ptr.get_FontNo();
+    }
+    set FontNo(v) {
+        this.ptr.set_FontNo(v);
+    }
+    /**
+     * 0        // Settings for custom font builder. THIS IS BUILDER IMPLEMENTATION DEPENDENT. Leave as zero if unsure.
+     */
+    get FontLoaderFlags() {
+        return this.ptr.get_FontLoaderFlags();
+    }
+    set FontLoaderFlags(v) {
+        this.ptr.set_FontLoaderFlags(v);
+    }
+    // nsigned int  FontBuilderFlags;       // --       // [Renamed in 1.92] Use FontLoaderFlags.
+    /**
+     * 1.0f     // Linearly brighten (>1.0f) or darken (<1.0f) font output. Brightening small fonts may be a good workaround to make them more readable. This is a silly thing we may remove in the future.
+     */
+    get RasterizerMultiply() {
+        return this.ptr.get_RasterizerMultiply();
+    }
+    set RasterizerMultiply(v) {
+        this.ptr.set_RasterizerMultiply(v);
+    }
+    /**
+     * 1.0f     // [LEGACY: this only makes sense when ImGuiBackendFlags_RendererHasTextures is not supported] DPI scale multiplier for rasterization. Not altering other font metrics: makes it easy to swap between e.g. a 100% and a 400% fonts for a zooming display, or handle Retina screen. IMPORTANT: If you change this it is expected that you increase/decrease font scale roughly to the inverse of this, otherwise quality may look lowered.
+     */
+    get RasterizerDensity() {
+        return this.ptr.get_RasterizerDensity();
+    }
+    set RasterizerDensity(v) {
+        this.ptr.set_RasterizerDensity(v);
+    }
+    /**
+     * 1.0f     // Extra rasterizer scale over SizePixels.
+     */
+    get ExtraSizeScale() {
+        return this.ptr.get_ExtraSizeScale();
+    }
+    set ExtraSizeScale(v) {
+        this.ptr.set_ExtraSizeScale(v);
+    }
+}
+/**
+ * Output of ImFontAtlas::GetCustomRect() when using custom rectangles.
+ * Those values may not be cached/stored as they are only valid for the current value of atlas->TexRef
+ * (this is in theory derived from ImTextureRect but we use separate structures for reasons)
+ */
+export class ImFontAtlasRect extends ReferenceStruct {
+    /**
+     * Position (in current texture)
+     */
+    get x() {
+        return this.ptr.get_x();
+    }
+    set x(v) {
+        this.ptr.set_x(v);
+    }
+    /**
+     * Position (in current texture)
+     */
+    get y() {
+        return this.ptr.get_y();
+    }
+    set y(v) {
+        this.ptr.set_y(v);
+    }
+    /**
+     * Size
+     */
+    get w() {
+        return this.ptr.get_w();
+    }
+    set w(v) {
+        this.ptr.set_w(v);
+    }
+    /**
+     * Size
+     */
+    get h() {
+        return this.ptr.get_h();
+    }
+    set h(v) {
+        this.ptr.set_h(v);
+    }
+    /**
+     * UV coordinates (in current texture)
+     */
+    get uv0() {
+        return ImVec2.From(this.ptr.get_uv0());
+    }
+    set uv0(v) {
+        this.ptr.set_uv0(v);
+    }
+    /**
+     * UV coordinates (in current texture)
+     */
+    get uv1() {
+        return ImVec2.From(this.ptr.get_uv1());
+    }
+    set uv1(v) {
+        this.ptr.set_uv1(v);
+    }
+}
+/**
+ * Load and rasterize multiple TTF/OTF fonts into a same texture. The font atlas will build a single texture holding:
+ *  - One or more fonts.
+ *  - Custom graphics data needed to render the shapes needed by Dear ImGui.
+ *  - Mouse cursor shapes for software cursor rendering (unless setting 'Flags |= ImFontAtlasFlags_NoMouseCursors' in the font atlas).
+ *  - If you don't call any AddFont*** functions, the default font embedded in the code will be loaded for you.
+ * It is the rendering backend responsibility to upload texture into your graphics API:
+ *  - ImGui_ImplXXXX_RenderDrawData() functions generally iterate platform_io->Textures[] to create/update/destroy each ImTextureData instance.
+ *  - Backend then set ImTextureData's TexID and BackendUserData.
+ *  - Texture id are passed back to you during rendering to identify the texture. Read FAQ entry about ImTextureID/ImTextureRef for more details.
+ * Legacy path:
+ *  - Call Build() + GetTexDataAsAlpha8() or GetTexDataAsRGBA32() to build and retrieve pixels data.
+ *  - Call SetTexID(my_tex_id); and pass the pointer/identifier to your texture in a format natural to your graphics API.
+ * Common pitfalls:
+ * - If you pass a 'glyph_ranges' array to AddFont*** functions, you need to make sure that your array persists up until the
+ *   atlas is build (when calling GetTexData*** or Build()). We only copy the pointer, not the data.
+ * - Important: By default, AddFontFromMemoryTTF() takes ownership of the data. Even though we are not writing to it, we will free the pointer on destruction.
+ *   You can set font_cfg->FontDataOwnedByAtlas=false to keep ownership of your data and it won't be freed,
+ * - Even though many functions are suffixed with "TTF", OTF data is supported just as well.
+ * - This is an old API and it is currently awkward for those and various other reasons! We will address them in the future!
+ */
+export class ImFontAtlas extends ReferenceStruct {
+    // Input
+    /**
+     * Build flags (see ImFontAtlasFlags_)
+     */
+    get Flags() {
+        return this.ptr.get_Flags();
+    }
+    set Flags(v) {
+        this.ptr.set_Flags(v);
+    }
+    /**
+     * FIXME: Should be called "TexPackPadding". Padding between glyphs within texture in pixels. Defaults to 1. If your rendering method doesn't rely on bilinear filtering you may set this to 0 (will also need to set AntiAliasedLinesUseTex = false).
+     */
+    get TexGlyphPadding() {
+        return this.ptr.get_TexGlyphPadding();
+    }
+    set TexGlyphPadding(v) {
+        this.ptr.set_TexGlyphPadding(v);
+    }
+    /**
+     * Minimum desired texture width. Must be a power of two. Default to 512.
+     */
+    get TexMinWidth() {
+        return this.ptr.get_TexMinWidth();
+    }
+    set TexMinWidth(v) {
+        this.ptr.set_TexMinWidth(v);
+    }
+    /**
+     * Minimum desired texture height. Must be a power of two. Default to 128.
+     */
+    get TexMinHeight() {
+        return this.ptr.get_TexMinHeight();
+    }
+    set TexMinHeight(v) {
+        this.ptr.set_TexMinHeight(v);
+    }
+    /**
+     * Maximum desired texture width. Must be a power of two. Default to 8192.
+     */
+    get TexMaxWidth() {
+        return this.ptr.get_TexMaxWidth();
+    }
+    set TexMaxWidth(v) {
+        this.ptr.set_TexMaxWidth(v);
+    }
+    /**
+     * Maximum desired texture height. Must be a power of two. Default to 8192.
+     */
+    get TexMaxHeight() {
+        return this.ptr.get_TexMaxHeight();
+    }
+    set TexMaxHeight(v) {
+        this.ptr.set_TexMaxHeight(v);
+    }
+    /**
+     * Store your own atlas related user-data (if e.g. you have multiple font atlas).
+     */
+    get UserData() {
+        return this.ptr.get_UserData();
+    }
+    set UserData(v) {
+        this.ptr.set_UserData(v);
+    }
+    /**
+     * Latest texture identifier == TexData->GetTexRef().
+     */
+    get TexRef() {
+        return ImTextureRef.From(this.ptr.get_TexRef());
+    }
+    set TexRef(v) {
+        this.ptr.set_TexRef(v);
+    }
+    AddFont(font_cfg) {
+        return ImFont.From(this.ptr.ImFontAtlas_AddFont(font_cfg?.ptr ?? null));
+    }
+    /**
+     * Selects between AddFontDefaultVector() and AddFontDefaultBitmap().
+     */
+    AddFontDefault(font_cfg = null) {
+        return ImFont.From(this.ptr.ImFontAtlas_AddFontDefault(font_cfg?.ptr ?? null));
+    }
+    /**
+     * Embedded scalable font. Recommended at any higher size.
+     */
+    AddFontDefaultVector(font_cfg = null) {
+        return ImFont.From(this.ptr.ImFontAtlas_AddFontDefaultVector(font_cfg?.ptr ?? null));
+    }
+    /**
+     * Embedded classic pixel-clean font. Recommended at Size 13px with no scaling.
+     */
+    AddFontDefaultBitmap(font_cfg = null) {
+        return ImFont.From(this.ptr.ImFontAtlas_AddFontDefaultBitmap(font_cfg?.ptr ?? null));
+    }
+    AddFontFromFileTTF(filename, size_pixels = 0.0, font_cfg = null, glyph_ranges = null) {
+        return this.ptr.ImFontAtlas_AddFontFromFileTTF(filename, size_pixels, font_cfg?.ptr || null, glyph_ranges);
+    }
+    RemoveFont(font) {
+        this.ptr.ImFontAtlas_RemoveFont(font?.ptr ?? null);
+    }
+    /**
+     * Clear everything (fonts + textures). Don't call mid-frame!
+     */
+    Clear() {
+        this.ptr.ImFontAtlas_Clear();
+    }
+    /**
+     * Clear input+output font data/glyphs. You can call this mid-frame if you load new fonts afterwards!
+     */
+    ClearFonts() {
+        this.ptr.ImFontAtlas_ClearFonts();
+    }
+    /**
+     * Compact cached glyphs and texture.
+     */
+    CompactCache() {
+        this.ptr.ImFontAtlas_CompactCache();
+    }
+    /**
+     * Change font loader at runtime.
+     */
+    SetFontLoader(font_loader) {
+        this.ptr.ImFontAtlas_SetFontLoader(font_loader?.ptr ?? null);
+    }
+    // As we are transitioning toward a new font system, we expect to obsolete those soon:
+    /**
+     * [OBSOLETE] Clear input data (all ImFontConfig structures including sizes, TTF data, glyph ranges, etc.) = all the data used to build the texture and fonts.
+     */
+    ClearInputData() {
+        this.ptr.ImFontAtlas_ClearInputData();
+    }
+    /**
+     * [OBSOLETE] Clear CPU-side copy of the texture data. Saves RAM once the texture has been copied to graphics memory.
+     */
+    ClearTexData() {
+        this.ptr.ImFontAtlas_ClearTexData();
+    }
+    // Since 1.92: specifying glyph ranges is only useful/necessary if your backend doesn't support ImGuiBackendFlags_RendererHasTextures!
+    /**
+     * Basic Latin, Extended Latin
+     */
+    GetGlyphRangesDefault() {
+        return this.ptr.ImFontAtlas_GetGlyphRangesDefault();
+    }
+    // Register and retrieve custom rectangles
+    // - You can request arbitrary rectangles to be packed into the atlas, for your own purpose.
+    // - Since 1.92.0, packing is done immediately in the function call (previously packing was done during the Build call)
+    // - You can render your pixels into the texture right after calling the AddCustomRect() functions.
+    // - VERY IMPORTANT:
+    //   - Texture may be created/resized at any time when calling ImGui or ImFontAtlas functions.
+    //   - IT WILL INVALIDATE RECTANGLE DATA SUCH AS UV COORDINATES. Always use latest values from GetCustomRect().
+    //   - UV coordinates are associated to the current texture identifier aka 'atlas->TexRef'. Both TexRef and UV coordinates are typically changed at the same time.
+    // - If you render colored output into your custom rectangles: set 'atlas->TexPixelsUseColors = true' as this may help some backends decide of preferred texture format.
+    // - Read docs/FONTS.md for more details about using colorful icons.
+    // - Note: this API may be reworked further in order to facilitate supporting e.g. multi-monitor, varying DPI settings.
+    // - (Pre-1.92 names) ------------> (1.92 names)
+    //   - GetCustomRectByIndex()   --> Use GetCustomRect()
+    //   - CalcCustomRectUV()       --> Use GetCustomRect() and read uv0, uv1 fields.
+    //   - AddCustomRectRegular()   --> Renamed to AddCustomRect()
+    //   - AddCustomRectFontGlyph() --> Prefer using custom ImFontLoader inside ImFontConfig
+    //   - ImFontAtlasCustomRect    --> Renamed to ImFontAtlasRect
+    /**
+     * Register a rectangle. Return -1 (ImFontAtlasRectId_Invalid) on error.
+     */
+    AddCustomRect(width, height, out_r = null) {
+        return this.ptr.ImFontAtlas_AddCustomRect(width, height, out_r?.ptr ?? null);
+    }
+    /**
+     * Unregister a rectangle. Existing pixels will stay in texture until resized / garbage collected.
+     */
+    RemoveCustomRect(id) {
+        this.ptr.ImFontAtlas_RemoveCustomRect(id);
+    }
+    /**
+     * Get rectangle coordinates for current texture. Valid immediately, never store this (read above)!
+     */
+    GetCustomRect(id, out_r) {
+        return this.ptr.ImFontAtlas_GetCustomRect(id, out_r?.ptr ?? null);
+    }
+}
+/**
+ * Font runtime data for a given size
+ * Important: pointers to ImFontBaked are only valid for the current frame.
+ */
+export class ImFontBaked extends ReferenceStruct {
+}
+/**
+ * Font runtime data and rendering
+ * - ImFontAtlas automatically loads a default embedded font for you if you didn't load one manually.
+ * - Since 1.92.0 a font may be rendered as any size! Therefore a font doesn't have one specific size.
+ * - Use 'font->GetFontBaked(size)' to retrieve the ImFontBaked* corresponding to a given size.
+ * - If you used g.Font + g.FontSize (which is frequent from the ImGui layer), you can use g.FontBaked as a shortcut, as g.FontBaked == g.Font->GetFontBaked(g.FontSize).
+ */
+export class ImFont extends ReferenceStruct {
+}
+/**
+ * - Currently represents the Platform Window created by the application which is hosting our Dear ImGui windows.
+ * - With multi-viewport enabled, we extend this concept to have multiple active viewports.
+ * - In the future we will extend this concept further to also represent Platform Monitor and support a "no main platform window" operation mode.
+ * - About Main Area vs Work Area:
+ *   - Main Area = entire viewport.
+ *   - Work Area = entire viewport minus sections used by main menu bars (for platform windows), or by task bar (for platform monitor).
+ *   - Windows are generally trying to stay within the Work Area of their host viewport.
+ */
+export class ImGuiViewport extends ReferenceStruct {
+    /**
+     * Unique identifier for the viewport
+     */
+    get ID() {
+        return this.ptr.get_ID();
+    }
+    set ID(v) {
+        this.ptr.set_ID(v);
+    }
+    /**
+     * See ImGuiViewportFlags_
+     */
+    get Flags() {
+        return this.ptr.get_Flags();
+    }
+    set Flags(v) {
+        this.ptr.set_Flags(v);
+    }
+    /**
+     * Main Area: Position of the viewport (Dear ImGui coordinates are the same as OS desktop/native coordinates)
+     */
+    get Pos() {
+        return ImVec2.From(this.ptr.get_Pos());
+    }
+    set Pos(v) {
+        this.ptr.set_Pos(v);
+    }
+    /**
+     * Main Area: Size of the viewport.
+     */
+    get Size() {
+        return ImVec2.From(this.ptr.get_Size());
+    }
+    set Size(v) {
+        this.ptr.set_Size(v);
+    }
+    /**
+     * Density of the viewport for Retina display (always 1,1 on Windows, may be 2,2 etc on macOS/iOS). This will affect font rasterizer density.
+     */
+    get FramebufferScale() {
+        return ImVec2.From(this.ptr.get_FramebufferScale());
+    }
+    set FramebufferScale(v) {
+        this.ptr.set_FramebufferScale(v);
+    }
+    /**
+     * Work Area: Position of the viewport minus task bars, menus bars, status bars (>= Pos)
+     */
+    get WorkPos() {
+        return ImVec2.From(this.ptr.get_WorkPos());
+    }
+    set WorkPos(v) {
+        this.ptr.set_WorkPos(v);
+    }
+    /**
+     * Work Area: Size of the viewport minus task bars, menu bars, status bars (<= Size)
+     */
+    get WorkSize() {
+        return ImVec2.From(this.ptr.get_WorkSize());
+    }
+    set WorkSize(v) {
+        this.ptr.set_WorkSize(v);
+    }
+    /**
+     * 1.0f = 96 DPI = No extra scale.
+     */
+    get DpiScale() {
+        return this.ptr.get_DpiScale();
+    }
+    set DpiScale(v) {
+        this.ptr.set_DpiScale(v);
+    }
+    /**
+     * (Advanced) 0: no parent. Instruct the platform backend to setup a parent/child relationship between platform windows.
+     */
+    get ParentViewportId() {
+        return this.ptr.get_ParentViewportId();
+    }
+    set ParentViewportId(v) {
+        this.ptr.set_ParentViewportId(v);
+    }
+    /**
+     * (Advanced) Direct shortcut to ImGui::FindViewportByID(ParentViewportId). NULL: no parent.
+     */
+    get ParentViewport() {
+        return ImGuiViewport.From(this.ptr.get_ParentViewport());
+    }
+    set ParentViewport(v) {
+        this.ptr.set_ParentViewport(v);
+    }
+    /**
+     * The ImDrawData corresponding to this viewport. Valid after Render() and until the next call to NewFrame().
+     */
+    get DrawData() {
+        return ImDrawData.From(this.ptr.get_DrawData());
+    }
+    set DrawData(v) {
+        this.ptr.set_DrawData(v);
+    }
+    // Platform/Backend Dependent Data
+    // Our design separate the Renderer and Platform backends to facilitate combining default backends with each others.
+    // When our create your own backend for a custom engine, it is possible that both Renderer and Platform will be handled
+    // by the same system and you may not need to use all the UserData/Handle fields.
+    // The library never uses those fields, they are merely storage to facilitate backend implementation.
+    /**
+     * void* to hold custom data structure for the renderer (e.g. swap chain, framebuffers etc.). generally set by your Renderer_CreateWindow function.
+     */
+    get RendererUserData() {
+        return this.ptr.get_RendererUserData();
+    }
+    set RendererUserData(v) {
+        this.ptr.set_RendererUserData(v);
+    }
+    /**
+     * void* to hold custom data structure for the OS / platform (e.g. windowing info, render context). generally set by your Platform_CreateWindow function.
+     */
+    get PlatformUserData() {
+        return this.ptr.get_PlatformUserData();
+    }
+    set PlatformUserData(v) {
+        this.ptr.set_PlatformUserData(v);
+    }
+    /**
+     * void* to hold custom data structure for the OS / platform to specify an icon. Currently unused for exposed to allow experiments.
+     */
+    get PlatformIconData() {
+        return this.ptr.get_PlatformIconData();
+    }
+    set PlatformIconData(v) {
+        this.ptr.set_PlatformIconData(v);
+    }
+    /**
+     * void* to hold higher-level, platform window handle (e.g. HWND for Win32 backend, Uint32 WindowID for SDL, GLFWWindow* for GLFW), for FindViewportByPlatformHandle().
+     */
+    get PlatformHandle() {
+        return this.ptr.get_PlatformHandle();
+    }
+    set PlatformHandle(v) {
+        this.ptr.set_PlatformHandle(v);
+    }
+    /**
+     * void* to hold lower-level, platform-native window handle (always HWND on Win32 platform, unused for other platforms).
+     */
+    get PlatformHandleRaw() {
+        return this.ptr.get_PlatformHandleRaw();
+    }
+    set PlatformHandleRaw(v) {
+        this.ptr.set_PlatformHandleRaw(v);
+    }
+    /**
+     * Platform window has been created (Platform_CreateWindow() has been called). This is false during the first frame where a viewport is being created.
+     */
+    get PlatformWindowCreated() {
+        return this.ptr.get_PlatformWindowCreated();
+    }
+    set PlatformWindowCreated(v) {
+        this.ptr.set_PlatformWindowCreated(v);
+    }
+    /**
+     * Platform window requested move (e.g. window was moved by the OS / host window manager, authoritative position will be OS window position)
+     */
+    get PlatformRequestMove() {
+        return this.ptr.get_PlatformRequestMove();
+    }
+    set PlatformRequestMove(v) {
+        this.ptr.set_PlatformRequestMove(v);
+    }
+    /**
+     * Platform window requested resize (e.g. window was resized by the OS / host window manager, authoritative size will be OS window size)
+     */
+    get PlatformRequestResize() {
+        return this.ptr.get_PlatformRequestResize();
+    }
+    set PlatformRequestResize(v) {
+        this.ptr.set_PlatformRequestResize(v);
+    }
+    /**
+     * Platform window requested closure (e.g. window was moved by the OS / host window manager, e.g. pressing ALT-F4)
+     */
+    get PlatformRequestClose() {
+        return this.ptr.get_PlatformRequestClose();
+    }
+    set PlatformRequestClose(v) {
+        this.ptr.set_PlatformRequestClose(v);
+    }
+    /**
+     * Helpers
+     */
+    GetCenter() {
+        return ImVec2.From(this.ptr.ImGuiViewport_GetCenter());
+    }
+    GetWorkCenter() {
+        return ImVec2.From(this.ptr.ImGuiViewport_GetWorkCenter());
+    }
+    GetDebugName() {
+        return this.ptr.ImGuiViewport_GetDebugName();
+    }
+}
+/**
+ * Access via ImGui::GetPlatformIO()
+ */
+export class ImGuiPlatformIO extends ReferenceStruct {
+}
+export class ImGui {
+    /**
+     * Context creation and access
+     * - Each context create its own ImFontAtlas by default. You may instance one yourself and pass it to CreateContext() to share a font atlas between contexts.
+     * - DLL users: heaps and globals are not shared across DLL boundaries! You will need to call SetCurrentContext() + SetAllocatorFunctions()
+     *   for each static/DLL boundary you are calling from. Read "Context and Memory Allocators" section of imgui.cpp for details.
+     */
+    static CreateContext(shared_font_atlas = null) {
+        return ImGuiContext.From(Mod.export.ImGui_CreateContext(shared_font_atlas?.ptr ?? null));
+    }
+    /**
+     * NULL = destroy current context
+     */
+    static DestroyContext(ctx = null) {
+        Mod.export.ImGui_DestroyContext(ctx?.ptr ?? null);
+    }
+    static GetCurrentContext() {
+        return ImGuiContext.From(Mod.export.ImGui_GetCurrentContext());
+    }
+    static SetCurrentContext(ctx) {
+        Mod.export.ImGui_SetCurrentContext(ctx?.ptr ?? null);
+    }
+    // Main
+    /**
+     * access the ImGuiIO structure (mouse/keyboard/gamepad inputs, time, various configuration options/flags)
+     */
+    static GetIO() {
+        return ImGuiIO.From(Mod.export.ImGui_GetIO());
+    }
+    /**
+     * access the ImGuiPlatformIO structure (mostly hooks/functions to connect to platform/renderer and OS Clipboard, IME etc.)
+     */
+    static GetPlatformIO() {
+        return ImGuiPlatformIO.From(Mod.export.ImGui_GetPlatformIO());
+    }
+    /**
+     * access the Style structure (colors, sizes). Always use PushStyleColor(), PushStyleVar() to modify style mid-frame!
+     */
+    static GetStyle() {
+        return ImGuiStyle.From(Mod.export.ImGui_GetStyle());
+    }
+    /**
+     * start a new Dear ImGui frame, you can submit any command from this point until Render()/EndFrame().
+     */
+    static NewFrame() {
+        Mod.export.ImGui_NewFrame();
+    }
+    /**
+     * ends the Dear ImGui frame. automatically called by Render(). If you don't need to render data (skipping rendering) you may call EndFrame() without Render()... but you'll have wasted CPU already! If you don't need to render, better to not create any windows and not call NewFrame() at all!
+     */
+    static EndFrame() {
+        Mod.export.ImGui_EndFrame();
+    }
+    /**
+     * ends the Dear ImGui frame, finalize the draw data. You can then get call GetDrawData().
+     */
+    static Render() {
+        Mod.export.ImGui_Render();
+    }
+    /**
+     * valid after Render() and until the next call to NewFrame(). Call ImGui_ImplXXXX_RenderDrawData() function in your Renderer Backend to render.
+     */
+    static GetDrawData() {
+        return ImDrawData.From(Mod.export.ImGui_GetDrawData());
+    }
+    // Demo, Debug, Information
+    /**
+     * create Demo window. demonstrate most ImGui features. call this to learn about the library! try to make it always available in your application!
+     */
+    static ShowDemoWindow(p_open = null) {
+        Mod.export.ImGui_ShowDemoWindow(p_open);
+    }
+    /**
+     * create Metrics/Debugger window. display Dear ImGui internals: windows, draw commands, various internal state, etc.
+     */
+    static ShowMetricsWindow(p_open = null) {
+        Mod.export.ImGui_ShowMetricsWindow(p_open);
+    }
+    /**
+     * create Debug Log window. display a simplified log of important dear imgui events.
+     */
+    static ShowDebugLogWindow(p_open = null) {
+        Mod.export.ImGui_ShowDebugLogWindow(p_open);
+    }
+    /**
+     * create Stack Tool window. hover items with mouse to query information about the source of their unique ID.
+     */
+    static ShowIDStackToolWindow(p_open = null) {
+        Mod.export.ImGui_ShowIDStackToolWindow(p_open);
+    }
+    /**
+     * create About window. display Dear ImGui version, credits and build/system information.
+     */
+    static ShowAboutWindow(p_open = null) {
+        Mod.export.ImGui_ShowAboutWindow(p_open);
+    }
+    /**
+     * add style editor block (not a window). you can pass in a reference ImGuiStyle structure to compare to, revert to and save to (else it uses the default style)
+     */
+    static ShowStyleEditor(ref = null) {
+        Mod.export.ImGui_ShowStyleEditor(ref?.ptr ?? null);
+    }
+    /**
+     * add style selector block (not a window), essentially a combo listing the default styles.
+     */
+    static ShowStyleSelector(label) {
+        return Mod.export.ImGui_ShowStyleSelector(label);
+    }
+    /**
+     * add font selector block (not a window), essentially a combo listing the loaded fonts.
+     */
+    static ShowFontSelector(label) {
+        Mod.export.ImGui_ShowFontSelector(label);
+    }
+    /**
+     * add basic help/info block (not a window): how to manipulate ImGui as an end-user (mouse/keyboard controls).
+     */
+    static ShowUserGuide() {
+        Mod.export.ImGui_ShowUserGuide();
+    }
+    /**
+     * get the compiled version string e.g. "1.80 WIP" (essentially the value for IMGUI_VERSION from the compiled version of imgui.cpp)
+     */
+    static GetVersion() {
+        return Mod.export.ImGui_GetVersion();
+    }
+    // Styles
+    /**
+     * new, recommended style (default)
+     */
+    static StyleColorsDark(dst = null) {
+        Mod.export.ImGui_StyleColorsDark(dst?.ptr ?? null);
+    }
+    /**
+     * best used with borders and a custom, thicker font
+     */
+    static StyleColorsLight(dst = null) {
+        Mod.export.ImGui_StyleColorsLight(dst?.ptr ?? null);
+    }
+    /**
+     * classic imgui style
+     */
+    static StyleColorsClassic(dst = null) {
+        Mod.export.ImGui_StyleColorsClassic(dst?.ptr ?? null);
+    }
+    /**
+     * Windows
+     * - Begin() = push window to the stack and start appending to it. End() = pop window from the stack.
+     * - Passing 'bool* p_open != NULL' shows a window-closing widget in the upper-right corner of the window,
+     *   which clicking will set the boolean to false when clicked.
+     * - You may append multiple times to the same window during the same frame by calling Begin()/End() pairs multiple times.
+     *   Some information such as 'flags' or 'p_open' will only be considered by the first call to Begin().
+     * - Begin() return false to indicate the window is collapsed or fully clipped, so you may early out and omit submitting
+     *   anything to the window. Always call a matching End() for each Begin() call, regardless of its return value!
+     *   [Important: due to legacy reason, Begin/End and BeginChild/EndChild are inconsistent with all other functions
+     *    such as BeginMenu/EndMenu, BeginPopup/EndPopup, etc. where the EndXXX call should only be called if the corresponding
+     *    BeginXXX function returned true. Begin and BeginChild are the only odd ones out. Will be fixed in a future update.]
+     * - Note that the bottom of window stack always contains a window called "Debug".
+     */
+    static Begin(name, p_open = null, flags = 0) {
+        return Mod.export.ImGui_Begin(name, p_open, flags);
+    }
+    static End() {
+        Mod.export.ImGui_End();
+    }
+    /**
+     * Child Windows
+     * - Use child windows to begin into a self-contained independent scrolling/clipping regions within a host window. Child windows can embed their own child.
+     * - Before 1.90 (November 2023), the "ImGuiChildFlags child_flags = 0" parameter was "bool border = false".
+     *   This API is backward compatible with old code, as we guarantee that ImGuiChildFlags_Borders == true.
+     *   Consider updating your old code:
+     *      BeginChild("Name", size, false)   -> Begin("Name", size, 0); or Begin("Name", size, ImGuiChildFlags_None);
+     *      BeginChild("Name", size, true)    -> Begin("Name", size, ImGuiChildFlags_Borders);
+     * - Manual sizing (each axis can use a different setting e.g. ImVec2(0.0f, 400.0f)):
+     *     == 0.0f: use remaining parent window size for this axis.
+     *      > 0.0f: use specified size for this axis.
+     *      < 0.0f: right/bottom-align to specified distance from available content boundaries.
+     * - Specifying ImGuiChildFlags_AutoResizeX or ImGuiChildFlags_AutoResizeY makes the sizing automatic based on child contents.
+     *   Combining both ImGuiChildFlags_AutoResizeX _and_ ImGuiChildFlags_AutoResizeY defeats purpose of a scrolling region and is NOT recommended.
+     * - BeginChild() returns false to indicate the window is collapsed or fully clipped, so you may early out and omit submitting
+     *   anything to the window. Always call a matching EndChild() for each BeginChild() call, regardless of its return value.
+     *   [Important: due to legacy reason, Begin/End and BeginChild/EndChild are inconsistent with all other functions
+     *    such as BeginMenu/EndMenu, BeginPopup/EndPopup, etc. where the EndXXX call should only be called if the corresponding
+     *    BeginXXX function returned true. Begin and BeginChild are the only odd ones out. Will be fixed in a future update.]
+     */
+    static BeginChild(str_id, size = new ImVec2(0, 0), child_flags = 0, window_flags = 0) {
+        return Mod.export.ImGui_BeginChild(str_id, size, child_flags, window_flags);
+    }
+    static BeginChildID(id, size = new ImVec2(0, 0), child_flags = 0, window_flags = 0) {
+        return Mod.export.ImGui_BeginChildID(id, size, child_flags, window_flags);
+    }
+    static EndChild() {
+        Mod.export.ImGui_EndChild();
+    }
+    /**
+     * Windows Utilities
+     * - 'current window' = the window we are appending into while inside a Begin()/End() block. 'next window' = next window we will Begin() into.
+     */
+    static IsWindowAppearing() {
+        return Mod.export.ImGui_IsWindowAppearing();
+    }
+    static IsWindowCollapsed() {
+        return Mod.export.ImGui_IsWindowCollapsed();
+    }
+    /**
+     * is current window focused? or its root/child, depending on flags. see flags for options.
+     */
+    static IsWindowFocused(flags = 0) {
+        return Mod.export.ImGui_IsWindowFocused(flags);
+    }
+    /**
+     * is current window hovered and hoverable (e.g. not blocked by a popup/modal)? See ImGuiHoveredFlags_ for options. IMPORTANT: If you are trying to check whether your mouse should be dispatched to Dear ImGui or to your underlying app, you should not use this function! Use the 'io.WantCaptureMouse' boolean for that! Refer to FAQ entry "How can I tell whether to dispatch mouse/keyboard to Dear ImGui or my application?" for details.
+     */
+    static IsWindowHovered(flags = 0) {
+        return Mod.export.ImGui_IsWindowHovered(flags);
+    }
+    /**
+     * get draw list associated to the current window, to append your own drawing primitives
+     */
+    static GetWindowDrawList() {
+        return ImDrawList.From(Mod.export.ImGui_GetWindowDrawList());
+    }
+    /**
+     * get DPI scale currently associated to the current window's viewport.
+     */
+    static GetWindowDpiScale() {
+        return Mod.export.ImGui_GetWindowDpiScale();
+    }
+    /**
+     * get current window position in screen space (IT IS UNLIKELY YOU EVER NEED TO USE THIS. Consider always using GetCursorScreenPos() and GetContentRegionAvail() instead)
+     */
+    static GetWindowPos() {
+        return ImVec2.From(Mod.export.ImGui_GetWindowPos());
+    }
+    /**
+     * get current window size (IT IS UNLIKELY YOU EVER NEED TO USE THIS. Consider always using GetCursorScreenPos() and GetContentRegionAvail() instead)
+     */
+    static GetWindowSize() {
+        return ImVec2.From(Mod.export.ImGui_GetWindowSize());
+    }
+    /**
+     * get current window width (IT IS UNLIKELY YOU EVER NEED TO USE THIS). Shortcut for GetWindowSize().x.
+     */
+    static GetWindowWidth() {
+        return Mod.export.ImGui_GetWindowWidth();
+    }
+    /**
+     * get current window height (IT IS UNLIKELY YOU EVER NEED TO USE THIS). Shortcut for GetWindowSize().y.
+     */
+    static GetWindowHeight() {
+        return Mod.export.ImGui_GetWindowHeight();
+    }
+    /**
+     * get viewport currently associated to the current window.
+     */
+    static GetWindowViewport() {
+        return ImGuiViewport.From(Mod.export.ImGui_GetWindowViewport());
+    }
+    // Window manipulation
+    // - Prefer using SetNextXXX functions (before Begin) rather that SetXXX functions (after Begin).
+    /**
+     * set next window position. call before Begin(). use pivot=(0.5f,0.5f) to center on given point, etc.
+     */
+    static SetNextWindowPos(pos, cond = 0, pivot = new ImVec2(0, 0)) {
+        Mod.export.ImGui_SetNextWindowPos(pos, cond, pivot);
+    }
+    /**
+     * set next window size. set axis to 0.0f to force an auto-fit on this axis. call before Begin()
+     */
+    static SetNextWindowSize(size, cond = 0) {
+        Mod.export.ImGui_SetNextWindowSize(size, cond);
+    }
+    static SetNextWindowSizeConstraints(min, max) {
+        Mod.export.ImGui_SetNextWindowSizeConstraints(min, max);
+    }
+    /**
+     * set next window content size (~ scrollable client area, which enforce the range of scrollbars). Not including window decorations (title bar, menu bar, etc.) nor WindowPadding. set an axis to 0.0f to leave it automatic. call before Begin()
+     */
+    static SetNextWindowContentSize(size) {
+        Mod.export.ImGui_SetNextWindowContentSize(size);
+    }
+    /**
+     * set next window collapsed state. call before Begin()
+     */
+    static SetNextWindowCollapsed(collapsed, cond = 0) {
+        Mod.export.ImGui_SetNextWindowCollapsed(collapsed, cond);
+    }
+    /**
+     * set next window to be focused / top-most. call before Begin()
+     */
+    static SetNextWindowFocus() {
+        Mod.export.ImGui_SetNextWindowFocus();
+    }
+    /**
+     * set next window scrolling value (use < 0.0f to not affect a given axis).
+     */
+    static SetNextWindowScroll(scroll) {
+        Mod.export.ImGui_SetNextWindowScroll(scroll);
+    }
+    /**
+     * set next window background color alpha. helper to easily override the Alpha component of ImGuiCol_WindowBg/ChildBg/PopupBg. you may also use ImGuiWindowFlags_NoBackground.
+     */
+    static SetNextWindowBgAlpha(alpha) {
+        Mod.export.ImGui_SetNextWindowBgAlpha(alpha);
+    }
+    /**
+     * set next window viewport
+     */
+    static SetNextWindowViewport(viewport_id) {
+        Mod.export.ImGui_SetNextWindowViewport(viewport_id);
+    }
+    /**
+     * (not recommended) set current window position - call within Begin()/End(). prefer using SetNextWindowPos(), as this may incur tearing and side-effects.
+     */
+    static SetWindowPos(pos, cond = 0) {
+        Mod.export.ImGui_SetWindowPos(pos, cond);
+    }
+    /**
+     * (not recommended) set current window size - call within Begin()/End(). set to ImVec2(0, 0) to force an auto-fit. prefer using SetNextWindowSize(), as this may incur tearing and minor side-effects.
+     */
+    static SetWindowSize(size, cond = 0) {
+        Mod.export.ImGui_SetWindowSize(size, cond);
+    }
+    /**
+     * (not recommended) set current window collapsed state. prefer using SetNextWindowCollapsed().
+     */
+    static SetWindowCollapsed(collapsed, cond = 0) {
+        Mod.export.ImGui_SetWindowCollapsed(collapsed, cond);
+    }
+    /**
+     * (not recommended) set current window to be focused / top-most. prefer using SetNextWindowFocus().
+     */
+    static SetWindowFocus() {
+        Mod.export.ImGui_SetWindowFocus();
+    }
+    /**
+     * set named window position.
+     */
+    static SetWindowPosStr(name, pos, cond = 0) {
+        Mod.export.ImGui_SetWindowPosStr(name, pos, cond);
+    }
+    /**
+     * set named window size. set axis to 0.0f to force an auto-fit on this axis.
+     */
+    static SetWindowSizeStr(name, size, cond = 0) {
+        Mod.export.ImGui_SetWindowSizeStr(name, size, cond);
+    }
+    /**
+     * set named window collapsed state
+     */
+    static SetWindowCollapsedStr(name, collapsed, cond = 0) {
+        Mod.export.ImGui_SetWindowCollapsedStr(name, collapsed, cond);
+    }
+    /**
+     * set named window to be focused / top-most. use NULL to remove focus.
+     */
+    static SetWindowFocusStr(name) {
+        Mod.export.ImGui_SetWindowFocusStr(name);
+    }
+    // Windows Scrolling
+    // - Any change of Scroll will be applied at the beginning of next frame in the first call to Begin().
+    // - You may instead use SetNextWindowScroll() prior to calling Begin() to avoid this delay, as an alternative to using SetScrollX()/SetScrollY().
+    /**
+     * get scrolling amount [0 .. GetScrollMaxX()]
+     */
+    static GetScrollX() {
+        return Mod.export.ImGui_GetScrollX();
+    }
+    /**
+     * get scrolling amount [0 .. GetScrollMaxY()]
+     */
+    static GetScrollY() {
+        return Mod.export.ImGui_GetScrollY();
+    }
+    /**
+     * set scrolling amount [0 .. GetScrollMaxX()]
+     */
+    static SetScrollX(scroll_x) {
+        Mod.export.ImGui_SetScrollX(scroll_x);
+    }
+    /**
+     * set scrolling amount [0 .. GetScrollMaxY()]
+     */
+    static SetScrollY(scroll_y) {
+        Mod.export.ImGui_SetScrollY(scroll_y);
+    }
+    /**
+     * get maximum scrolling amount ~~ ContentSize.x - WindowSize.x - DecorationsSize.x
+     */
+    static GetScrollMaxX() {
+        return Mod.export.ImGui_GetScrollMaxX();
+    }
+    /**
+     * get maximum scrolling amount ~~ ContentSize.y - WindowSize.y - DecorationsSize.y
+     */
+    static GetScrollMaxY() {
+        return Mod.export.ImGui_GetScrollMaxY();
+    }
+    /**
+     * adjust scrolling amount to make current cursor position visible. center_x_ratio=0.0: left, 0.5: center, 1.0: right. When using to make a "default/current item" visible, consider using SetItemDefaultFocus() instead.
+     */
+    static SetScrollHereX(center_x_ratio = 0.5) {
+        Mod.export.ImGui_SetScrollHereX(center_x_ratio);
+    }
+    /**
+     * adjust scrolling amount to make current cursor position visible. center_y_ratio=0.0: top, 0.5: center, 1.0: bottom. When using to make a "default/current item" visible, consider using SetItemDefaultFocus() instead.
+     */
+    static SetScrollHereY(center_y_ratio = 0.5) {
+        Mod.export.ImGui_SetScrollHereY(center_y_ratio);
+    }
+    /**
+     * adjust scrolling amount to make given position visible. Generally GetCursorStartPos() + offset to compute a valid position.
+     */
+    static SetScrollFromPosX(local_x, center_x_ratio = 0.5) {
+        Mod.export.ImGui_SetScrollFromPosX(local_x, center_x_ratio);
+    }
+    /**
+     * adjust scrolling amount to make given position visible. Generally GetCursorStartPos() + offset to compute a valid position.
+     */
+    static SetScrollFromPosY(local_y, center_y_ratio = 0.5) {
+        Mod.export.ImGui_SetScrollFromPosY(local_y, center_y_ratio);
+    }
+    // Parameters stacks (font)
+    //  - PushFont(font, 0.0f)                       // Change font and keep current size
+    //  - PushFont(NULL, 20.0f)                      // Keep font and change current size
+    //  - PushFont(font, 20.0f)                      // Change font and set size to 20.0f
+    //  - PushFont(font, style.FontSizeBase * 2.0f)  // Change font and set size to be twice bigger than current size.
+    //  - PushFont(font, font->LegacySize)           // Change font and set size to size passed to AddFontXXX() function. Same as pre-1.92 behavior.
+    // *IMPORTANT* before 1.92, fonts had a single size. They can now be dynamically be adjusted.
+    //  - In 1.92 we have REMOVED the single parameter version of PushFont() because it seems like the easiest way to provide an error-proof transition.
+    //  - PushFont(font) before 1.92 = PushFont(font, font->LegacySize) after 1.92          // Use default font size as passed to AddFontXXX() function.
+    // *IMPORTANT* global scale factors are applied over the provided size.
+    //  - Global scale factors are: 'style.FontScaleMain', 'style.FontScaleDpi' and maybe more.
+    // -  If you want to apply a factor to the _current_ font size:
+    //  - CORRECT:   PushFont(NULL, style.FontSizeBase)         // use current unscaled size    == does nothing
+    //  - CORRECT:   PushFont(NULL, style.FontSizeBase * 2.0f)  // use current unscaled size x2 == make text twice bigger
+    //  - INCORRECT: PushFont(NULL, GetFontSize())              // INCORRECT! using size after global factors already applied == GLOBAL SCALING FACTORS WILL APPLY TWICE!
+    //  - INCORRECT: PushFont(NULL, GetFontSize() * 2.0f)       // INCORRECT! using size after global factors already applied == GLOBAL SCALING FACTORS WILL APPLY TWICE!
+    /**
+     * Use NULL as a shortcut to keep current font. Use 0.0f to keep current size.
+     */
+    static PushFontFloat(font, font_size_base_unscaled) {
+        Mod.export.ImGui_PushFontFloat(font?.ptr ?? null, font_size_base_unscaled);
+    }
+    static PopFont() {
+        Mod.export.ImGui_PopFont();
+    }
+    /**
+     * get current font
+     */
+    static GetFont() {
+        return ImFont.From(Mod.export.ImGui_GetFont());
+    }
+    /**
+     * get current scaled font size (= height in pixels). AFTER global scale factors applied. *IMPORTANT* DO NOT PASS THIS VALUE TO PushFont()! Use ImGui::GetStyle().FontSizeBase to get value before global scale factors.
+     */
+    static GetFontSize() {
+        return Mod.export.ImGui_GetFontSize();
+    }
+    /**
+     * get current font bound at current size // == GetFont()->GetFontBaked(GetFontSize())
+     */
+    static GetFontBaked() {
+        return ImFontBaked.From(Mod.export.ImGui_GetFontBaked());
+    }
+    // Parameters stacks (shared)
+    /**
+     * modify a style color. always use this if you modify the style after NewFrame().
+     */
+    static PushStyleColor(idx, col) {
+        Mod.export.ImGui_PushStyleColor(idx, col);
+    }
+    static PushStyleColorImVec4(idx, col) {
+        Mod.export.ImGui_PushStyleColorImVec4(idx, col);
+    }
+    static PopStyleColor(count = 1) {
+        Mod.export.ImGui_PopStyleColor(count);
+    }
+    /**
+     * modify a style float variable. always use this if you modify the style after NewFrame()!
+     */
+    static PushStyleVar(idx, val) {
+        Mod.export.ImGui_PushStyleVar(idx, val);
+    }
+    /**
+     * modify a style ImVec2 variable. "
+     */
+    static PushStyleVarImVec2(idx, val) {
+        Mod.export.ImGui_PushStyleVarImVec2(idx, val);
+    }
+    /**
+     * modify X component of a style ImVec2 variable. "
+     */
+    static PushStyleVarX(idx, val_x) {
+        Mod.export.ImGui_PushStyleVarX(idx, val_x);
+    }
+    /**
+     * modify Y component of a style ImVec2 variable. "
+     */
+    static PushStyleVarY(idx, val_y) {
+        Mod.export.ImGui_PushStyleVarY(idx, val_y);
+    }
+    static PopStyleVar(count = 1) {
+        Mod.export.ImGui_PopStyleVar(count);
+    }
+    /**
+     * modify specified shared item flag, e.g. PushItemFlag(ImGuiItemFlags_NoTabStop, true)
+     */
+    static PushItemFlag(option, enabled) {
+        Mod.export.ImGui_PushItemFlag(option, enabled);
+    }
+    static PopItemFlag() {
+        Mod.export.ImGui_PopItemFlag();
+    }
+    // Parameters stacks (current window)
+    /**
+     * push width of items for common large "item+label" widgets. >0.0f: width in pixels, <0.0f align xx pixels to the right of window (so -FLT_MIN always align width to the right side).
+     */
+    static PushItemWidth(item_width) {
+        Mod.export.ImGui_PushItemWidth(item_width);
+    }
+    static PopItemWidth() {
+        Mod.export.ImGui_PopItemWidth();
+    }
+    /**
+     * set width of the _next_ common large "item+label" widget. >0.0f: width in pixels, <0.0f align xx pixels to the right of window (so -FLT_MIN always align width to the right side)
+     */
+    static SetNextItemWidth(item_width) {
+        Mod.export.ImGui_SetNextItemWidth(item_width);
+    }
+    /**
+     * width of item given pushed settings and current cursor position. NOT necessarily the width of last item unlike most 'Item' functions.
+     */
+    static CalcItemWidth() {
+        return Mod.export.ImGui_CalcItemWidth();
+    }
+    /**
+     * push word-wrapping position for Text*() commands. < 0.0f: no wrapping; 0.0f: wrap to end of window (or column); > 0.0f: wrap at 'wrap_pos_x' position in window local space
+     */
+    static PushTextWrapPos(wrap_local_pos_x = 0.0) {
+        Mod.export.ImGui_PushTextWrapPos(wrap_local_pos_x);
+    }
+    static PopTextWrapPos() {
+        Mod.export.ImGui_PopTextWrapPos();
+    }
+    // Style read access
+    // - Use the ShowStyleEditor() function to interactively see/edit the colors.
+    /**
+     * get UV coordinate for a white pixel, useful to draw custom shapes via the ImDrawList API
+     */
+    static GetFontTexUvWhitePixel() {
+        return ImVec2.From(Mod.export.ImGui_GetFontTexUvWhitePixel());
+    }
+    /**
+     * retrieve given style color with style alpha applied and optional extra alpha multiplier, packed as a 32-bit value suitable for ImDrawList
+     */
+    static GetColorU32(idx, alpha_mul = 1.0) {
+        return Mod.export.ImGui_GetColorU32(idx, alpha_mul);
+    }
+    /**
+     * retrieve given color with style alpha applied, packed as a 32-bit value suitable for ImDrawList
+     */
+    static GetColorU32ImVec4(col) {
+        return Mod.export.ImGui_GetColorU32ImVec4(col);
+    }
+    /**
+     * retrieve given color with style alpha applied, packed as a 32-bit value suitable for ImDrawList
+     */
+    static GetColorU32ImU32(col, alpha_mul = 1.0) {
+        return Mod.export.ImGui_GetColorU32ImU32(col, alpha_mul);
+    }
+    /**
+     * retrieve style color as stored in ImGuiStyle structure. use to feed back into PushStyleColor(), otherwise use GetColorU32() to get style color with style alpha baked in.
+     */
+    static GetStyleColorVec4(idx) {
+        return ImVec4.From(Mod.export.ImGui_GetStyleColorVec4(idx));
+    }
+    // Layout cursor positioning
+    // - By "cursor" we mean the current output position.
+    // - The typical widget behavior is to output themselves at the current cursor position, then move the cursor one line down.
+    // - You can call SameLine() between widgets to undo the last carriage return and output at the right of the preceding widget.
+    // - YOU CAN DO 99% OF WHAT YOU NEED WITH ONLY GetCursorScreenPos() and GetContentRegionAvail().
+    // - Attention! We currently have inconsistencies between window-local and absolute positions we will aim to fix with future API:
+    //    - Absolute coordinate:        GetCursorScreenPos(), SetCursorScreenPos(), all ImDrawList:: functions. -> this is the preferred way forward.
+    //    - Window-local coordinates:   SameLine(offset), GetCursorPos(), SetCursorPos(), GetCursorStartPos(), PushTextWrapPos()
+    //    - Window-local coordinates:   GetContentRegionMax(), GetWindowContentRegionMin(), GetWindowContentRegionMax() --> all obsoleted. YOU DON'T NEED THEM.
+    // - GetCursorScreenPos() = GetCursorPos() + GetWindowPos(). GetWindowPos() is almost only ever useful to convert from window-local to absolute coordinates. Try not to use it.
+    /**
+     * cursor position, absolute coordinates. THIS IS YOUR BEST FRIEND (prefer using this rather than GetCursorPos(), also more useful to work with ImDrawList API).
+     */
+    static GetCursorScreenPos() {
+        return ImVec2.From(Mod.export.ImGui_GetCursorScreenPos());
+    }
+    /**
+     * cursor position, absolute coordinates. THIS IS YOUR BEST FRIEND.
+     */
+    static SetCursorScreenPos(pos) {
+        Mod.export.ImGui_SetCursorScreenPos(pos);
+    }
+    /**
+     * available space from current position. THIS IS YOUR BEST FRIEND.
+     */
+    static GetContentRegionAvail() {
+        return ImVec2.From(Mod.export.ImGui_GetContentRegionAvail());
+    }
+    /**
+     * [window-local] cursor position in window-local coordinates. This is not your best friend.
+     */
+    static GetCursorPos() {
+        return ImVec2.From(Mod.export.ImGui_GetCursorPos());
+    }
+    /**
+     * [window-local] "
+     */
+    static GetCursorPosX() {
+        return Mod.export.ImGui_GetCursorPosX();
+    }
+    /**
+     * [window-local] "
+     */
+    static GetCursorPosY() {
+        return Mod.export.ImGui_GetCursorPosY();
+    }
+    /**
+     * [window-local] "
+     */
+    static SetCursorPos(local_pos) {
+        Mod.export.ImGui_SetCursorPos(local_pos);
+    }
+    /**
+     * [window-local] "
+     */
+    static SetCursorPosX(local_x) {
+        Mod.export.ImGui_SetCursorPosX(local_x);
+    }
+    /**
+     * [window-local] "
+     */
+    static SetCursorPosY(local_y) {
+        Mod.export.ImGui_SetCursorPosY(local_y);
+    }
+    /**
+     * [window-local] initial cursor position, in window-local coordinates. Call GetCursorScreenPos() after Begin() to get the absolute coordinates version.
+     */
+    static GetCursorStartPos() {
+        return ImVec2.From(Mod.export.ImGui_GetCursorStartPos());
+    }
+    // Other layout functions
+    /**
+     * separator, generally horizontal. inside a menu bar or in horizontal layout mode, this becomes a vertical separator.
+     */
+    static Separator() {
+        Mod.export.ImGui_Separator();
+    }
+    /**
+     * call between widgets or groups to layout them horizontally. X position given in window coordinates.
+     */
+    static SameLine(offset_from_start_x = 0.0, spacing = -1.0) {
+        Mod.export.ImGui_SameLine(offset_from_start_x, spacing);
+    }
+    /**
+     * undo a SameLine() or force a new line when in a horizontal-layout context.
+     */
+    static NewLine() {
+        Mod.export.ImGui_NewLine();
+    }
+    /**
+     * add vertical spacing.
+     */
+    static Spacing() {
+        Mod.export.ImGui_Spacing();
+    }
+    /**
+     * add a dummy item of given size. unlike InvisibleButton(), Dummy() won't take the mouse click or be navigable into.
+     */
+    static Dummy(size) {
+        Mod.export.ImGui_Dummy(size);
+    }
+    /**
+     * move content position toward the right, by indent_w, or style.IndentSpacing if indent_w <= 0
+     */
+    static Indent(indent_w = 0.0) {
+        Mod.export.ImGui_Indent(indent_w);
+    }
+    /**
+     * move content position back to the left, by indent_w, or style.IndentSpacing if indent_w <= 0
+     */
+    static Unindent(indent_w = 0.0) {
+        Mod.export.ImGui_Unindent(indent_w);
+    }
+    /**
+     * lock horizontal starting position
+     */
+    static BeginGroup() {
+        Mod.export.ImGui_BeginGroup();
+    }
+    /**
+     * unlock horizontal starting position + capture the whole group bounding box into one "item" (so you can use IsItemHovered() or layout primitives such as SameLine() on whole group, etc.)
+     */
+    static EndGroup() {
+        Mod.export.ImGui_EndGroup();
+    }
+    /**
+     * vertically align upcoming text baseline to FramePadding.y so that it will align properly to regularly framed items (call if you have text on a line before a framed item)
+     */
+    static AlignTextToFramePadding() {
+        Mod.export.ImGui_AlignTextToFramePadding();
+    }
+    /**
+     * ~ FontSize
+     */
+    static GetTextLineHeight() {
+        return Mod.export.ImGui_GetTextLineHeight();
+    }
+    /**
+     * ~ FontSize + style.ItemSpacing.y (distance in pixels between 2 consecutive lines of text)
+     */
+    static GetTextLineHeightWithSpacing() {
+        return Mod.export.ImGui_GetTextLineHeightWithSpacing();
+    }
+    /**
+     * ~ FontSize + style.FramePadding.y * 2
+     */
+    static GetFrameHeight() {
+        return Mod.export.ImGui_GetFrameHeight();
+    }
+    /**
+     * ~ FontSize + style.FramePadding.y * 2 + style.ItemSpacing.y (distance in pixels between 2 consecutive lines of framed widgets)
+     */
+    static GetFrameHeightWithSpacing() {
+        return Mod.export.ImGui_GetFrameHeightWithSpacing();
+    }
+    // ID stack/scopes
+    // Read the FAQ (docs/FAQ.md or http://dearimgui.com/faq) for more details about how ID are handled in dear imgui.
+    // - Those questions are answered and impacted by understanding of the ID stack system:
+    //   - "Q: Why is my widget not reacting when I click on it?"
+    //   - "Q: How can I have widgets with an empty label?"
+    //   - "Q: How can I have multiple widgets with the same label?"
+    // - Short version: ID are hashes of the entire ID stack. If you are creating widgets in a loop you most likely
+    //   want to push a unique identifier (e.g. object pointer, loop index) to uniquely differentiate them.
+    // - You can also use the "Label##foobar" syntax within widget label to distinguish them from each others.
+    // - In this header file we use the "label"/"name" terminology to denote a string that will be displayed + used as an ID,
+    //   whereas "str_id" denote a string that is only used as an ID and not normally displayed.
+    /**
+     * push string into the ID stack (will hash string).
+     */
+    static PushID(str_id) {
+        Mod.export.ImGui_PushID(str_id);
+    }
+    /**
+     * push integer into the ID stack (will hash integer).
+     */
+    static PushIDInt(int_id) {
+        Mod.export.ImGui_PushIDInt(int_id);
+    }
+    /**
+     * pop from the ID stack.
+     */
+    static PopID() {
+        Mod.export.ImGui_PopID();
+    }
+    /**
+     * calculate unique ID (hash of whole ID stack + given parameter). e.g. if you want to query into ImGuiStorage yourself
+     */
+    static GetID(str_id) {
+        return Mod.export.ImGui_GetID(str_id);
+    }
+    static GetIDInt(int_id) {
+        return Mod.export.ImGui_GetIDInt(int_id);
+    }
+    static Text(fmt) {
+        Mod.export.ImGui_Text(fmt);
+    }
+    static TextColored(col, fmt) {
+        Mod.export.ImGui_TextColored(col, fmt);
+    }
+    static TextDisabled(fmt) {
+        Mod.export.ImGui_TextDisabled(fmt);
+    }
+    static TextWrapped(fmt) {
+        Mod.export.ImGui_TextWrapped(fmt);
+    }
+    static LabelText(label, fmt) {
+        Mod.export.ImGui_LabelText(label, fmt);
+    }
+    static BulletText(fmt) {
+        Mod.export.ImGui_BulletText(fmt);
+    }
+    /**
+     * currently: formatted text with a horizontal line
+     */
+    static SeparatorText(label) {
+        Mod.export.ImGui_SeparatorText(label);
+    }
+    // Widgets: Main
+    // - Most widgets return true when the value has been changed or when pressed/selected
+    // - You may also use one of the many IsItemXXX functions (e.g. IsItemActive, IsItemHovered, etc.) to query widget state.
+    /**
+     * button
+     */
+    static Button(label, size = new ImVec2(0, 0)) {
+        return Mod.export.ImGui_Button(label, size);
+    }
+    /**
+     * button with (FramePadding.y == 0) to easily embed within text
+     */
+    static SmallButton(label) {
+        return Mod.export.ImGui_SmallButton(label);
+    }
+    /**
+     * flexible button behavior without the visuals, frequently useful to build custom behaviors using the public api (along with IsItemActive, IsItemHovered, etc.)
+     */
+    static InvisibleButton(str_id, size, flags = 0) {
+        return Mod.export.ImGui_InvisibleButton(str_id, size, flags);
+    }
+    /**
+     * square button with an arrow shape
+     */
+    static ArrowButton(str_id, dir) {
+        return Mod.export.ImGui_ArrowButton(str_id, dir);
+    }
+    static Checkbox(label, v) {
+        return Mod.export.ImGui_Checkbox(label, v);
+    }
+    static CheckboxFlagsIntPtr(label, flags, flags_value) {
+        return Mod.export.ImGui_CheckboxFlagsIntPtr(label, flags, flags_value);
+    }
+    static CheckboxFlagsUintPtr(label, flags, flags_value) {
+        return Mod.export.ImGui_CheckboxFlagsUintPtr(label, flags, flags_value);
+    }
+    /**
+     * use with e.g. if (RadioButton("one", my_value==1)) { my_value = 1; }
+     */
+    static RadioButton(label, active) {
+        return Mod.export.ImGui_RadioButton(label, active);
+    }
+    /**
+     * shortcut to handle the above pattern when value is an integer
+     */
+    static RadioButtonIntPtr(label, v, v_button) {
+        return Mod.export.ImGui_RadioButtonIntPtr(label, v, v_button);
+    }
+    static ProgressBar(fraction, size_arg = new ImVec2(-Number.MIN_VALUE, 0), overlay = "") {
+        Mod.export.ImGui_ProgressBar(fraction, size_arg, overlay);
+    }
+    /**
+     * draw a small circle + keep the cursor on the same line. advance cursor x position by GetTreeNodeToLabelSpacing(), same distance that TreeNode() uses
+     */
+    static Bullet() {
+        Mod.export.ImGui_Bullet();
+    }
+    /**
+     * hyperlink text button, return true when clicked
+     */
+    static TextLink(label) {
+        return Mod.export.ImGui_TextLink(label);
+    }
+    /**
+     * hyperlink text button, automatically open file/url when clicked
+     */
+    static TextLinkOpenURL(label, url = "") {
+        return Mod.export.ImGui_TextLinkOpenURL(label, url);
+    }
+    /**
+     * Widgets: Images
+     * - Read about ImTextureID/ImTextureRef  here: https://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples
+     * - 'uv0' and 'uv1' are texture coordinates. Read about them from the same link above.
+     * - Image() pads adds style.ImageBorderSize on each side, ImageButton() adds style.FramePadding on each side.
+     * - ImageButton() draws a background based on regular Button() color + optionally an inner background if specified.
+     * - An obsolete version of Image(), before 1.91.9 (March 2025), had a 'tint_col' parameter which is now supported by the ImageWithBg() function.
+     */
+    static Image(tex_ref, image_size, uv0 = new ImVec2(0, 0), uv1 = new ImVec2(1, 1)) {
+        Mod.export.ImGui_Image(tex_ref, image_size, uv0, uv1);
+    }
+    static ImageWithBg(tex_ref, image_size, uv0 = new ImVec2(0, 0), uv1 = new ImVec2(1, 1), bg_col = new ImVec4(0, 0, 0, 0), tint_col = new ImVec4(1, 1, 1, 1)) {
+        Mod.export.ImGui_ImageWithBg(tex_ref, image_size, uv0, uv1, bg_col, tint_col);
+    }
+    static ImageButton(str_id, tex_ref, image_size, uv0 = new ImVec2(0, 0), uv1 = new ImVec2(1, 1), bg_col = new ImVec4(0, 0, 0, 0), tint_col = new ImVec4(1, 1, 1, 1)) {
+        return Mod.export.ImGui_ImageButton(str_id, tex_ref, image_size, uv0, uv1, bg_col, tint_col);
+    }
+    /**
+     * Widgets: Combo Box (Dropdown)
+     * - The BeginCombo()/EndCombo() api allows you to manage your contents and selection state however you want it, by creating e.g. Selectable() items.
+     * - The old Combo() api are helpers over BeginCombo()/EndCombo() which are kept available for convenience purpose. This is analogous to how ListBox are created.
+     */
+    static BeginCombo(label, preview_value, flags = 0) {
+        return Mod.export.ImGui_BeginCombo(label, preview_value, flags);
+    }
+    /**
+     * only call EndCombo() if BeginCombo() returns true!
+     */
+    static EndCombo() {
+        Mod.export.ImGui_EndCombo();
+    }
+    /**
+     * Separate items with \0 within a string, end item-list with \0\0. e.g. "One\0Two\0Three\0"
+     */
+    static Combo(label, current_item, items_separated_by_zeros, popup_max_height_in_items = -1) {
+        return Mod.export.ImGui_Combo(label, current_item, items_separated_by_zeros, popup_max_height_in_items);
+    }
+    // Widgets: Drag Sliders
+    // - Ctrl+Click on any drag box to turn them into an input box. Manually input values aren't clamped by default and can go off-bounds. Use ImGuiSliderFlags_AlwaysClamp to always clamp.
+    // - For all the Float2/Float3/Float4/Int2/Int3/Int4 versions of every function, note that a 'float v[X]' function argument is the same as 'float* v',
+    //   the array syntax is just a way to document the number of elements that are expected to be accessible. You can pass address of your first element out of a contiguous set, e.g. &myvector.x
+    // - Adjust format string to decorate the value with a prefix, a suffix, or adapt the editing and display precision e.g. "%.3f" -> 1.234; "%5.2f secs" -> 01.23 secs; "Biscuit: %.0f" -> Biscuit: 1; etc.
+    // - Format string may also be set to NULL or use the default format ("%f" or "%d").
+    // - Speed are per-pixel of mouse movement (v_speed=0.2f: mouse needs to move by 5 pixels to increase value by 1). For keyboard/gamepad navigation, minimum speed is Max(v_speed, minimum_step_at_given_precision).
+    // - Use v_min < v_max to clamp edits to given limits. Note that Ctrl+Click manual input can override those limits if ImGuiSliderFlags_AlwaysClamp is not used.
+    // - Use v_max = FLT_MAX / INT_MAX etc to avoid clamping to a maximum, same with v_min = -FLT_MAX / INT_MIN to avoid clamping to a minimum.
+    // - We use the same sets of flags for DragXXX() and SliderXXX() functions as the features are the same and it makes it easier to swap them.
+    // - Legacy: Pre-1.78 there are DragXXX() function signatures that take a final `float power=1.0f' argument instead of the `ImGuiSliderFlags flags=0' argument.
+    //   If you get a warning converting a float to ImGuiSliderFlags, read https://github.com/ocornut/imgui/issues/3361
+    /**
+     * If v_min >= v_max we have no bound
+     */
+    static DragFloat(label, v, v_speed = 1.0, v_min = 0.0, v_max = 0.0, format = "%.3f", flags = 0) {
+        return Mod.export.ImGui_DragFloat(label, v, v_speed, v_min, v_max, format, flags);
+    }
+    static DragFloat2(label, v, v_speed = 1.0, v_min = 0.0, v_max = 0.0, format = "%.3f", flags = 0) {
+        return Mod.export.ImGui_DragFloat2(label, v, v_speed, v_min, v_max, format, flags);
+    }
+    static DragFloat3(label, v, v_speed = 1.0, v_min = 0.0, v_max = 0.0, format = "%.3f", flags = 0) {
+        return Mod.export.ImGui_DragFloat3(label, v, v_speed, v_min, v_max, format, flags);
+    }
+    static DragFloat4(label, v, v_speed = 1.0, v_min = 0.0, v_max = 0.0, format = "%.3f", flags = 0) {
+        return Mod.export.ImGui_DragFloat4(label, v, v_speed, v_min, v_max, format, flags);
+    }
+    static DragFloatRange2(label, v_current_min, v_current_max, v_speed = 1.0, v_min = 0.0, v_max = 0.0, format = "%.3f", format_max = "", flags = 0) {
+        return Mod.export.ImGui_DragFloatRange2(label, v_current_min, v_current_max, v_speed, v_min, v_max, format, format_max, flags);
+    }
+    /**
+     * If v_min >= v_max we have no bound
+     */
+    static DragInt(label, v, v_speed = 1.0, v_min = 0, v_max = 0, format = "%d", flags = 0) {
+        return Mod.export.ImGui_DragInt(label, v, v_speed, v_min, v_max, format, flags);
+    }
+    static DragInt2(label, v, v_speed = 1.0, v_min = 0, v_max = 0, format = "%d", flags = 0) {
+        return Mod.export.ImGui_DragInt2(label, v, v_speed, v_min, v_max, format, flags);
+    }
+    static DragInt3(label, v, v_speed = 1.0, v_min = 0, v_max = 0, format = "%d", flags = 0) {
+        return Mod.export.ImGui_DragInt3(label, v, v_speed, v_min, v_max, format, flags);
+    }
+    static DragInt4(label, v, v_speed = 1.0, v_min = 0, v_max = 0, format = "%d", flags = 0) {
+        return Mod.export.ImGui_DragInt4(label, v, v_speed, v_min, v_max, format, flags);
+    }
+    static DragIntRange2(label, v_current_min, v_current_max, v_speed = 1.0, v_min = 0, v_max = 0, format = "%d", format_max = "", flags = 0) {
+        return Mod.export.ImGui_DragIntRange2(label, v_current_min, v_current_max, v_speed, v_min, v_max, format, format_max, flags);
+    }
+    // Widgets: Regular Sliders
+    // - Ctrl+Click on any slider to turn them into an input box. Manually input values aren't clamped by default and can go off-bounds. Use ImGuiSliderFlags_AlwaysClamp to always clamp.
+    // - Adjust format string to decorate the value with a prefix, a suffix, or adapt the editing and display precision e.g. "%.3f" -> 1.234; "%5.2f secs" -> 01.23 secs; "Biscuit: %.0f" -> Biscuit: 1; etc.
+    // - Format string may also be set to NULL or use the default format ("%f" or "%d").
+    // - Legacy: Pre-1.78 there are SliderXXX() function signatures that take a final `float power=1.0f' argument instead of the `ImGuiSliderFlags flags=0' argument.
+    //   If you get a warning converting a float to ImGuiSliderFlags, read https://github.com/ocornut/imgui/issues/3361
+    /**
+     * adjust format to decorate the value with a prefix or a suffix for in-slider labels or unit display.
+     */
+    static SliderFloat(label, v, v_min, v_max, format = "%.3f", flags = 0) {
+        return Mod.export.ImGui_SliderFloat(label, v, v_min, v_max, format, flags);
+    }
+    static SliderFloat2(label, v, v_min, v_max, format = "%.3f", flags = 0) {
+        return Mod.export.ImGui_SliderFloat2(label, v, v_min, v_max, format, flags);
+    }
+    static SliderFloat3(label, v, v_min, v_max, format = "%.3f", flags = 0) {
+        return Mod.export.ImGui_SliderFloat3(label, v, v_min, v_max, format, flags);
+    }
+    static SliderFloat4(label, v, v_min, v_max, format = "%.3f", flags = 0) {
+        return Mod.export.ImGui_SliderFloat4(label, v, v_min, v_max, format, flags);
+    }
+    static SliderAngle(label, v_rad, v_degrees_min = -360.0, v_degrees_max = +360.0, format = "%.0f deg", flags = 0) {
+        return Mod.export.ImGui_SliderAngle(label, v_rad, v_degrees_min, v_degrees_max, format, flags);
+    }
+    static SliderInt(label, v, v_min, v_max, format = "%d", flags = 0) {
+        return Mod.export.ImGui_SliderInt(label, v, v_min, v_max, format, flags);
+    }
+    static SliderInt2(label, v, v_min, v_max, format = "%d", flags = 0) {
+        return Mod.export.ImGui_SliderInt2(label, v, v_min, v_max, format, flags);
+    }
+    static SliderInt3(label, v, v_min, v_max, format = "%d", flags = 0) {
+        return Mod.export.ImGui_SliderInt3(label, v, v_min, v_max, format, flags);
+    }
+    static SliderInt4(label, v, v_min, v_max, format = "%d", flags = 0) {
+        return Mod.export.ImGui_SliderInt4(label, v, v_min, v_max, format, flags);
+    }
+    static InputText(label, buf, buf_size, flags = 0) {
+        return Mod.export.ImGui_InputText(label, buf, buf_size, flags);
+    }
+    static InputTextMultiline(label, buf, buf_size, size = new ImVec2(0, 0), flags = 0) {
+        return Mod.export.ImGui_InputTextMultiline(label, buf, buf_size, size, flags);
+    }
+    static InputTextWithHint(label, hint, buf, buf_size, flags = 0) {
+        return Mod.export.ImGui_InputTextWithHint(label, hint, buf, buf_size, flags);
+    }
+    static InputFloat(label, v, step = 0.0, step_fast = 0.0, format = "%.3f", flags = 0) {
+        return Mod.export.ImGui_InputFloat(label, v, step, step_fast, format, flags);
+    }
+    static InputFloat2(label, v, format = "%.3f", flags = 0) {
+        return Mod.export.ImGui_InputFloat2(label, v, format, flags);
+    }
+    static InputFloat3(label, v, format = "%.3f", flags = 0) {
+        return Mod.export.ImGui_InputFloat3(label, v, format, flags);
+    }
+    static InputFloat4(label, v, format = "%.3f", flags = 0) {
+        return Mod.export.ImGui_InputFloat4(label, v, format, flags);
+    }
+    static InputInt(label, v, step = 1, step_fast = 100, flags = 0) {
+        return Mod.export.ImGui_InputInt(label, v, step, step_fast, flags);
+    }
+    static InputInt2(label, v, flags = 0) {
+        return Mod.export.ImGui_InputInt2(label, v, flags);
+    }
+    static InputInt3(label, v, flags = 0) {
+        return Mod.export.ImGui_InputInt3(label, v, flags);
+    }
+    static InputInt4(label, v, flags = 0) {
+        return Mod.export.ImGui_InputInt4(label, v, flags);
+    }
+    static InputDouble(label, v, step = 0.0, step_fast = 0.0, format = "%.6f", flags = 0) {
+        return Mod.export.ImGui_InputDouble(label, v, step, step_fast, format, flags);
+    }
+    /**
+     * Widgets: Color Editor/Picker (tip: the ColorEdit* functions have a little color square that can be left-clicked to open a picker, and right-clicked to open an option menu.)
+     * - Note that in C++ a 'float v[X]' function argument is the _same_ as 'float* v', the array syntax is just a way to document the number of elements that are expected to be accessible.
+     * - You can pass the address of a first float element out of a contiguous structure, e.g. &myvector.x
+     */
+    static ColorEdit3(label, col, flags = 0) {
+        return Mod.export.ImGui_ColorEdit3(label, col, flags);
+    }
+    static ColorEdit4(label, col, flags = 0) {
+        return Mod.export.ImGui_ColorEdit4(label, col, flags);
+    }
+    static ColorPicker3(label, col, flags = 0) {
+        return Mod.export.ImGui_ColorPicker3(label, col, flags);
+    }
+    static ColorPicker4(label, col, flags = 0, ref_col = null) {
+        return Mod.export.ImGui_ColorPicker4(label, col, flags, ref_col);
+    }
+    /**
+     * display a color square/button, hover for details, return true when pressed.
+     */
+    static ColorButton(desc_id, col, flags = 0, size = new ImVec2(0, 0)) {
+        return Mod.export.ImGui_ColorButton(desc_id, col, flags, size);
+    }
+    /**
+     * initialize current options (generally on application startup) if you want to select a default format, picker type, etc. User will be able to change many settings, unless you pass the _NoOptions flag to your calls.
+     */
+    static SetColorEditOptions(flags) {
+        Mod.export.ImGui_SetColorEditOptions(flags);
+    }
+    /**
+     * Widgets: Trees
+     * - TreeNode functions return true when the node is open, in which case you need to also call TreePop() when you are finished displaying the tree node contents.
+     */
+    static TreeNode(label) {
+        return Mod.export.ImGui_TreeNode(label);
+    }
+    static TreeNodeEx(label, flags = 0) {
+        return Mod.export.ImGui_TreeNodeEx(label, flags);
+    }
+    /**
+     * ~ Indent()+PushID(). Already called by TreeNode() when returning true, but you can call TreePush/TreePop yourself if desired.
+     */
+    static TreePush(str_id) {
+        Mod.export.ImGui_TreePush(str_id);
+    }
+    /**
+     * ~ Unindent()+PopID()
+     */
+    static TreePop() {
+        Mod.export.ImGui_TreePop();
+    }
+    /**
+     * horizontal distance preceding label when using TreeNode*() or Bullet() == (g.FontSize + style.FramePadding.x*2) for a regular unframed TreeNode
+     */
+    static GetTreeNodeToLabelSpacing() {
+        return Mod.export.ImGui_GetTreeNodeToLabelSpacing();
+    }
+    /**
+     * if returning 'true' the header is open. doesn't indent nor push on ID stack. user doesn't have to call TreePop().
+     */
+    static CollapsingHeader(label, flags = 0) {
+        return Mod.export.ImGui_CollapsingHeader(label, flags);
+    }
+    /**
+     * when 'p_visible != NULL': if '*p_visible==true' display an additional small close button on upper right of the header which will set the bool to false when clicked, if '*p_visible==false' don't display the header.
+     */
+    static CollapsingHeaderBoolPtr(label, p_visible, flags = 0) {
+        return Mod.export.ImGui_CollapsingHeaderBoolPtr(label, p_visible, flags);
+    }
+    /**
+     * set next TreeNode/CollapsingHeader open state.
+     */
+    static SetNextItemOpen(is_open, cond = 0) {
+        Mod.export.ImGui_SetNextItemOpen(is_open, cond);
+    }
+    /**
+     * set id to use for open/close storage (default to same as item id).
+     */
+    static SetNextItemStorageID(storage_id) {
+        Mod.export.ImGui_SetNextItemStorageID(storage_id);
+    }
+    /**
+     * retrieve tree node open/close state.
+     */
+    static TreeNodeGetOpen(storage_id) {
+        return Mod.export.ImGui_TreeNodeGetOpen(storage_id);
+    }
+    // Widgets: Selectables
+    // - A selectable highlights when hovered, and can display another color when selected.
+    // - Neighbors selectable extend their highlight bounds in order to leave no gap between them. This is so a series of selected Selectable appear contiguous.
+    /**
+     * "bool selected" carry the selection state (read-only). Selectable() is clicked is returns true so you can modify your selection state. size.x==0.0: use remaining width, size.x>0.0: specify width. size.y==0.0: use label height, size.y>0.0: specify height
+     */
+    static Selectable(label, selected = false, flags = 0, size = new ImVec2(0, 0)) {
+        return Mod.export.ImGui_Selectable(label, selected, flags, size);
+    }
+    /**
+     * "bool* p_selected" point to the selection state (read-write), as a convenient helper.
+     */
+    static SelectableBoolPtr(label, p_selected, flags = 0, size = new ImVec2(0, 0)) {
+        return Mod.export.ImGui_SelectableBoolPtr(label, p_selected, flags, size);
+    }
+    /**
+     * Multi-selection system for Selectable(), Checkbox(), TreeNode() functions [BETA]
+     * - This enables standard multi-selection/range-selection idioms (Ctrl+Mouse/Keyboard, Shift+Mouse/Keyboard, etc.) in a way that also allow a clipper to be used.
+     * - ImGuiSelectionUserData is often used to store your item index within the current view (but may store something else).
+     * - Read comments near ImGuiMultiSelectIO for instructions/details and see 'Demo->Widgets->Selection State & Multi-Select' for demo.
+     * - TreeNode() is technically supported but... using this correctly is more complicated. You need some sort of linear/random access to your tree,
+     *   which is suited to advanced trees setups already implementing filters and clipper. We will work simplifying the current demo.
+     * - 'selection_size' and 'items_count' parameters are optional and used by a few features. If they are costly for you to compute, you may avoid them.
+     */
+    static BeginMultiSelect(flags, selection_size = -1, items_count = -1) {
+        return ImGuiMultiSelectIO.From(Mod.export.ImGui_BeginMultiSelect(flags, selection_size, items_count));
+    }
+    static EndMultiSelect() {
+        return ImGuiMultiSelectIO.From(Mod.export.ImGui_EndMultiSelect());
+    }
+    static SetNextItemSelectionUserData(selection_user_data) {
+        Mod.export.ImGui_SetNextItemSelectionUserData(selection_user_data);
+    }
+    /**
+     * Was the last item selection state toggled? Useful if you need the per-item information _before_ reaching EndMultiSelect(). We only returns toggle _event_ in order to handle clipping correctly.
+     */
+    static IsItemToggledSelection() {
+        return Mod.export.ImGui_IsItemToggledSelection();
+    }
+    // Widgets: List Boxes
+    // - This is essentially a thin wrapper to using BeginChild/EndChild with the ImGuiChildFlags_FrameStyle flag for stylistic changes + displaying a label.
+    // - If you don't need a label you can probably simply use BeginChild() with the ImGuiChildFlags_FrameStyle flag for the same result.
+    // - You can submit contents and manage your selection state however you want it, by creating e.g. Selectable() or any other items.
+    // - The simplified/old ListBox() api are helpers over BeginListBox()/EndListBox() which are kept available for convenience purpose. This is analogous to how Combos are created.
+    // - Choose frame width:   size.x > 0.0f: custom  /  size.x < 0.0f or -FLT_MIN: right-align   /  size.x = 0.0f (default): use current ItemWidth
+    // - Choose frame height:  size.y > 0.0f: custom  /  size.y < 0.0f or -FLT_MIN: bottom-align  /  size.y = 0.0f (default): arbitrary default height which can fit ~7 items
+    /**
+     * open a framed scrolling region
+     */
+    static BeginListBox(label, size = new ImVec2(0, 0)) {
+        return Mod.export.ImGui_BeginListBox(label, size);
+    }
+    /**
+     * only call EndListBox() if BeginListBox() returned true!
+     */
+    static EndListBox() {
+        Mod.export.ImGui_EndListBox();
+    }
+    /**
+     * Widgets: Data Plotting
+     * - Consider using ImPlot (https://github.com/epezent/implot) which is much better!
+     */
+    static PlotLines(label, values, values_count, values_offset = 0, overlay_text = "", scale_min = Number.MAX_VALUE, scale_max = Number.MAX_VALUE, graph_size = new ImVec2(0, 0), stride = 4) {
+        Mod.export.ImGui_PlotLines(label, values, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size, stride);
+    }
+    static PlotHistogram(label, values, values_count, values_offset = 0, overlay_text = "", scale_min = Number.MAX_VALUE, scale_max = Number.MAX_VALUE, graph_size = new ImVec2(0, 0), stride = 4) {
+        Mod.export.ImGui_PlotHistogram(label, values, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size, stride);
+    }
+    // Widgets: Menus
+    // - Use BeginMenuBar() on a window ImGuiWindowFlags_MenuBar to append to its menu bar.
+    // - Use BeginMainMenuBar() to create a menu bar at the top of the screen and append to it.
+    // - Use BeginMenu() to create a menu. You can call BeginMenu() multiple time with the same identifier to append more items to it.
+    // - Not that MenuItem() keyboardshortcuts are displayed as a convenience but _not processed_ by Dear ImGui at the moment.
+    /**
+     * append to menu-bar of current window (requires ImGuiWindowFlags_MenuBar flag set on parent window).
+     */
+    static BeginMenuBar() {
+        return Mod.export.ImGui_BeginMenuBar();
+    }
+    /**
+     * only call EndMenuBar() if BeginMenuBar() returns true!
+     */
+    static EndMenuBar() {
+        Mod.export.ImGui_EndMenuBar();
+    }
+    /**
+     * create and append to a full screen menu-bar.
+     */
+    static BeginMainMenuBar() {
+        return Mod.export.ImGui_BeginMainMenuBar();
+    }
+    /**
+     * only call EndMainMenuBar() if BeginMainMenuBar() returns true!
+     */
+    static EndMainMenuBar() {
+        Mod.export.ImGui_EndMainMenuBar();
+    }
+    /**
+     * create a sub-menu entry. only call EndMenu() if this returns true!
+     */
+    static BeginMenu(label, enabled = true) {
+        return Mod.export.ImGui_BeginMenu(label, enabled);
+    }
+    /**
+     * only call EndMenu() if BeginMenu() returns true!
+     */
+    static EndMenu() {
+        Mod.export.ImGui_EndMenu();
+    }
+    /**
+     * return true when activated.
+     */
+    static MenuItem(label, shortcut = "", selected = false, enabled = true) {
+        return Mod.export.ImGui_MenuItem(label, shortcut, selected, enabled);
+    }
+    /**
+     * return true when activated + toggle (*p_selected) if p_selected != NULL
+     */
+    static MenuItemBoolPtr(label, shortcut, p_selected, enabled = true) {
+        return Mod.export.ImGui_MenuItemBoolPtr(label, shortcut, p_selected, enabled);
+    }
+    // Tooltips
+    // - Tooltips are windows following the mouse. They do not take focus away.
+    // - A tooltip window can contain items of any types.
+    // - SetTooltip() is more or less a shortcut for the 'if (BeginTooltip()) { Text(...); EndTooltip(); }' idiom (with a subtlety that it discard any previously submitted tooltip)
+    /**
+     * begin/append a tooltip window.
+     */
+    static BeginTooltip() {
+        return Mod.export.ImGui_BeginTooltip();
+    }
+    /**
+     * only call EndTooltip() if BeginTooltip()/BeginItemTooltip() returns true!
+     */
+    static EndTooltip() {
+        Mod.export.ImGui_EndTooltip();
+    }
+    static SetTooltip(fmt) {
+        Mod.export.ImGui_SetTooltip(fmt);
+    }
+    // Tooltips: helpers for showing a tooltip when hovering an item
+    // - BeginItemTooltip() is a shortcut for the 'if (IsItemHovered(ImGuiHoveredFlags_ForTooltip) && BeginTooltip())' idiom.
+    // - SetItemTooltip() is a shortcut for the 'if (IsItemHovered(ImGuiHoveredFlags_ForTooltip)) { SetTooltip(...); }' idiom.
+    // - Where 'ImGuiHoveredFlags_ForTooltip' itself is a shortcut to use 'style.HoverFlagsForTooltipMouse' or 'style.HoverFlagsForTooltipNav' depending on active input type. For mouse it defaults to 'ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_DelayShort'.
+    /**
+     * begin/append a tooltip window if preceding item was hovered.
+     */
+    static BeginItemTooltip() {
+        return Mod.export.ImGui_BeginItemTooltip();
+    }
+    static SetItemTooltip(fmt) {
+        Mod.export.ImGui_SetItemTooltip(fmt);
+    }
+    // Popups, Modals
+    //  - They block normal mouse hovering detection (and therefore most mouse interactions) behind them.
+    //  - If not modal: they can be closed by clicking anywhere outside them, or by pressing ESCAPE.
+    //  - Their visibility state (~bool) is held internally instead of being held by the programmer as we are used to with regular Begin*() calls.
+    //  - The 3 properties above are related: we need to retain popup visibility state in the library because popups may be closed as any time.
+    //  - You can bypass the hovering restriction by using ImGuiHoveredFlags_AllowWhenBlockedByPopup when calling IsItemHovered() or IsWindowHovered().
+    //  - IMPORTANT: Popup identifiers are relative to the current ID stack, so OpenPopup and BeginPopup generally needs to be at the same level of the stack.
+    //    This is sometimes leading to confusing mistakes. May rework this in the future.
+    //  - BeginPopup(): query popup state, if open start appending into the window. Call EndPopup() afterwards if returned true. ImGuiWindowFlags are forwarded to the window.
+    //  - BeginPopupModal(): block every interaction behind the window, cannot be closed by user, add a dimming background, has a title bar.
+    /**
+     * return true if the popup is open, and you can start outputting to it.
+     */
+    static BeginPopup(str_id, flags = 0) {
+        return Mod.export.ImGui_BeginPopup(str_id, flags);
+    }
+    /**
+     * return true if the modal is open, and you can start outputting to it.
+     */
+    static BeginPopupModal(name, p_open = null, flags = 0) {
+        return Mod.export.ImGui_BeginPopupModal(name, p_open, flags);
+    }
+    /**
+     * only call EndPopup() if BeginPopupXXX() returns true!
+     */
+    static EndPopup() {
+        Mod.export.ImGui_EndPopup();
+    }
+    // Popups: open/close functions
+    //  - OpenPopup(): set popup state to open. ImGuiPopupFlags are available for opening options.
+    //  - If not modal: they can be closed by clicking anywhere outside them, or by pressing ESCAPE.
+    //  - CloseCurrentPopup(): use inside the BeginPopup()/EndPopup() scope to close manually.
+    //  - CloseCurrentPopup() is called by default by Selectable()/MenuItem() when activated (FIXME: need some options).
+    //  - Use ImGuiPopupFlags_NoOpenOverExistingPopup to avoid opening a popup if there's already one at the same level. This is equivalent to e.g. testing for !IsAnyPopupOpen() prior to OpenPopup().
+    //  - Use IsWindowAppearing() after BeginPopup() to tell if a window just opened.
+    /**
+     * call to mark popup as open (don't call every frame!).
+     */
+    static OpenPopup(str_id, popup_flags = 0) {
+        Mod.export.ImGui_OpenPopup(str_id, popup_flags);
+    }
+    /**
+     * id overload to facilitate calling from nested stacks
+     */
+    static OpenPopupID(id, popup_flags = 0) {
+        Mod.export.ImGui_OpenPopupID(id, popup_flags);
+    }
+    /**
+     * helper to open popup when clicked on last item. Default to ImGuiPopupFlags_MouseButtonRight == 1. (note: actually triggers on the mouse _released_ event to be consistent with popup behaviors)
+     */
+    static OpenPopupOnItemClick(str_id = "", popup_flags = 0) {
+        Mod.export.ImGui_OpenPopupOnItemClick(str_id, popup_flags);
+    }
+    /**
+     * manually close the popup we have begin-ed into.
+     */
+    static CloseCurrentPopup() {
+        Mod.export.ImGui_CloseCurrentPopup();
+    }
+    // Popups: Open+Begin popup combined functions helpers to create context menus.
+    //  - Helpers to do OpenPopup+BeginPopup where the Open action is triggered by e.g. hovering an item and right-clicking.
+    //  - IMPORTANT: Notice that BeginPopupContextXXX takes ImGuiPopupFlags just like OpenPopup() and unlike BeginPopup(). For full consistency, we may add ImGuiWindowFlags to the BeginPopupContextXXX functions in the future.
+    //  - IMPORTANT: If you ever used the left mouse button with BeginPopupContextXXX() helpers before 1.92.6:
+    //    - Before this version, OpenPopupOnItemClick(), BeginPopupContextItem(), BeginPopupContextWindow(), BeginPopupContextVoid() had 'a ImGuiPopupFlags popup_flags = 1' default value in their function signature.
+    //    - Before: Explicitly passing a literal 0 meant ImGuiPopupFlags_MouseButtonLeft. The default = 1 meant ImGuiPopupFlags_MouseButtonRight.
+    //    - After: The default = 0 means ImGuiPopupFlags_MouseButtonRight. Explicitly passing a literal 1 also means ImGuiPopupFlags_MouseButtonRight (if legacy behavior are enabled) or will assert (if legacy behavior are disabled).
+    //    - TL;DR: if you don't want to use right mouse button for popups, always specify it explicitly using a named ImGuiPopupFlags_MouseButtonXXXX value.
+    //    - Read "API BREAKING CHANGES" 2026/01/07 (1.92.6) entry in imgui.cpp or GitHub topic #9157 for all details.
+    /**
+     * open+begin popup when clicked on last item. Use str_id==NULL to associate the popup to previous item. If you want to use that on a non-interactive item such as Text() you need to pass in an explicit ID here. read comments in .cpp!
+     */
+    static BeginPopupContextItem(str_id = "", popup_flags = 0) {
+        return Mod.export.ImGui_BeginPopupContextItem(str_id, popup_flags);
+    }
+    /**
+     * open+begin popup when clicked on current window.
+     */
+    static BeginPopupContextWindow(str_id = "", popup_flags = 0) {
+        return Mod.export.ImGui_BeginPopupContextWindow(str_id, popup_flags);
+    }
+    /**
+     * open+begin popup when clicked in void (where there are no windows).
+     */
+    static BeginPopupContextVoid(str_id = "", popup_flags = 0) {
+        return Mod.export.ImGui_BeginPopupContextVoid(str_id, popup_flags);
+    }
+    // Popups: query functions
+    //  - IsPopupOpen(): return true if the popup is open at the current BeginPopup() level of the popup stack.
+    //  - IsPopupOpen() with ImGuiPopupFlags_AnyPopupId: return true if any popup is open at the current BeginPopup() level of the popup stack.
+    //  - IsPopupOpen() with ImGuiPopupFlags_AnyPopupId + ImGuiPopupFlags_AnyPopupLevel: return true if any popup is open.
+    /**
+     * return true if the popup is open.
+     */
+    static IsPopupOpen(str_id, flags = 0) {
+        return Mod.export.ImGui_IsPopupOpen(str_id, flags);
+    }
+    /**
+     * Tables
+     * - Full-featured replacement for old Columns API.
+     * - See Demo->Tables for demo code. See top of imgui_tables.cpp for general commentary.
+     * - See ImGuiTableFlags_ and ImGuiTableColumnFlags_ enums for a description of available flags.
+     * The typical call flow is:
+     * - 1. Call BeginTable(), early out if returning false.
+     * - 2. Optionally call TableSetupColumn() to submit column name/flags/defaults.
+     * - 3. Optionally call TableSetupScrollFreeze() to request scroll freezing of columns/rows.
+     * - 4. Optionally call TableHeadersRow() to submit a header row. Names are pulled from TableSetupColumn() data.
+     * - 5. Populate contents:
+     *    - In most situations you can use TableNextRow() + TableSetColumnIndex(N) to start appending into a column.
+     *    - If you are using tables as a sort of grid, where every column is holding the same type of contents,
+     *      you may prefer using TableNextColumn() instead of TableNextRow() + TableSetColumnIndex().
+     *      TableNextColumn() will automatically wrap-around into the next row if needed.
+     *    - IMPORTANT: Comparatively to the old Columns() API, we need to call TableNextColumn() for the first column!
+     *    - Summary of possible call flow:
+     *        - TableNextRow() -> TableSetColumnIndex(0) -> Text("Hello 0") -> TableSetColumnIndex(1) -> Text("Hello 1")  // OK
+     *        - TableNextRow() -> TableNextColumn()      -> Text("Hello 0") -> TableNextColumn()      -> Text("Hello 1")  // OK
+     *        -                   TableNextColumn()      -> Text("Hello 0") -> TableNextColumn()      -> Text("Hello 1")  // OK: TableNextColumn() automatically gets to next row!
+     *        - TableNextRow()                           -> Text("Hello 0")                                               // Not OK! Missing TableSetColumnIndex() or TableNextColumn()! Text will not appear!
+     * - 5. Call EndTable()
+     */
+    static BeginTable(str_id, columns, flags = 0, outer_size = new ImVec2(0.0, 0.0), inner_width = 0.0) {
+        return Mod.export.ImGui_BeginTable(str_id, columns, flags, outer_size, inner_width);
+    }
+    /**
+     * only call EndTable() if BeginTable() returns true!
+     */
+    static EndTable() {
+        Mod.export.ImGui_EndTable();
+    }
+    /**
+     * append into the first cell of a new row. 'min_row_height' include the minimum top and bottom padding aka CellPadding.y * 2.0f.
+     */
+    static TableNextRow(row_flags = 0, min_row_height = 0.0) {
+        Mod.export.ImGui_TableNextRow(row_flags, min_row_height);
+    }
+    /**
+     * append into the next column (or first column of next row if currently in last column). Return true when column is visible.
+     */
+    static TableNextColumn() {
+        return Mod.export.ImGui_TableNextColumn();
+    }
+    /**
+     * append into the specified column. Return true when column is visible.
+     */
+    static TableSetColumnIndex(column_n) {
+        return Mod.export.ImGui_TableSetColumnIndex(column_n);
+    }
+    /**
+     * Tables: Headers & Columns declaration
+     * - Use TableSetupColumn() to specify label, resizing policy, default width/weight, id, various other flags etc.
+     * - Use TableHeadersRow() to create a header row and automatically submit a TableHeader() for each column.
+     *   Headers are required to perform: reordering, sorting, and opening the context menu.
+     *   The context menu can also be made available in columns body using ImGuiTableFlags_ContextMenuInBody.
+     * - You may manually submit headers using TableNextRow() + TableHeader() calls, but this is only useful in
+     *   some advanced use cases (e.g. adding custom widgets in header row).
+     * - Use TableSetupScrollFreeze() to lock columns/rows so they stay visible when scrolled. When freezing columns you would usually also use ImGuiTableColumnFlags_NoHide on them.
+     */
+    static TableSetupColumn(label, flags = 0, init_width_or_weight = 0.0, user_id = 0) {
+        Mod.export.ImGui_TableSetupColumn(label, flags, init_width_or_weight, user_id);
+    }
+    /**
+     * lock columns/rows so they stay visible when scrolled.
+     */
+    static TableSetupScrollFreeze(cols, rows) {
+        Mod.export.ImGui_TableSetupScrollFreeze(cols, rows);
+    }
+    /**
+     * submit one header cell manually (rarely used)
+     */
+    static TableHeader(label) {
+        Mod.export.ImGui_TableHeader(label);
+    }
+    /**
+     * submit a row with headers cells based on data provided to TableSetupColumn() + submit context menu
+     */
+    static TableHeadersRow() {
+        Mod.export.ImGui_TableHeadersRow();
+    }
+    /**
+     * submit a row with angled headers for every column with the ImGuiTableColumnFlags_AngledHeader flag. MUST BE FIRST ROW.
+     */
+    static TableAngledHeadersRow() {
+        Mod.export.ImGui_TableAngledHeadersRow();
+    }
+    // Tables: Sorting & Miscellaneous functions
+    // - Sorting: call TableGetSortSpecs() to retrieve latest sort specs for the table. NULL when not sorting.
+    //   When 'sort_specs->SpecsDirty == true' you should sort your data. It will be true when sorting specs have
+    //   changed since last call, or the first time. Make sure to set 'SpecsDirty = false' after sorting,
+    //   else you may wastefully sort your data every frame!
+    // - Functions args 'int column_n' treat the default value of -1 as the same as passing the current column index.
+    /**
+     * get latest sort specs for the table (NULL if not sorting).  Lifetime: don't hold on this pointer over multiple frames or past any subsequent call to BeginTable().
+     */
+    static TableGetSortSpecs() {
+        return ImGuiTableSortSpecs.From(Mod.export.ImGui_TableGetSortSpecs());
+    }
+    /**
+     * return number of columns (value passed to BeginTable)
+     */
+    static TableGetColumnCount() {
+        return Mod.export.ImGui_TableGetColumnCount();
+    }
+    /**
+     * return current column index.
+     */
+    static TableGetColumnIndex() {
+        return Mod.export.ImGui_TableGetColumnIndex();
+    }
+    /**
+     * return current row index (header rows are accounted for)
+     */
+    static TableGetRowIndex() {
+        return Mod.export.ImGui_TableGetRowIndex();
+    }
+    /**
+     * return "" if column didn't have a name declared by TableSetupColumn(). Pass -1 to use current column.
+     */
+    static TableGetColumnName(column_n = -1) {
+        return Mod.export.ImGui_TableGetColumnName(column_n);
+    }
+    /**
+     * return column flags so you can query their Enabled/Visible/Sorted/Hovered status flags. Pass -1 to use current column.
+     */
+    static TableGetColumnFlags(column_n = -1) {
+        return Mod.export.ImGui_TableGetColumnFlags(column_n);
+    }
+    /**
+     * change user accessible enabled/disabled state of a column. Set to false to hide the column. User can use the context menu to change this themselves (right-click in headers, or right-click in columns body with ImGuiTableFlags_ContextMenuInBody)
+     */
+    static TableSetColumnEnabled(column_n, v) {
+        Mod.export.ImGui_TableSetColumnEnabled(column_n, v);
+    }
+    /**
+     * return hovered column. return -1 when table is not hovered. return columns_count if the unused space at the right of visible columns is hovered. Can also use (TableGetColumnFlags() & ImGuiTableColumnFlags_IsHovered) instead.
+     */
+    static TableGetHoveredColumn() {
+        return Mod.export.ImGui_TableGetHoveredColumn();
+    }
+    /**
+     * change the color of a cell, row, or column. See ImGuiTableBgTarget_ flags for details.
+     */
+    static TableSetBgColor(target, color, column_n = -1) {
+        Mod.export.ImGui_TableSetBgColor(target, color, column_n);
+    }
+    /**
+     * Legacy Columns API (prefer using Tables!)
+     * - You can also use SameLine(pos_x) to mimic simplified columns.
+     */
+    static Columns(count = 1, id = "", borders = true) {
+        Mod.export.ImGui_Columns(count, id, borders);
+    }
+    /**
+     * next column, defaults to current row or next row if the current row is finished
+     */
+    static NextColumn() {
+        Mod.export.ImGui_NextColumn();
+    }
+    /**
+     * get current column index
+     */
+    static GetColumnIndex() {
+        return Mod.export.ImGui_GetColumnIndex();
+    }
+    /**
+     * get column width (in pixels). pass -1 to use current column
+     */
+    static GetColumnWidth(column_index = -1) {
+        return Mod.export.ImGui_GetColumnWidth(column_index);
+    }
+    /**
+     * set column width (in pixels). pass -1 to use current column
+     */
+    static SetColumnWidth(column_index, width) {
+        Mod.export.ImGui_SetColumnWidth(column_index, width);
+    }
+    /**
+     * get position of column line (in pixels, from the left side of the contents region). pass -1 to use current column, otherwise 0..GetColumnsCount() inclusive. column 0 is typically 0.0f
+     */
+    static GetColumnOffset(column_index = -1) {
+        return Mod.export.ImGui_GetColumnOffset(column_index);
+    }
+    /**
+     * set position of column line (in pixels, from the left side of the contents region). pass -1 to use current column
+     */
+    static SetColumnOffset(column_index, offset_x) {
+        Mod.export.ImGui_SetColumnOffset(column_index, offset_x);
+    }
+    static GetColumnsCount() {
+        return Mod.export.ImGui_GetColumnsCount();
+    }
+    // Tab Bars, Tabs
+    // - Note: Tabs are automatically created by the docking system (when in 'docking' branch). Use this to create tab bars/tabs yourself.
+    /**
+     * create and append into a TabBar
+     */
+    static BeginTabBar(str_id, flags = 0) {
+        return Mod.export.ImGui_BeginTabBar(str_id, flags);
+    }
+    /**
+     * only call EndTabBar() if BeginTabBar() returns true!
+     */
+    static EndTabBar() {
+        Mod.export.ImGui_EndTabBar();
+    }
+    /**
+     * create a Tab. Returns true if the Tab is selected.
+     */
+    static BeginTabItem(label, p_open = null, flags = 0) {
+        return Mod.export.ImGui_BeginTabItem(label, p_open, flags);
+    }
+    /**
+     * only call EndTabItem() if BeginTabItem() returns true!
+     */
+    static EndTabItem() {
+        Mod.export.ImGui_EndTabItem();
+    }
+    /**
+     * create a Tab behaving like a button. return true when clicked. cannot be selected in the tab bar.
+     */
+    static TabItemButton(label, flags = 0) {
+        return Mod.export.ImGui_TabItemButton(label, flags);
+    }
+    /**
+     * notify TabBar or Docking system of a closed tab/window ahead (useful to reduce visual flicker on reorderable tab bars). For tab-bar: call after BeginTabBar() and before Tab submissions. Otherwise call with a window name.
+     */
+    static SetTabItemClosed(tab_or_docked_window_label) {
+        Mod.export.ImGui_SetTabItemClosed(tab_or_docked_window_label);
+    }
+    /**
+     * Docking
+     * - Read https://github.com/ocornut/imgui/wiki/Docking for details.
+     * - Enable with io.ConfigFlags |= ImGuiConfigFlags_DockingEnable.
+     * - You can use many Docking facilities without calling any API.
+     *   - Drag from window title bar or their tab to dock/undock. Hold SHIFT to disable docking.
+     *   - Drag from window menu button (upper-left button) to undock an entire node (all windows).
+     *   - When io.ConfigDockingWithShift == true, you instead need to hold SHIFT to enable docking.
+     * - DockSpaceOverViewport:
+     *   - This is a helper to create an invisible window covering a viewport, then submit a DockSpace() into it.
+     *   - Most applications can simply call DockSpaceOverViewport() once to allow docking windows into e.g. the edge of your screen.
+     *     e.g. ImGui::NewFrame(); ImGui::DockSpaceOverViewport();                                                   // Create a dockspace in main viewport.
+     *      or: ImGui::NewFrame(); ImGui::DockSpaceOverViewport(0, nullptr, ImGuiDockNodeFlags_PassthruCentralNode); // Create a dockspace in main viewport, central node is transparent.
+     * - Dockspaces:
+     *   - A dockspace is an explicit dock node within an existing window.
+     *   - IMPORTANT: Dockspaces need to be submitted _before_ any window they can host. Submit them early in your frame!
+     *   - IMPORTANT: Dockspaces need to be kept alive if hidden, otherwise windows docked into it will be undocked.
+     *     If you have e.g. multiple tabs with a dockspace inside each tab: submit the non-visible dockspaces with ImGuiDockNodeFlags_KeepAliveOnly.
+     *   - See 'Demo->Examples->Dockspace' or 'Demo->Examples->Documents' for more detailed demos.
+     * - Programmatic docking:
+     *   - There is no public API yet other than the very limited SetNextWindowDockID() function. Sorry for that!
+     *   - Read https://github.com/ocornut/imgui/wiki/Docking for examples of how to use current internal API.
+     */
+    static DockSpace(dockspace_id, size = new ImVec2(0, 0), flags = 0, window_class = null) {
+        return Mod.export.ImGui_DockSpace(dockspace_id, size, flags, window_class?.ptr ?? null);
+    }
+    static DockSpaceOverViewport(dockspace_id = 0, viewport = null, flags = 0, window_class = null) {
+        return Mod.export.ImGui_DockSpaceOverViewport(dockspace_id, viewport?.ptr ?? null, flags, window_class?.ptr ?? null);
+    }
+    /**
+     * set next window dock id
+     */
+    static SetNextWindowDockID(dock_id, cond = 0) {
+        Mod.export.ImGui_SetNextWindowDockID(dock_id, cond);
+    }
+    /**
+     * set next window class (control docking compatibility + provide hints to platform backend via custom viewport flags and platform parent/child relationship)
+     */
+    static SetNextWindowClass(window_class) {
+        Mod.export.ImGui_SetNextWindowClass(window_class?.ptr ?? null);
+    }
+    /**
+     * get dock id of current window, or 0 if not associated to any docking node.
+     */
+    static GetWindowDockID() {
+        return Mod.export.ImGui_GetWindowDockID();
+    }
+    /**
+     * is current window docked into another window?
+     */
+    static IsWindowDocked() {
+        return Mod.export.ImGui_IsWindowDocked();
+    }
+    // Logging/Capture
+    // - All text output from the interface can be captured into tty/file/clipboard. By default, tree nodes are automatically opened during logging.
+    /**
+     * start logging to tty (stdout)
+     */
+    static LogToTTY(auto_open_depth = -1) {
+        Mod.export.ImGui_LogToTTY(auto_open_depth);
+    }
+    /**
+     * start logging to file
+     */
+    static LogToFile(auto_open_depth = -1, filename = "") {
+        Mod.export.ImGui_LogToFile(auto_open_depth, filename);
+    }
+    /**
+     * start logging to OS clipboard
+     */
+    static LogToClipboard(auto_open_depth = -1) {
+        Mod.export.ImGui_LogToClipboard(auto_open_depth);
+    }
+    /**
+     * stop logging (close file, etc.)
+     */
+    static LogFinish() {
+        Mod.export.ImGui_LogFinish();
+    }
+    /**
+     * helper to display buttons for logging to tty/file/clipboard
+     */
+    static LogButtons() {
+        Mod.export.ImGui_LogButtons();
+    }
+    static LogText(fmt) {
+        Mod.export.ImGui_LogText(fmt);
+    }
+    // Drag and Drop
+    // - On source items, call BeginDragDropSource(), if it returns true also call SetDragDropPayload() + EndDragDropSource().
+    // - On target candidates, call BeginDragDropTarget(), if it returns true also call AcceptDragDropPayload() + EndDragDropTarget().
+    // - If you stop calling BeginDragDropSource() the payload is preserved however it won't have a preview tooltip (we currently display a fallback "..." tooltip, see #1725)
+    // - An item can be both drag source and drop target.
+    /**
+     * call after submitting an item which may be dragged. when this return true, you can call SetDragDropPayload() + EndDragDropSource()
+     */
+    static BeginDragDropSource(flags = 0) {
+        return Mod.export.ImGui_BeginDragDropSource(flags);
+    }
+    static SetDragDropPayload(type, data, sz, cond) {
+        return Mod.export.ImGui_SetDragDropPayload(type, data, sz, cond);
+    }
+    /**
+     * only call EndDragDropSource() if BeginDragDropSource() returns true!
+     */
+    static EndDragDropSource() {
+        Mod.export.ImGui_EndDragDropSource();
+    }
+    /**
+     * call after submitting an item that may receive a payload. If this returns true, you can call AcceptDragDropPayload() + EndDragDropTarget()
+     */
+    static BeginDragDropTarget() {
+        return Mod.export.ImGui_BeginDragDropTarget();
+    }
+    /**
+     * accept contents of a given type. If ImGuiDragDropFlags_AcceptBeforeDelivery is set you can peek into the payload before the mouse button is released.
+     */
+    static AcceptDragDropPayload(type, flags = 0) {
+        return ImGuiPayload.From(Mod.export.ImGui_AcceptDragDropPayload(type, flags));
+    }
+    /**
+     * only call EndDragDropTarget() if BeginDragDropTarget() returns true!
+     */
+    static EndDragDropTarget() {
+        Mod.export.ImGui_EndDragDropTarget();
+    }
+    /**
+     * peek directly into the current payload from anywhere. returns NULL when drag and drop is finished or inactive. use ImGuiPayload::IsDataType() to test for the payload type.
+     */
+    static GetDragDropPayload() {
+        return ImGuiPayload.From(Mod.export.ImGui_GetDragDropPayload());
+    }
+    /**
+     * Disabling [BETA API]
+     * - Disable all user interactions and dim items visuals (applying style.DisabledAlpha over current colors)
+     * - Those can be nested but it cannot be used to enable an already disabled section (a single BeginDisabled(true) in the stack is enough to keep everything disabled)
+     * - Tooltips windows are automatically opted out of disabling. Note that IsItemHovered() by default returns false on disabled items, unless using ImGuiHoveredFlags_AllowWhenDisabled.
+     * - BeginDisabled(false)/EndDisabled() essentially does nothing but is provided to facilitate use of boolean expressions (as a micro-optimization: if you have tens of thousands of BeginDisabled(false)/EndDisabled() pairs, you might want to reformulate your code to avoid making those calls)
+     */
+    static BeginDisabled(disabled = true) {
+        Mod.export.ImGui_BeginDisabled(disabled);
+    }
+    static EndDisabled() {
+        Mod.export.ImGui_EndDisabled();
+    }
+    /**
+     * Clipping
+     * - Mouse hovering is affected by ImGui::PushClipRect() calls, unlike direct calls to ImDrawList::PushClipRect() which are render only.
+     */
+    static PushClipRect(clip_rect_min, clip_rect_max, intersect_with_current_clip_rect) {
+        Mod.export.ImGui_PushClipRect(clip_rect_min, clip_rect_max, intersect_with_current_clip_rect);
+    }
+    static PopClipRect() {
+        Mod.export.ImGui_PopClipRect();
+    }
+    // Focus, Activation
+    /**
+     * make last item the default focused item of a newly appearing window.
+     */
+    static SetItemDefaultFocus() {
+        Mod.export.ImGui_SetItemDefaultFocus();
+    }
+    /**
+     * focus keyboard on the next widget. Use positive 'offset' to access sub components of a multiple component widget. Use -1 to access previous widget.
+     */
+    static SetKeyboardFocusHere(offset = 0) {
+        Mod.export.ImGui_SetKeyboardFocusHere(offset);
+    }
+    // Keyboard/Gamepad Navigation
+    /**
+     * alter visibility of keyboard/gamepad cursor. by default: show when using an arrow key, hide when clicking with mouse.
+     */
+    static SetNavCursorVisible(visible) {
+        Mod.export.ImGui_SetNavCursorVisible(visible);
+    }
+    // Overlapping mode
+    /**
+     * allow next item to be overlapped by a subsequent item. Typically useful with InvisibleButton(), Selectable(), TreeNode() covering an area where subsequent items may need to be added. Note that both Selectable() and TreeNode() have dedicated flags doing this.
+     */
+    static SetNextItemAllowOverlap() {
+        Mod.export.ImGui_SetNextItemAllowOverlap();
+    }
+    // Item/Widgets Utilities and Query Functions
+    // - Most of the functions are referring to the previous Item that has been submitted.
+    // - See Demo Window under "Widgets->Querying Status" for an interactive visualization of most of those functions.
+    /**
+     * is the last item hovered? (and usable, aka not blocked by a popup, etc.). See ImGuiHoveredFlags for more options.
+     */
+    static IsItemHovered(flags = 0) {
+        return Mod.export.ImGui_IsItemHovered(flags);
+    }
+    /**
+     * is the last item active? (e.g. button being held, text field being edited. This will continuously return true while holding mouse button on an item. Items that don't interact will always return false)
+     */
+    static IsItemActive() {
+        return Mod.export.ImGui_IsItemActive();
+    }
+    /**
+     * is the last item focused for keyboard/gamepad navigation?
+     */
+    static IsItemFocused() {
+        return Mod.export.ImGui_IsItemFocused();
+    }
+    /**
+     * is the last item hovered and mouse clicked on? (**)  == IsMouseClicked(mouse_button) && IsItemHovered()Important. (**) this is NOT equivalent to the behavior of e.g. Button(). Read comments in function definition.
+     */
+    static IsItemClicked(mouse_button = 0) {
+        return Mod.export.ImGui_IsItemClicked(mouse_button);
+    }
+    /**
+     * is the last item visible? (items may be out of sight because of clipping/scrolling)
+     */
+    static IsItemVisible() {
+        return Mod.export.ImGui_IsItemVisible();
+    }
+    /**
+     * did the last item modify its underlying value this frame? or was pressed? This is generally the same as the "bool" return value of many widgets.
+     */
+    static IsItemEdited() {
+        return Mod.export.ImGui_IsItemEdited();
+    }
+    /**
+     * was the last item just made active (item was previously inactive).
+     */
+    static IsItemActivated() {
+        return Mod.export.ImGui_IsItemActivated();
+    }
+    /**
+     * was the last item just made inactive (item was previously active). Useful for Undo/Redo patterns with widgets that require continuous editing.
+     */
+    static IsItemDeactivated() {
+        return Mod.export.ImGui_IsItemDeactivated();
+    }
+    /**
+     * was the last item just made inactive and made a value change when it was active? (e.g. Slider/Drag moved). Useful for Undo/Redo patterns with widgets that require continuous editing. Note that you may get false positives (some widgets such as Combo()/ListBox()/Selectable() will return true even when clicking an already selected item).
+     */
+    static IsItemDeactivatedAfterEdit() {
+        return Mod.export.ImGui_IsItemDeactivatedAfterEdit();
+    }
+    /**
+     * was the last item open state toggled? set by TreeNode().
+     */
+    static IsItemToggledOpen() {
+        return Mod.export.ImGui_IsItemToggledOpen();
+    }
+    /**
+     * is any item hovered?
+     */
+    static IsAnyItemHovered() {
+        return Mod.export.ImGui_IsAnyItemHovered();
+    }
+    /**
+     * is any item active?
+     */
+    static IsAnyItemActive() {
+        return Mod.export.ImGui_IsAnyItemActive();
+    }
+    /**
+     * is any item focused?
+     */
+    static IsAnyItemFocused() {
+        return Mod.export.ImGui_IsAnyItemFocused();
+    }
+    /**
+     * get ID of last item (~~ often same ImGui::GetID(label) beforehand)
+     */
+    static GetItemID() {
+        return Mod.export.ImGui_GetItemID();
+    }
+    /**
+     * get upper-left bounding rectangle of the last item (screen space)
+     */
+    static GetItemRectMin() {
+        return ImVec2.From(Mod.export.ImGui_GetItemRectMin());
+    }
+    /**
+     * get lower-right bounding rectangle of the last item (screen space)
+     */
+    static GetItemRectMax() {
+        return ImVec2.From(Mod.export.ImGui_GetItemRectMax());
+    }
+    /**
+     * get size of last item
+     */
+    static GetItemRectSize() {
+        return ImVec2.From(Mod.export.ImGui_GetItemRectSize());
+    }
+    /**
+     * get generic flags of last item
+     */
+    static GetItemFlags() {
+        return Mod.export.ImGui_GetItemFlags();
+    }
+    // Viewports
+    // - Currently represents the Platform Window created by the application which is hosting our Dear ImGui windows.
+    // - In 'docking' branch with multi-viewport enabled, we extend this concept to have multiple active viewports.
+    // - In the future we will extend this concept further to also represent Platform Monitor and support a "no main platform window" operation mode.
+    /**
+     * return primary/default viewport. This can never be NULL.
+     */
+    static GetMainViewport() {
+        return ImGuiViewport.From(Mod.export.ImGui_GetMainViewport());
+    }
+    // Background/Foreground Draw Lists
+    /**
+     * get background draw list for the given viewport or viewport associated to the current window. this draw list will be the first rendering one. Useful to quickly draw shapes/text behind dear imgui contents.
+     */
+    static GetBackgroundDrawList(viewport = null) {
+        return ImDrawList.From(Mod.export.ImGui_GetBackgroundDrawList(viewport?.ptr ?? null));
+    }
+    /**
+     * get foreground draw list for the given viewport or viewport associated to the current window. this draw list will be the top-most rendered one. Useful to quickly draw shapes/text over dear imgui contents.
+     */
+    static GetForegroundDrawList(viewport = null) {
+        return ImDrawList.From(Mod.export.ImGui_GetForegroundDrawList(viewport?.ptr ?? null));
+    }
+    // Miscellaneous Utilities
+    /**
+     * test if rectangle (of given size, starting from cursor position) is visible / not clipped.
+     */
+    static IsRectVisibleBySize(size) {
+        return Mod.export.ImGui_IsRectVisibleBySize(size);
+    }
+    /**
+     * test if rectangle (in screen space) is visible / not clipped. to perform coarse clipping on user's side.
+     */
+    static IsRectVisible(rect_min, rect_max) {
+        return Mod.export.ImGui_IsRectVisible(rect_min, rect_max);
+    }
+    /**
+     * get global imgui time. incremented by io.DeltaTime every frame.
+     */
+    static GetTime() {
+        return Mod.export.ImGui_GetTime();
+    }
+    /**
+     * get global imgui frame count. incremented by 1 every frame.
+     */
+    static GetFrameCount() {
+        return Mod.export.ImGui_GetFrameCount();
+    }
+    /**
+     * you may use this when creating your own ImDrawList instances.
+     */
+    static GetDrawListSharedData() {
+        return ImDrawListSharedData.From(Mod.export.ImGui_GetDrawListSharedData());
+    }
+    /**
+     * get a string corresponding to the enum value (for display, saving, etc.).
+     */
+    static GetStyleColorName(idx) {
+        return Mod.export.ImGui_GetStyleColorName(idx);
+    }
+    /**
+     * Text Utilities
+     */
+    static CalcTextSize(text, text_end = "", hide_text_after_double_hash = false, wrap_width = -1.0) {
+        return ImVec2.From(Mod.export.ImGui_CalcTextSize(text, text_end, hide_text_after_double_hash, wrap_width));
+    }
+    /**
+     * Color Utilities
+     */
+    static ColorConvertU32ToFloat4(in_) {
+        return ImVec4.From(Mod.export.ImGui_ColorConvertU32ToFloat4(in_));
+    }
+    static ColorConvertFloat4ToU32(in_) {
+        return Mod.export.ImGui_ColorConvertFloat4ToU32(in_);
+    }
+    static ColorConvertRGBtoHSV(r, g, b, out_h, out_s, out_v) {
+        Mod.export.ImGui_ColorConvertRGBtoHSV(r, g, b, out_h, out_s, out_v);
+    }
+    static ColorConvertHSVtoRGB(h, s, v, out_r, out_g, out_b) {
+        Mod.export.ImGui_ColorConvertHSVtoRGB(h, s, v, out_r, out_g, out_b);
+    }
+    // Inputs Utilities: Raw Keyboard/Mouse/Gamepad Access
+    // - Consider using the Shortcut() function instead of IsKeyPressed()/IsKeyChordPressed()! Shortcut() is easier to use and better featured (can do focus routing check).
+    // - the ImGuiKey enum contains all possible keyboard, mouse and gamepad inputs (e.g. ImGuiKey_A, ImGuiKey_MouseLeft, ImGuiKey_GamepadDpadUp...).
+    // - (legacy: before v1.87 (2022-02), we used ImGuiKey < 512 values to carry native/user indices as defined by each backends. This was obsoleted in 1.87 (2022-02) and completely removed in 1.91.5 (2024-11). See https://github.com/ocornut/imgui/issues/4921)
+    /**
+     * is key being held.
+     */
+    static IsKeyDown(key) {
+        return Mod.export.ImGui_IsKeyDown(key);
+    }
+    /**
+     * was key pressed (went from !Down to Down)? Repeat rate uses io.KeyRepeatDelay / KeyRepeatRate.
+     */
+    static IsKeyPressed(key, repeat = true) {
+        return Mod.export.ImGui_IsKeyPressed(key, repeat);
+    }
+    /**
+     * was key released (went from Down to !Down)?
+     */
+    static IsKeyReleased(key) {
+        return Mod.export.ImGui_IsKeyReleased(key);
+    }
+    /**
+     * was key chord (mods + key) pressed, e.g. you can pass 'ImGuiMod_Ctrl | ImGuiKey_S' as a key-chord. This doesn't do any routing or focus check, please consider using Shortcut() function instead.
+     */
+    static IsKeyChordPressed(key_chord) {
+        return Mod.export.ImGui_IsKeyChordPressed(key_chord);
+    }
+    /**
+     * uses provided repeat rate/delay. return a count, most often 0 or 1 but might be >1 if RepeatRate is small enough that DeltaTime > RepeatRate
+     */
+    static GetKeyPressedAmount(key, repeat_delay, rate) {
+        return Mod.export.ImGui_GetKeyPressedAmount(key, repeat_delay, rate);
+    }
+    /**
+     * [DEBUG] returns English name of the key. Those names are provided for debugging purpose and are not meant to be saved persistently nor compared.
+     */
+    static GetKeyName(key) {
+        return Mod.export.ImGui_GetKeyName(key);
+    }
+    /**
+     * Override io.WantCaptureKeyboard flag next frame (said flag is left for your application to handle, typically when true it instructs your app to ignore inputs). e.g. force capture keyboard when your widget is being hovered. This is equivalent to setting "io.WantCaptureKeyboard = want_capture_keyboard"; after the next NewFrame() call.
+     */
+    static SetNextFrameWantCaptureKeyboard(want_capture_keyboard) {
+        Mod.export.ImGui_SetNextFrameWantCaptureKeyboard(want_capture_keyboard);
+    }
+    /**
+     * Inputs Utilities: Shortcut Testing & Routing
+     * - Typical use is e.g.: 'if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S)) { ... }'.
+     * - Flags: Default route use ImGuiInputFlags_RouteFocused, but see ImGuiInputFlags_RouteGlobal and other options in ImGuiInputFlags_!
+     * - Flags: Use ImGuiInputFlags_Repeat to support repeat.
+     * - ImGuiKeyChord = a ImGuiKey + optional ImGuiMod_Alt/ImGuiMod_Ctrl/ImGuiMod_Shift/ImGuiMod_Super.
+     *       ImGuiKey_C                          // Accepted by functions taking ImGuiKey or ImGuiKeyChord arguments
+     *       ImGuiMod_Ctrl | ImGuiKey_C          // Accepted by functions taking ImGuiKeyChord arguments
+     *   only ImGuiMod_XXX values are legal to combine with an ImGuiKey. You CANNOT combine two ImGuiKey values.
+     * - The general idea is that several callers may register interest in a shortcut, and only one owner gets it.
+     *      Parent   -> call Shortcut(Ctrl+S)    // When Parent is focused, Parent gets the shortcut.
+     *        Child1 -> call Shortcut(Ctrl+S)    // When Child1 is focused, Child1 gets the shortcut (Child1 overrides Parent shortcuts)
+     *        Child2 -> no call                  // When Child2 is focused, Parent gets the shortcut.
+     *   The whole system is order independent, so if Child1 makes its calls before Parent, results will be identical.
+     *   This is an important property as it facilitate working with foreign code or larger codebase.
+     * - To understand the difference:
+     *   - IsKeyChordPressed() compares mods and call IsKeyPressed()
+     *     -> the function has no side-effect.
+     *   - Shortcut() submits a route, routes are resolved, if it currently can be routed it calls IsKeyChordPressed()
+     *     -> the function has (desirable) side-effects as it can prevents another call from getting the route.
+     * - Visualize registered routes in 'Metrics/Debugger->Inputs'.
+     */
+    static Shortcut(key_chord, flags = 0) {
+        return Mod.export.ImGui_Shortcut(key_chord, flags);
+    }
+    static SetNextItemShortcut(key_chord, flags = 0) {
+        Mod.export.ImGui_SetNextItemShortcut(key_chord, flags);
+    }
+    // Inputs Utilities: Key/Input Ownership [BETA]
+    // - One common use case would be to allow your items to disable standard inputs behaviors such
+    //   as Tab or Alt key handling, Mouse Wheel scrolling, etc.
+    //   e.g. `Button(...); if (SetItemKeyOwner(ImGuiKey_MouseWheelY)) { ... }` to make hovering/activating a button disable wheel for scrolling.
+    // - Reminder ImGuiKey enum include access to mouse buttons and gamepad, so key ownership can apply to them.
+    // - The return value of SetItemKeyOwner() says if ownership has been requested for the item, which is a shortcut to calling yet non-public TestKeyOwner() function.
+    // - Many related features are still in imgui_internal.h. For instance, most IsKeyXXX()/IsMouseXXX() functions have an owner-id-aware version.
+    /**
+     * Set key owner to last item ID if it is hovered or active. Return true when ownership has been set. Roughly equivalent to 'if (TestKeyOwner(key, GetItemID()) && (IsItemHovered() || IsItemActive())) { SetKeyOwner(key, GetItemID());'.
+     */
+    static SetItemKeyOwner(key) {
+        return Mod.export.ImGui_SetItemKeyOwner(key);
+    }
+    // Inputs Utilities: Mouse
+    // - To refer to a mouse button, you may use named enums in your code e.g. ImGuiMouseButton_Left, ImGuiMouseButton_Right.
+    // - You can also use regular integer: it is forever guaranteed that 0=Left, 1=Right, 2=Middle.
+    // - Dragging operations are only reported after mouse has moved a certain distance away from the initial clicking position (see 'lock_threshold' and 'io.MouseDraggingThreshold')
+    /**
+     * is mouse button held?
+     */
+    static IsMouseDown(button) {
+        return Mod.export.ImGui_IsMouseDown(button);
+    }
+    /**
+     * did mouse button clicked? (went from !Down to Down). Same as GetMouseClickedCount() == 1.
+     */
+    static IsMouseClicked(button, repeat = false) {
+        return Mod.export.ImGui_IsMouseClicked(button, repeat);
+    }
+    /**
+     * did mouse button released? (went from Down to !Down)
+     */
+    static IsMouseReleased(button) {
+        return Mod.export.ImGui_IsMouseReleased(button);
+    }
+    /**
+     * did mouse button double-clicked? Same as GetMouseClickedCount() == 2. (note that a double-click will also report IsMouseClicked() == true)
+     */
+    static IsMouseDoubleClicked(button) {
+        return Mod.export.ImGui_IsMouseDoubleClicked(button);
+    }
+    /**
+     * delayed mouse release (use very sparingly!). Generally used with 'delay >= io.MouseDoubleClickTime' + combined with a 'io.MouseClickedLastCount==1' test. This is a very rarely used UI idiom, but some apps use this: e.g. MS Explorer single click on an icon to rename.
+     */
+    static IsMouseReleasedWithDelay(button, delay) {
+        return Mod.export.ImGui_IsMouseReleasedWithDelay(button, delay);
+    }
+    /**
+     * return the number of successive mouse-clicks at the time where a click happen (otherwise 0).
+     */
+    static GetMouseClickedCount(button) {
+        return Mod.export.ImGui_GetMouseClickedCount(button);
+    }
+    /**
+     * is mouse hovering given bounding rect (in screen space). clipped by current clipping settings, but disregarding of other consideration of focus/window ordering/popup-block.
+     */
+    static IsMouseHoveringRect(r_min, r_max, clip = true) {
+        return Mod.export.ImGui_IsMouseHoveringRect(r_min, r_max, clip);
+    }
+    /**
+     * by convention we use (-FLT_MAX,-FLT_MAX) to denote that there is no mouse available
+     */
+    static IsMousePosValid(mouse_pos = null) {
+        return Mod.export.ImGui_IsMousePosValid(mouse_pos);
+    }
+    /**
+     * [WILL OBSOLETE] is any mouse button held? This was designed for backends, but prefer having backend maintain a mask of held mouse buttons, because upcoming input queue system will make this invalid.
+     */
+    static IsAnyMouseDown() {
+        return Mod.export.ImGui_IsAnyMouseDown();
+    }
+    /**
+     * shortcut to ImGui::GetIO().MousePos provided by user, to be consistent with other calls
+     */
+    static GetMousePos() {
+        return ImVec2.From(Mod.export.ImGui_GetMousePos());
+    }
+    /**
+     * retrieve mouse position at the time of opening popup we have BeginPopup() into (helper to avoid user backing that value themselves)
+     */
+    static GetMousePosOnOpeningCurrentPopup() {
+        return ImVec2.From(Mod.export.ImGui_GetMousePosOnOpeningCurrentPopup());
+    }
+    /**
+     * is mouse dragging? (uses io.MouseDraggingThreshold if lock_threshold < 0.0f)
+     */
+    static IsMouseDragging(button, lock_threshold = -1.0) {
+        return Mod.export.ImGui_IsMouseDragging(button, lock_threshold);
+    }
+    /**
+     * return the delta from the initial clicking position while the mouse button is pressed or was just released. This is locked and return 0.0f until the mouse moves past a distance threshold at least once (uses io.MouseDraggingThreshold if lock_threshold < 0.0f)
+     */
+    static GetMouseDragDelta(button = 0, lock_threshold = -1.0) {
+        return ImVec2.From(Mod.export.ImGui_GetMouseDragDelta(button, lock_threshold));
+    }
+    /**
+     *
+     */
+    static ResetMouseDragDelta(button = 0) {
+        Mod.export.ImGui_ResetMouseDragDelta(button);
+    }
+    /**
+     * get desired mouse cursor shape. Important: reset in ImGui::NewFrame(), this is updated during the frame. valid before Render(). If you use software rendering by setting io.MouseDrawCursor ImGui will render those for you
+     */
+    static GetMouseCursor() {
+        return Mod.export.ImGui_GetMouseCursor();
+    }
+    /**
+     * set desired mouse cursor shape
+     */
+    static SetMouseCursor(cursor_type) {
+        Mod.export.ImGui_SetMouseCursor(cursor_type);
+    }
+    /**
+     * Override io.WantCaptureMouse flag next frame (said flag is left for your application to handle, typical when true it instructs your app to ignore inputs). This is equivalent to setting "io.WantCaptureMouse = want_capture_mouse;" after the next NewFrame() call.
+     */
+    static SetNextFrameWantCaptureMouse(want_capture_mouse) {
+        Mod.export.ImGui_SetNextFrameWantCaptureMouse(want_capture_mouse);
+    }
+    /**
+     * Clipboard Utilities
+     * - Also see the LogToClipboard() function to capture GUI into clipboard, or easily output text data to the clipboard.
+     */
+    static GetClipboardText() {
+        return Mod.export.ImGui_GetClipboardText();
+    }
+    static SetClipboardText(text) {
+        Mod.export.ImGui_SetClipboardText(text);
+    }
+    /**
+     * call after CreateContext() and before the first call to NewFrame() to provide .ini data from your own data source.
+     */
+    static LoadIniSettingsFromMemory(ini_data, ini_size = 0) {
+        Mod.export.ImGui_LoadIniSettingsFromMemory(ini_data, ini_size);
+    }
+    /**
+     * return a zero-terminated string with the .ini data which you can save by your own mean. call when io.WantSaveIniSettings is set, then save data by your own mean and clear io.WantSaveIniSettings.
+     */
+    static SaveIniSettingsToMemory(out_ini_size = null) {
+        return Mod.export.ImGui_SaveIniSettingsToMemory(out_ini_size);
+    }
+    /**
+     * Debug Utilities
+     * - Your main debugging friend is the ShowMetricsWindow() function.
+     * - Interactive tools are all accessible from the 'Dear ImGui Demo->Tools' menu.
+     * - Read https://github.com/ocornut/imgui/wiki/Debug-Tools for a description of all available debug tools.
+     */
+    static DebugTextEncoding(text) {
+        Mod.export.ImGui_DebugTextEncoding(text);
+    }
+    static DebugFlashStyleColor(idx) {
+        Mod.export.ImGui_DebugFlashStyleColor(idx);
+    }
+    static DebugStartItemPicker() {
+        Mod.export.ImGui_DebugStartItemPicker();
+    }
+    /**
+     * This is called by IMGUI_CHECKVERSION() macro.
+     */
+    static DebugCheckVersionAndDataLayout(version_str, sz_io, sz_style, sz_vec2, sz_vec4, sz_drawvert, sz_drawidx) {
+        return Mod.export.ImGui_DebugCheckVersionAndDataLayout(version_str, sz_io, sz_style, sz_vec2, sz_vec4, sz_drawvert, sz_drawidx);
+    }
+    static DebugLog(fmt) {
+        Mod.export.ImGui_DebugLog(fmt);
+    }
+    // (Optional) Platform/OS interface for multi-viewport support
+    // Read comments around the ImGuiPlatformIO structure for more details.
+    // Note: You may use GetWindowViewport() to get the current viewport of the current window.
+    /**
+     * call in main loop. will call CreateWindow/ResizeWindow/etc. platform functions for each secondary viewport, and DestroyWindow for each inactive viewport.
+     */
+    static UpdatePlatformWindows() {
+        Mod.export.ImGui_UpdatePlatformWindows();
+    }
+    /**
+     * call in main loop. will call RenderWindow/SwapBuffers platform functions for each secondary viewport which doesn't have the ImGuiViewportFlags_Minimized flag set. May be reimplemented by user for custom rendering needs.
+     */
+    static RenderPlatformWindowsDefault(platform_render_arg = null, renderer_render_arg = null) {
+        Mod.export.ImGui_RenderPlatformWindowsDefault(platform_render_arg, renderer_render_arg);
+    }
+    /**
+     * call DestroyWindow platform functions for all viewports. call from backend Shutdown() if you need to close platform windows before imgui shutdown. otherwise will be called by DestroyContext().
+     */
+    static DestroyPlatformWindows() {
+        Mod.export.ImGui_DestroyPlatformWindows();
+    }
+    /**
+     * this is a helper for backends.
+     */
+    static FindViewportByID(viewport_id) {
+        return ImGuiViewport.From(Mod.export.ImGui_FindViewportByID(viewport_id));
+    }
+    /**
+     * this is a helper for backends. the type platform_handle is decided by the backend (e.g. HWND, MyWindow*, GLFWwindow* etc.)
+     */
+    static FindViewportByPlatformHandle(platform_handle) {
+        return ImGuiViewport.From(Mod.export.ImGui_FindViewportByPlatformHandle(platform_handle));
+    }
+}
+export class ImGuiImplOpenGL3 {
+    static Init() {
+        return Mod.export.cImGui_ImplOpenGL3_Init();
+    }
+    static Shutdown() {
+        Mod.export.cImGui_ImplOpenGL3_Shutdown();
+    }
+    static NewFrame() {
+        Mod.export.cImGui_ImplOpenGL3_NewFrame();
+    }
+    static RenderDrawData(draw_data) {
+        Mod.export.cImGui_ImplOpenGL3_RenderDrawData(draw_data.ptr);
+    }
+}
+export class ImGuiImplWGPU {
+    static Init(device) {
+        const handle = Mod.export.WebGPU.importJsDevice(device);
+        return Mod.export.cImGui_ImplWGPU_Init(handle);
+    }
+    static Shutdown() {
+        Mod.export.cImGui_ImplWGPU_Shutdown();
+    }
+    static NewFrame() {
+        Mod.export.cImGui_ImplWGPU_NewFrame();
+    }
+    static RenderDrawData(draw_data, pass_encoder) {
+        const handle = Mod.export.WebGPU.importJsRenderPassEncoder(pass_encoder);
+        Mod.export.cImGui_ImplWGPU_RenderDrawData(draw_data.ptr, handle);
+    }
+}
+/**
+ * Map of browser mouse button values to ImGui mouse button enums.
+ * For reference, see {@link https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/button}.
+ */
+const MOUSE_BUTTON_MAP = {
+    0: ImGuiMouseButton.Left,
+    1: ImGuiMouseButton.Middle,
+    2: ImGuiMouseButton.Right,
+};
+/**
+ * Map of ImGui mouse cursor enums to CSS cursor styles.
+ * For reference, see {@link https://developer.mozilla.org/en-US/docs/Web/CSS/cursor}.
+ */
+const MOUSE_CURSOR_MAP = {
+    [ImGuiMouseCursor.None]: "none",
+    [ImGuiMouseCursor.Arrow]: "default",
+    [ImGuiMouseCursor.TextInput]: "text",
+    [ImGuiMouseCursor.Hand]: "pointer",
+    [ImGuiMouseCursor.ResizeAll]: "all-scroll",
+    [ImGuiMouseCursor.ResizeNS]: "ns-resize",
+    [ImGuiMouseCursor.ResizeEW]: "ew-resize",
+    [ImGuiMouseCursor.ResizeNESW]: "nesw-resize",
+    [ImGuiMouseCursor.ResizeNWSE]: "nwse-resize",
+    [ImGuiMouseCursor.NotAllowed]: "not-allowed",
+};
+/**
+ * Map of browser keyboard key values to ImGui key enums.
+ * For reference, see {@link https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key}.
+ */
+const KEYBOARD_MAP = {
+    "0": ImGuiKey._0,
+    "1": ImGuiKey._1,
+    "2": ImGuiKey._2,
+    "3": ImGuiKey._3,
+    "4": ImGuiKey._4,
+    "5": ImGuiKey._5,
+    "6": ImGuiKey._6,
+    "7": ImGuiKey._7,
+    "8": ImGuiKey._8,
+    "9": ImGuiKey._9,
+    Numpad0: ImGuiKey._Keypad0,
+    Numpad1: ImGuiKey._Keypad1,
+    Numpad2: ImGuiKey._Keypad2,
+    Numpad3: ImGuiKey._Keypad3,
+    Numpad4: ImGuiKey._Keypad4,
+    Numpad5: ImGuiKey._Keypad5,
+    Numpad6: ImGuiKey._Keypad6,
+    Numpad7: ImGuiKey._Keypad7,
+    Numpad8: ImGuiKey._Keypad8,
+    Numpad9: ImGuiKey._Keypad9,
+    NumpadDecimal: ImGuiKey._KeypadDecimal,
+    NumpadDivide: ImGuiKey._KeypadDivide,
+    NumpadMultiply: ImGuiKey._KeypadMultiply,
+    NumpadSubtract: ImGuiKey._KeypadSubtract,
+    NumpadAdd: ImGuiKey._KeypadAdd,
+    NumpadEnter: ImGuiKey._KeypadEnter,
+    NumpadEqual: ImGuiKey._KeypadEqual,
+    F1: ImGuiKey._F1,
+    F2: ImGuiKey._F2,
+    F3: ImGuiKey._F3,
+    F4: ImGuiKey._F4,
+    F5: ImGuiKey._F5,
+    F6: ImGuiKey._F6,
+    F7: ImGuiKey._F7,
+    F8: ImGuiKey._F8,
+    F9: ImGuiKey._F9,
+    F10: ImGuiKey._F10,
+    F11: ImGuiKey._F11,
+    F12: ImGuiKey._F12,
+    F13: ImGuiKey._F13,
+    F14: ImGuiKey._F14,
+    F15: ImGuiKey._F15,
+    F16: ImGuiKey._F16,
+    F17: ImGuiKey._F17,
+    F18: ImGuiKey._F18,
+    F19: ImGuiKey._F19,
+    F20: ImGuiKey._F20,
+    F21: ImGuiKey._F21,
+    F22: ImGuiKey._F22,
+    F23: ImGuiKey._F23,
+    F24: ImGuiKey._F24,
+    a: ImGuiKey._A,
+    b: ImGuiKey._B,
+    c: ImGuiKey._C,
+    d: ImGuiKey._D,
+    e: ImGuiKey._E,
+    f: ImGuiKey._F,
+    g: ImGuiKey._G,
+    h: ImGuiKey._H,
+    i: ImGuiKey._I,
+    j: ImGuiKey._J,
+    k: ImGuiKey._K,
+    l: ImGuiKey._L,
+    m: ImGuiKey._M,
+    n: ImGuiKey._N,
+    o: ImGuiKey._O,
+    p: ImGuiKey._P,
+    q: ImGuiKey._Q,
+    r: ImGuiKey._R,
+    s: ImGuiKey._S,
+    t: ImGuiKey._T,
+    u: ImGuiKey._U,
+    v: ImGuiKey._V,
+    w: ImGuiKey._W,
+    x: ImGuiKey._X,
+    y: ImGuiKey._Y,
+    z: ImGuiKey._Z,
+    A: ImGuiKey._A,
+    B: ImGuiKey._B,
+    C: ImGuiKey._C,
+    D: ImGuiKey._D,
+    E: ImGuiKey._E,
+    F: ImGuiKey._F,
+    G: ImGuiKey._G,
+    H: ImGuiKey._H,
+    I: ImGuiKey._I,
+    J: ImGuiKey._J,
+    K: ImGuiKey._K,
+    L: ImGuiKey._L,
+    M: ImGuiKey._M,
+    N: ImGuiKey._N,
+    O: ImGuiKey._O,
+    P: ImGuiKey._P,
+    Q: ImGuiKey._Q,
+    R: ImGuiKey._R,
+    S: ImGuiKey._S,
+    T: ImGuiKey._T,
+    U: ImGuiKey._U,
+    V: ImGuiKey._V,
+    W: ImGuiKey._W,
+    X: ImGuiKey._X,
+    Y: ImGuiKey._Y,
+    Z: ImGuiKey._Z,
+    "'": ImGuiKey._Apostrophe,
+    ",": ImGuiKey._Comma,
+    "-": ImGuiKey._Minus,
+    ".": ImGuiKey._Period,
+    "/": ImGuiKey._Slash,
+    ";": ImGuiKey._Semicolon,
+    "=": ImGuiKey._Equal,
+    "[": ImGuiKey._LeftBracket,
+    "\\": ImGuiKey._Backslash,
+    "]": ImGuiKey._RightBracket,
+    "`": ImGuiKey._GraveAccent,
+    CapsLock: ImGuiKey._CapsLock,
+    ScrollLock: ImGuiKey._ScrollLock,
+    NumLock: ImGuiKey._NumLock,
+    PrintScreen: ImGuiKey._PrintScreen,
+    Pause: ImGuiKey._Pause,
+    Tab: ImGuiKey._Tab,
+    ArrowLeft: ImGuiKey._LeftArrow,
+    ArrowRight: ImGuiKey._RightArrow,
+    ArrowUp: ImGuiKey._UpArrow,
+    ArrowDown: ImGuiKey._DownArrow,
+    PageUp: ImGuiKey._PageUp,
+    PageDown: ImGuiKey._PageDown,
+    Home: ImGuiKey._Home,
+    End: ImGuiKey._End,
+    Insert: ImGuiKey._Insert,
+    Delete: ImGuiKey._Delete,
+    Backspace: ImGuiKey._Backspace,
+    " ": ImGuiKey._Space,
+    Enter: ImGuiKey._Enter,
+    Escape: ImGuiKey._Escape,
+    Control: ImGuiKey._LeftCtrl,
+    Shift: ImGuiKey._LeftShift,
+    Alt: ImGuiKey._LeftAlt,
+    Super: ImGuiKey._LeftSuper,
+    Meta: ImGuiKey._LeftSuper,
+};
+/**
+ * Map of browser keyboard modifier key values to ImGui key modifier enums.
+ * For reference, see {@link https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key}.
+ */
+const KEYBOARD_MODIFIER_MAP = {
+    Control: ImGuiKey.ImGuiMod_Ctrl,
+    Shift: ImGuiKey.ImGuiMod_Shift,
+    Alt: ImGuiKey.ImGuiMod_Alt,
+    Super: ImGuiKey.ImGuiMod_Super,
+    Meta: ImGuiKey.ImGuiMod_Super,
+};
+const metaKeyInfo = {
+    isDown: false,
+};
+/**
+ * Forwards keyboard events to Dear ImGui. This is both used for normal keyboard events as well as
+ * for the virtual keyboard, see {@linkcode setupKeyboardIO} and {@linkcode setupTouchIO}.
+ *
+ * @param event The keyboard event to handle.
+ * @param keyDown Whether the key is being pressed or released.
+ * @param io The {@linkcode ImGuiIO} object to forward the event to.
+ */
+const handleKeyboardEvent = (event, keyDown, io) => {
+    if (!Object.hasOwn(KEYBOARD_MAP, event.key)) {
+        return;
+    }
+    if (event.key === "Meta") {
+        metaKeyInfo.isDown = keyDown;
+    }
+    io.AddKeyEvent(KEYBOARD_MAP[event.key], keyDown);
+    // NOTE: We lift the key when the meta key is pressed, because on macOS the browsers
+    // 'keyup' events are not fired for other keys when meta key is held down.
+    // see: https://stackoverflow.com/q/11818637.
+    if (metaKeyInfo.isDown) {
+        io.AddKeyEvent(KEYBOARD_MAP[event.key], false);
+    }
+    const modifier = KEYBOARD_MODIFIER_MAP[event.key];
+    if (modifier) {
+        io.AddKeyEvent(modifier, keyDown);
+    }
+    if (event.key.length === 1 && keyDown) {
+        io.AddInputCharactersUTF8(event.key);
+    }
+};
+function setDisplayProperties(canvas) {
+    const io = ImGui.GetIO();
+    const clientWidth = canvas.clientWidth;
+    const clientHeight = canvas.clientHeight;
+    io.DisplaySize = new ImVec2(clientWidth, clientHeight);
+    io.DisplayFramebufferScale = new ImVec2(clientWidth > 0 ? canvas.width / clientWidth : 1, clientHeight > 0 ? canvas.height / clientHeight : 1);
+}
+/**
+ * Handles mouse button events.
+ *
+ * @param event The mouse event to handle.
+ * @param isDown Whether the button is being pressed or released.
+ * @param io The {@linkcode ImGuiIO} object to forward the event to.
+ */
+const handleMouseButtonEvent = (event, isDown, io) => {
+    if (!Object.hasOwn(MOUSE_BUTTON_MAP, event.button)) {
+        return;
+    }
+    io.AddMouseButtonEvent(MOUSE_BUTTON_MAP[event.button], isDown);
+};
+/**
+ * Sets up mouse key, wheel input and movement. Also handles cursor style changes.
+ *
+ * @param canvas The canvas element to set up.
+ */
+const setupMouseIO = (canvas) => {
+    const io = ImGui.GetIO();
+    const scrollSpeed = 0.01;
+    canvas.addEventListener("pointermove", (e) => {
+        const rect = canvas.getBoundingClientRect();
+        io.AddMousePosEvent(e.clientX - rect.left, e.clientY - rect.top);
+        canvas.style.cursor = MOUSE_CURSOR_MAP[ImGui.GetMouseCursor()];
+    });
+    canvas.addEventListener("pointerdown", (e) => handleMouseButtonEvent(e, true, io));
+    canvas.addEventListener("pointerup", (e) => handleMouseButtonEvent(e, false, io));
+    canvas.addEventListener("wheel", (e) => io.AddMouseWheelEvent(-e.deltaX * scrollSpeed, -e.deltaY * scrollSpeed));
+};
+/**
+ * Sets up keyboard input handling. Browser keyboard events are handled by
+ * {@linkcode handleKeyboardEvent}.
+ *
+ * @param canvas The canvas element to set up.
+ */
+const setupKeyboardIO = (canvas) => {
+    const io = ImGui.GetIO();
+    // Swap super and ctrl keys on macOS.
+    if (navigator.userAgent.includes("Mac")) {
+        io.ConfigMacOSXBehaviors = true;
+    }
+    // TODO: Fix too fast repeated inputs (Backspace, Delete...).
+    canvas.addEventListener("keydown", (e) => handleKeyboardEvent(e, true, io));
+    canvas.addEventListener("keyup", (e) => handleKeyboardEvent(e, false, io));
+};
+/**
+ * Sets up touch input handling as well as showing the virtual keyboard. Note the following:
+ *
+ * - Single-finger touches are treated as mouse left clicks.
+ * - Two-finger touches are treated as mouse scrolls.
+ *
+ * @param canvas The canvas element to set up.
+ */
+const setupTouchIO = (canvas) => {
+    const io = ImGui.GetIO();
+    const scrollSpeed = 0.02;
+    let lastPos = { x: 0, y: 0 };
+    const handleTouchEvent = (event, isButtonDown) => {
+        event.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        if (event.touches.length === 2) {
+            const touch1 = event.touches[0];
+            const touch2 = event.touches[1];
+            const currentPos = {
+                x: (touch1.clientX + touch2.clientX) / 2,
+                y: (touch1.clientY + touch2.clientY) / 2,
+            };
+            if (lastPos.x > 0 && lastPos.y > 0) {
+                const deltaX = (lastPos.x - currentPos.x) * scrollSpeed;
+                const deltaY = (lastPos.y - currentPos.y) * scrollSpeed;
+                io.AddMouseWheelEvent(-deltaX, -deltaY);
+            }
+            lastPos = currentPos;
+            return;
+        }
+        lastPos = { x: 0, y: 0 };
+        const touch = event.touches[0];
+        if (touch) {
+            io.AddMousePosEvent(touch.clientX - rect.left, touch.clientY - rect.top);
+        }
+        if (typeof isButtonDown === "boolean") {
+            io.AddMouseButtonEvent(ImGuiMouseButton.Left, isButtonDown);
+        }
+    };
+    // Since the Virtual Keyboard API isn't widely supported yet, we use an invisible
+    // <input> element to show the on-screen keyboard and handle the text input.
+    // See: https://developer.mozilla.org/en-US/docs/Web/API/VirtualKeyboard_API
+    const input = document.createElement("input");
+    input.style.position = "absolute";
+    input.style.opacity = "0";
+    input.style.pointerEvents = "none";
+    const keyDownHandler = (e) => handleKeyboardEvent(e, true, io);
+    const keyUpHandler = (e) => handleKeyboardEvent(e, false, io);
+    const blurHandler = () => {
+        input.removeEventListener("keydown", keyDownHandler);
+        input.removeEventListener("keyup", keyUpHandler);
+        input.remove();
+    };
+    const handleTextInput = () => {
+        if (io.WantTextInput) {
+            document.body.appendChild(input);
+            input.focus();
+            input.addEventListener("blur", blurHandler);
+            input.addEventListener("keydown", keyDownHandler);
+            input.addEventListener("keyup", (e) => {
+                keyUpHandler(e);
+                // Exits single-line input fields when pressing Enter.
+                if (!io.WantTextInput) {
+                    blurHandler();
+                }
+            });
+        }
+        else {
+            blurHandler();
+        }
+    };
+    canvas.addEventListener("touchstart", (e) => handleTouchEvent(e, true));
+    canvas.addEventListener("touchmove", (e) => handleTouchEvent(e));
+    canvas.addEventListener("touchend", (e) => {
+        lastPos = { x: 0, y: 0 };
+        handleTouchEvent(e, false);
+        handleTextInput();
+    });
+    canvas.addEventListener("touchcancel", (e) => {
+        lastPos = { x: 0, y: 0 };
+        handleTouchEvent(e, false);
+    });
+};
+/**
+ * Sets up the clipboard functionality to work between the browser and Dear ImGui.
+ */
+const setupClipboardIO = () => {
+    const getClipboard = () => {
+        return State.clipboardData;
+    };
+    const setClipboard = (text) => {
+        navigator.clipboard.writeText(text);
+        State.clipboardData = text;
+    };
+    Mod.export.SetupClipboardFunctions(getClipboard, setClipboard);
+    document.addEventListener("paste", (e) => {
+        State.clipboardData = e.clipboardData?.getData("text/plain") ?? "";
+    });
+};
+/**
+ * Sets up Dear ImGui for the browser. This includes:
+ * - Setting up the canvas and resize events.
+ * - Setting up mouse input, movement and cursor handling.
+ * - Setting up keyboard input handling.
+ * - Setting up touch input handling.
+ *
+ * This function is called by {@linkcode ImGuiImplWeb.Init}.
+ *
+ * @param canvas The canvas element to set up.
+ */
+const setupBrowserIO = (canvas) => {
+    const io = ImGui.GetIO();
+    io.BackendFlags = ImGuiBackendFlags.HasMouseCursors;
+    canvas.tabIndex = 1;
+    canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+    canvas.addEventListener("focus", () => io.AddFocusEvent(true));
+    canvas.addEventListener("blur", () => io.AddFocusEvent(false));
+    setDisplayProperties(canvas);
+    setupMouseIO(canvas);
+    setupKeyboardIO(canvas);
+    setupTouchIO(canvas);
+    setupClipboardIO();
+    Mod.export.SetupIniSettings();
+};
+/**
+ * Object containing some state information for jsimgui. Users most likely don't need to worry
+ * about this.
+ */
+export const State = {
+    canvas: null,
+    device: null,
+    backend: null,
+    beginRenderFn: null,
+    endRenderFn: null,
+    clipboardData: "",
+    saveIniSettingsFn: null,
+    loadIniSettingsFn: null,
+};
+/**
+ * This infers the backend to use for the given configuration.
+ *
+ * @param canvas The canvas element to infer the backend from.
+ * @param device The WebGPU device to use. This overrides the backend to WebGPU.
+ * @param backend The backend to use. This will explicitly use this backend.
+ * @returns The backend to use.
+ */
+const getUsedBackend = (canvas, device, backend) => {
+    if (backend)
+        return backend;
+    if (device)
+        return "webgpu";
+    const ctx = canvas.getContext("webgl2") ||
+        canvas.getContext("webgl") ||
+        canvas.getContext("webgpu") ||
+        canvas.getContext("2d") ||
+        canvas.getContext("bitmaprenderer");
+    if (ctx instanceof WebGLRenderingContext)
+        return "webgl";
+    if (ctx instanceof WebGL2RenderingContext)
+        return "webgl2";
+    if (ctx instanceof GPUCanvasContext)
+        return "webgpu";
+    if (ctx instanceof CanvasRenderingContext2D) {
+        throw new Error("jsimgui: 2D canvas context is not supported.");
+    }
+    if (ctx instanceof ImageBitmapRenderingContext) {
+        throw new Error("jsimgui: ImageBitmapRenderingContext is not supported.");
+    }
+    return "webgl2";
+};
+/**
+ * This initializes the WebGL/WebGL2 backend.
+ *
+ * @param canvas The canvas element to initialize the WebGL/WebGL2 backend on.
+ */
+const initWebGL = (canvas) => {
+    const ctx = canvas.getContext("webgl2") || canvas.getContext("webgl");
+    if (!ctx) {
+        throw new Error("jsimgui: Could not create WebGL/WebGL2 context.");
+    }
+    const handle = Mod.export.GL.registerContext(ctx, ctx.getContextAttributes());
+    Mod.export.GL.makeContextCurrent(handle);
+    ImGuiImplOpenGL3.Init();
+    State.beginRenderFn = () => {
+        ImGuiImplOpenGL3.NewFrame();
+    };
+    State.endRenderFn = () => {
+        ImGuiImplOpenGL3.RenderDrawData(ImGui.GetDrawData());
+    };
+    State.canvas = canvas;
+};
+/**
+ * This initializes the WebGPU backend.
+ *
+ * @param canvas The canvas element to initialize the WebGPU backend on.
+ * @param device The WebGPU device to use.
+ */
+const initWebGPU = (canvas, device) => {
+    if (!device) {
+        throw new Error("jsimgui: WebGPU device is not provided.");
+    }
+    ImGuiImplWGPU.Init(device);
+    State.beginRenderFn = () => {
+        ImGuiImplWGPU.NewFrame();
+    };
+    State.endRenderFn = (passEncoder) => {
+        ImGuiImplWGPU.RenderDrawData(ImGui.GetDrawData(), passEncoder);
+    };
+    State.canvas = canvas;
+    State.device = device;
+};
+/**
+ * Object providing easy to use functions for initializing jsimgui as well as other things like
+ * loading images and fonts (TODO).
+ */
+export class ImGuiImplWeb {
+    /**
+     * Returns the exports and runtime methods of the emscripten module.
+     *
+     * @returns The emscripten exports object.
+     */
+    static GetEmscriptenExports() {
+        return Mod.export;
+    }
+    /**
+     * Returns memory information of the WASM heap, mallinfo and stack.
+     *
+     * @returns Object containing the memory information.
+     */
+    static GetMemoryInfo() {
+        return {
+            heap: Mod.export.get_wasm_heap_info(),
+            mall: Mod.export.get_wasm_mall_info(),
+            stack: Mod.export.get_wasm_stack_info(),
+        };
+    }
+    /**
+     * Set the callback for saving the Dear ImGui ini settings. The ini settings will be passed as
+     * string to the callback.
+     *
+     * @param fn The function to save the ImGui ini settings.
+     */
+    static SetSaveIniSettingsFn(fn) {
+        State.saveIniSettingsFn = fn;
+    }
+    /**
+     * Set the callback for loading the Dear ImGui ini settings. The callback should return a string
+     * of the ini settings. This callback will be called in the {@linkcode ImGuiImplWeb.Init}
+     * function.
+     *
+     * @param fn The function to load the ImGui ini settings.
+     */
+    static SetLoadIniSettingsFn(fn) {
+        State.loadIniSettingsFn = fn;
+    }
+    /**
+     * Register a texture for the current backend to be used in image related functions (`ImGui.Image()`).
+     */
+    static RegisterTexture(texture) {
+        if (texture instanceof WebGLTexture) {
+            const id = Mod.export.GL.getNewId(Mod.export.GL.textures);
+            Mod.export.GL.textures[id] = texture;
+            return new ImTextureRef(id);
+        }
+        if (texture instanceof GPUTexture) {
+            const id = Mod.export.WebGPU.importJsTextureView(texture.createView());
+            return new ImTextureRef(id);
+        }
+    }
+    /**
+     * Returns a dummy (1x1 pixel, black, fully transparent) texture for the current backend.
+     * This can be useful if you asynchronously load an image, and need to use a placeholder in the meantime.
+     */
+    static DummyTexture() {
+        if (State.backend === "webgl" || State.backend === "webgl2") {
+            const gl = State.canvas?.getContext(State.backend);
+            const texture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, texture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
+            return ImGuiImplWeb.RegisterTexture(texture);
+        }
+        if (State.backend === "webgpu") {
+            const device = State.device;
+            const texture = device.createTexture({
+                size: [1, 1],
+                format: "rgba8unorm",
+                usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+            });
+            device.queue.writeTexture({ texture }, new Uint8Array([0, 0, 0, 0]), {}, [1, 1]);
+            return ImGuiImplWeb.RegisterTexture(texture);
+        }
+    }
+    /**
+     * Load a font file to the filesystem for the current backend. Add it then using
+     * `ImGui.GetIO().Fonts.AddFontFromFileTTF(filename);`
+     * @param filename The filename of the font to load.
+     * @param fontData The font data to load.
+     */
+    static LoadFont(filename, fontData) {
+        Mod.export.FS.writeFile(filename, fontData);
+    }
+    /**
+     * Begins a new ImGui frame. Call this at the beginning of your render loop.
+     */
+    static BeginRender() {
+        setDisplayProperties(State.canvas);
+        if (ImGui.GetIO().WantSaveIniSettings) {
+            State.saveIniSettingsFn?.(ImGui.SaveIniSettingsToMemory());
+            ImGui.GetIO().WantSaveIniSettings = false;
+        }
+        State.beginRenderFn?.();
+        ImGui.NewFrame();
+    }
+    /**
+     * Ends the current ImGui frame. Call this at the end of your render loop. The `passEncoder`
+     * is only required when using the WebGPU backend.
+     *
+     * @param passEncoder The WebGPU render pass encoder to use.
+     */
+    static EndRender(passEncoder) {
+        ImGui.Render();
+        State.endRenderFn?.(passEncoder);
+    }
+    /**
+     * Initialize Dear ImGui with the specified configuration. This is asynchronous because it
+     * waits for the WASM file to be loaded.
+     *
+     * @param options The initialization options: {@linkcode InitOptions}.
+     */
+    static async Init(options) {
+        const { canvas, device, backend, fontLoader = "truetype", loaderPath, extensions = false, } = options;
+        const usedBackend = getUsedBackend(canvas, device, backend);
+        State.backend = usedBackend;
+        await Mod.init(fontLoader === "freetype", extensions, loaderPath);
+        Mod.export.FS.mount(Mod.export.MEMFS, { root: "." }, ".");
+        ImGui.CreateContext();
+        if (extensions) {
+            const imnodes = await import("./imnodes.js");
+            const implot = await import("./implot.js");
+            implot.ImPlot.CreateContext();
+            imnodes.ImNodes.CreateContext();
+        }
+        setupBrowserIO(canvas);
+        if (State.loadIniSettingsFn) {
+            const iniData = State.loadIniSettingsFn() || "";
+            ImGui.LoadIniSettingsFromMemory(iniData, iniData.length);
+        }
+        if (usedBackend === "webgl" || usedBackend === "webgl2") {
+            initWebGL(canvas);
+            return;
+        }
+        if (usedBackend === "webgpu") {
+            initWebGPU(canvas, device);
+            return;
+        }
+    }
+}
